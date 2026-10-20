@@ -14,11 +14,21 @@ async function play(page, from, to) {
 }
 
 async function ready(page) {
+  page.setDefaultTimeout(10_000)
   await page.waitForFunction(() => document.querySelector('#chess-status').textContent === 'Your move.')
 }
 
 async function completed(page) {
-  await page.waitForFunction(() => document.querySelector('[data-step="reply"] [data-state]').textContent === 'Played')
+  try {
+    await page.waitForFunction(() => document.querySelector('[data-step="reply"] [data-state]').textContent === 'Played')
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      status: document.querySelector('#chess-status')?.textContent,
+      moves: document.querySelector('#chess-moves')?.textContent,
+      commands: window.chessCommands,
+    }))
+    throw new Error(`Engine reply did not complete: ${JSON.stringify(state)}`, { cause: error })
+  }
 }
 
 async function mockEngine(page, options = {}) {
