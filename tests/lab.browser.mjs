@@ -7,6 +7,32 @@ const base = process.env.LAB_TEST_URL
 const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/token-diet/']
 const recorded = JSON.parse(await readFile(new URL('../src/lib/session-flame-runs.json', import.meta.url), 'utf8'))
 
+test('homepage terminal grid keeps native keyboard links and works without JavaScript', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    for (const width of [1440, 390, 320]) {
+      const page = await browser.newPage({ viewport: { width, height: 900 }, javaScriptEnabled: false, reducedMotion: 'reduce' })
+      await page.goto(base, { waitUntil: 'networkidle' })
+      const panels = page.locator('.experiment-grid a')
+      assert.deepEqual(await panels.evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
+        ['/session-flame/', '/context-autopsy/', '/token-diet/', '/chess/'])
+      assert.equal(await page.locator('h1').innerText(), 'Raghib’s Lab — Experiments')
+      assert.equal(await page.locator('.experiment-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length), width > 672 ? 2 : 1)
+      assert.ok(await page.locator('.experiment-grid').evaluate((grid) => [...grid.querySelectorAll('a')].every((link) => link.getBoundingClientRect().height >= 44)))
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+      await panels.first().focus()
+      assert.equal(await panels.first().evaluate((link) => link.matches(':focus-visible')), true)
+      await page.keyboard.press('Tab')
+      assert.equal(await panels.nth(1).evaluate((link) => link === document.activeElement), true)
+      await page.keyboard.press('Enter')
+      await page.waitForURL(new URL('/context-autopsy/', base).href)
+      await page.close()
+    }
+  } finally {
+    await browser.close()
+  }
+})
+
 test('standalone pages have working local links, assets and lab canonicals', { skip: !base }, async () => {
   const browser = await chromium.launch()
   try {

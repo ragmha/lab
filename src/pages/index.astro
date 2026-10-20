@@ -1,56 +1,192 @@
 ---
-import SiteLayout from '../layouts/SiteLayout.astro'
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ThemeToggle from '../components/ThemeToggle.astro'
+import '../styles/fonts.css'
+import '../styles/theme.css'
+
+const experiments = [
+  {
+    slug: 'session-flame',
+    title: 'Where Did the Time Go?',
+    description: 'Replay a coding-agent session as a flame chart: prompts, model turns, tools, and sub-agents, with idle time folded away.',
+  },
+  {
+    slug: 'context-autopsy',
+    title: 'What’s Under the Prompt?',
+    description: 'See what happens under the hood when you prompt: context growth, cache reuse, model calls, tools, and cost elsewhere.',
+  },
+  {
+    slug: 'token-diet',
+    title: 'Does Your Coding Agent Need a Token Diet?',
+    description: 'Compare a coding agent’s token use across two rounds of recorded runs, with the reproduction kit and measurements.',
+  },
+  {
+    slug: 'chess',
+    title: 'Can a Browser Tab Beat You at Chess?',
+    description: 'Play Stockfish compiled to WebAssembly. The engine runs on your device; no moves leave the page.',
+  },
+]
 ---
 
-<SiteLayout
+<BaseLayout
   title="Experiments"
   description="Interactive experiments and technical demonstrations by Raghib Hasan."
+  bodyClass="lab-surface"
+  pageClass="lab-home"
+  defaultTheme="dark"
 >
-  <Fragment slot="heading">Experiments</Fragment>
-  <p>Four experiments by <a href="https://raghib.io/">Raghib Hasan</a>. They run in your browser; imported sessions stay on your device.</p>
-  <ul class="experiment-list" role="list">
-    <li>
-      <h2><a href="/session-flame/">Where Did the Time Go?</a></h2>
-      <p>Replay a coding-agent session as a flame chart: prompts, model turns, tools, and sub-agents, with idle time folded away.</p>
-    </li>
-    <li>
-      <h2><a href="/context-autopsy/">What’s Under the Prompt?</a></h2>
-      <p>See what happens under the hood when you prompt: context growth, cache reuse, model calls, tools, and cost elsewhere.</p>
-    </li>
-    <li>
-      <h2><a href="/token-diet/">Does Your Coding Agent Need a Token Diet?</a></h2>
-      <p>Compare a coding agent’s token use across two rounds of recorded runs, with the reproduction kit and measurements.</p>
-    </li>
-    <li>
-      <h2><a href="/chess/">Can a Browser Tab Beat You at Chess?</a></h2>
-      <p>Play Stockfish compiled to WebAssembly. The engine runs on your device; no moves leave the page.</p>
-    </li>
-  </ul>
-</SiteLayout>
+  <main class="site-shell home">
+    <header class="lab-heading">
+      <h1>
+        <svg class="wordmark" viewBox="0 0 76 28" width="190" height="70" aria-hidden="true">
+          <path fill-rule="evenodd" d="M0 0h4v24h16v4H0z M28 4h4V0h12v4h4v24h-4V16H32v12h-4z M32 4v8h12V4z M56 0h16v4h4v8h-4v4h4v8h-4v4H56z M60 4v8h12V4z M60 16v8h12v-8z" />
+        </svg>
+        <span>Raghib’s Lab — Experiments</span>
+      </h1>
+      <ThemeToggle />
+    </header>
+
+    <p class="intro">Four experiments by <a href="https://raghib.io/">Raghib Hasan</a>. They run in your browser; imported sessions stay on your device.</p>
+
+    <ul class="experiment-grid" role="list">
+      {experiments.map((experiment, index) => (
+        <li>
+          <a class="experiment" href={`/${experiment.slug}/`} aria-labelledby={experiment.slug}>
+            <span class="panel-label" aria-hidden="true">
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <span>{experiment.slug}</span>
+            </span>
+            <h2 id={experiment.slug}>{experiment.title}</h2>
+            <p>{experiment.description}</p>
+            <span class="open-label" aria-hidden="true"><span class="prompt">&gt;</span> open experiment <span>↗</span></span>
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <footer>
+      <nav aria-label="Lab navigation">
+        <a href="https://raghib.io/">[writing]</a>
+        <a href="https://github.com/ragmha/lab">[source]</a>
+      </nav>
+      <span>{experiments.length} experiments</span>
+    </footer>
+  </main>
+</BaseLayout>
 
 <style>
-  .experiment-list {
-    display: grid;
+  :global(body.lab-surface) {
+    --text: var(--theme-text);
+    --body: var(--theme-text);
+    --accent: var(--theme-blue);
+    background: var(--theme-bg);
+    color: var(--theme-text);
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+    line-height: 1.65;
+  }
+
+  :global(.lab-home) {
+    width: min(100% - 3rem, 60rem);
+    padding-block: clamp(2rem, 7vw, 5rem) 2.5rem;
+  }
+
+  .site-shell.home { padding: 0; }
+
+  .lab-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     gap: 1rem;
-    margin: 1.5rem 0 0;
+    margin-bottom: 2rem;
+  }
+
+  h1 { margin: 0; line-height: 1; }
+  .wordmark { display: block; fill: currentColor; shape-rendering: crispEdges; }
+  h1 span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .lab-heading :global(#theme-toggle) {
+    min-width: 6rem;
+    min-height: 2.75rem;
+    border: 1px solid var(--theme-rule-strong);
+    border-radius: 0;
+    background: var(--theme-bg);
+    color: var(--theme-muted);
+    font: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .lab-heading :global(#theme-toggle[hidden]) { display: block; visibility: hidden; }
+  .lab-heading :global(#theme-toggle:hover) { color: var(--theme-text); border-color: currentColor; }
+
+  .intro {
+    max-width: 68ch;
+    margin: 0 0 2.5rem;
+    color: var(--theme-muted);
+    font-size: 0.9rem;
+  }
+  .intro a, nav a { color: var(--theme-blue); text-underline-offset: 0.25em; }
+
+  .experiment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    margin: 0;
     padding: 0;
     list-style: none;
   }
-
-  .experiment-list li {
-    padding: 0.85rem 0;
-    border-bottom: 1px solid var(--theme-rule);
+  .experiment-grid li { min-width: 0; margin: 0; }
+  .experiment {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.25rem;
+    border: 1px solid var(--theme-rule-strong);
+    color: var(--theme-text);
+    text-decoration: none;
   }
-
-  .experiment-list h2 {
-    margin: 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-
-  .experiment-list p {
-    margin: 0.25rem 0 0;
+  .panel-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: -1.25rem -1.25rem 1.25rem;
+    padding: 0.6rem 1.25rem;
+    border-bottom: 1px solid var(--theme-rule-strong);
     color: var(--theme-muted);
-    font-size: 0.8rem;
+    font-size: 0.7rem;
+  }
+  h2 {
+    margin: 0 0 0.75rem;
+    color: var(--theme-blue);
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: normal;
+    text-wrap: balance;
+  }
+  .experiment p { margin: 0 0 1.5rem; color: var(--theme-muted); font-size: 0.85rem; }
+  .open-label { margin-top: auto; font-size: 0.75rem; }
+  .open-label > :last-child { float: right; }
+  .prompt { display: inline-block; width: 1.5ch; color: var(--theme-blue); }
+  .experiment:hover { border-color: var(--theme-blue); background: var(--theme-surface); }
+  .experiment:focus-visible { background: var(--theme-text); color: var(--theme-bg); }
+  .experiment:focus-visible :is(h2, p, .panel-label, .prompt) { color: inherit; }
+  .experiment:focus-visible .panel-label { border-color: currentColor; }
+
+  footer, nav { display: flex; align-items: center; flex-wrap: wrap; gap: 1.25rem; }
+  footer { justify-content: space-between; margin-top: 2rem; color: var(--theme-muted); font-size: 0.75rem; }
+  nav a { display: inline-flex; align-items: center; min-height: 2.75rem; text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+
+  @media (max-width: 42rem) {
+    :global(.lab-home) { width: calc(100% - 2rem); }
+    .experiment-grid { grid-template-columns: minmax(0, 1fr); }
+    .wordmark { width: 152px; height: 56px; }
   }
 </style>
