@@ -1,0 +1,79 @@
+<button class="flask-toggle" id="flask-toggle" type="button" aria-label="Animate flask" aria-pressed="false" title="Laboratory flask" disabled>
+  <svg viewBox="0 0 72 96" width="64" height="85" aria-hidden="true" focusable="false">
+    <defs>
+      <clipPath id="lab-flask-vessel">
+        <path d="M25 27H47V45Q47 50 51 57L66 82Q70 91 60 91H12Q2 91 6 82L21 57Q25 50 25 45Z" />
+      </clipPath>
+    </defs>
+    <path class="glass" d="M25 27H47V45Q47 50 51 57L66 82Q70 91 60 91H12Q2 91 6 82L21 57Q25 50 25 45Z" />
+    <g clip-path="url(#lab-flask-vessel)">
+      <path class="liquid" d="M-8 62Q14 56 36 61T80 61V100H-8Z" />
+      <circle class="bubble bubble-one" cx="27" cy="80" r="4" />
+      <circle class="bubble bubble-two" cx="43" cy="84" r="5" />
+      <circle class="bubble bubble-three" cx="37" cy="72" r="2.5" />
+    </g>
+    <path class="glass-edge" d="M25 27H47V45Q47 50 51 57L66 82Q70 91 60 91H12Q2 91 6 82L21 57Q25 50 25 45Z" />
+    <path class="shine" d="M30 34V45Q30 53 26 60L12 83" />
+    <path class="rim" d="M23 26H49" />
+    <circle class="bubble escaping" cx="34" cy="19" r="3" />
+    <circle class="bubble escaping bubble-two" cx="42" cy="13" r="4" />
+  </svg>
+</button>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>('#flask-toggle')
+  if (button) {
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let paused = motion.matches
+    let visible = false
+    const update = () => {
+      button.classList.toggle('is-running', !paused && visible && !document.hidden)
+      button.setAttribute('aria-pressed', String(!paused))
+      button.title = paused ? 'Play flask animation' : 'Pause flask animation'
+    }
+    button.disabled = false
+    button.addEventListener('click', () => { paused = !paused; update() })
+    motion.addEventListener('change', () => { paused = motion.matches; update() })
+    document.addEventListener('visibilitychange', update)
+    new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; update() }).observe(button)
+    update()
+  }
+</script>
+
+<style>
+  .flask-toggle {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 64px;
+    height: 85px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+  .flask-toggle:disabled { cursor: default; }
+  svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .glass { fill: #9ee2f5; fill-opacity: 0.18; }
+  .glass-edge, .shine, .rim { fill: none; stroke: #9ee2f5; stroke-linejoin: round; stroke-linecap: round; }
+  .glass-edge { stroke-width: 3; }
+  .shine { stroke-width: 4; opacity: 0.65; }
+  .rim { stroke-width: 5; }
+  .liquid { fill: #00b8a6; transform-origin: 36px 72px; animation: sway 3.6s ease-in-out infinite paused; }
+  .bubble { fill: #00e4cb; animation: rise 2.8s ease-in infinite paused; }
+  .bubble-two { animation-delay: -1.4s; }
+  .bubble-three { animation-delay: -0.7s; }
+  .escaping { animation-duration: 3.2s; }
+  .is-running :is(.liquid, .bubble) { animation-play-state: running; }
+  @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+  @keyframes rise {
+    0% { transform: translateY(5px); opacity: 0; }
+    25% { opacity: 1; }
+    100% { transform: translateY(-16px); opacity: 0; }
+  }
+  @media (max-width: 42rem) {
+    .flask-toggle { width: 48px; height: 64px; }
+  }
+</style>

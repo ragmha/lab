@@ -6,18 +6,26 @@ import { chromium } from 'playwright'
 const base = process.env.LAB_TEST_URL
 const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/token-diet/']
 const recorded = JSON.parse(await readFile(new URL('../src/lib/session-flame-runs.json', import.meta.url), 'utf8'))
+const languages = JSON.parse(await readFile(new URL('../src/data/languages.json', import.meta.url), 'utf8'))
 
 test('homepage terminal grid keeps native keyboard links and works without JavaScript', { skip: !base }, async () => {
   const browser = await chromium.launch()
   try {
-    for (const width of [1440, 390, 320]) {
+    for (const width of [1440, 900, 390, 320]) {
       const page = await browser.newPage({ viewport: { width, height: 900 }, javaScriptEnabled: false, reducedMotion: 'reduce' })
       await page.goto(base, { waitUntil: 'networkidle' })
       const panels = page.locator('.experiment-grid a')
       assert.deepEqual(await panels.evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
         ['/session-flame/', '/context-autopsy/', '/token-diet/', '/chess/'])
       assert.equal(await page.locator('h1').innerText(), 'Raghib’s Lab — Experiments')
-      assert.equal(await page.locator('.experiment-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length), width > 672 ? 2 : 1)
+      const total = languages.reduce((sum, language) => sum + language.size, 0)
+      assert.deepEqual(await page.locator('.language-legend li').allTextContents(), languages.map(({ node, size }) => `${node.name} ${(size / total * 100).toFixed(1)}%`))
+      const percentages = await page.locator('.language-bar span').evaluateAll((segments) => segments.map((segment) => Number.parseFloat(segment.style.width)))
+      assert.equal(percentages.length, languages.length)
+      percentages.forEach((percentage, index) => assert.ok(Math.abs(percentage - languages[index].size / total * 100) < 0.001))
+      assert.equal(await page.locator('#flask-toggle').isDisabled(), true)
+      assert.equal(await page.locator('.experiment-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length), width > 1088 ? 4 : width > 672 ? 2 : 1)
+      if (width > 1088) assert.equal(await panels.evaluateAll((links) => new Set(links.map((link) => link.getBoundingClientRect().height)).size), 1)
       assert.ok(await page.locator('.experiment-grid').evaluate((grid) => [...grid.querySelectorAll('a')].every((link) => link.getBoundingClientRect().height >= 44)))
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
       await panels.first().focus()
@@ -28,6 +36,32 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       await page.waitForURL(new URL('/context-autopsy/', base).href)
       await page.close()
     }
+  } finally {
+    await browser.close()
+  }
+})
+
+test('homepage flask can pause and respects reduced motion and offscreen visibility', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 600 }, reducedMotion: 'no-preference' })
+    await page.goto(base, { waitUntil: 'networkidle' })
+    const flask = page.getByRole('button', { name: 'Animate flask', exact: true })
+    await page.waitForFunction(() => document.querySelector('#flask-toggle').classList.contains('is-running'))
+    await flask.click()
+    assert.equal(await flask.getAttribute('aria-pressed'), 'false')
+    assert.equal(await page.locator('.liquid').evaluate((liquid) => getComputedStyle(liquid).animationPlayState), 'paused')
+    await flask.press('Enter')
+    assert.equal(await flask.getAttribute('aria-pressed'), 'true')
+    await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }))
+    await page.waitForFunction(() => !document.querySelector('#flask-toggle').classList.contains('is-running'))
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+    await page.waitForFunction(() => document.querySelector('#flask-toggle').classList.contains('is-running'))
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.waitForFunction(() => document.querySelector('#flask-toggle').getAttribute('aria-pressed') === 'false')
+    assert.equal(await page.locator('.liquid').evaluate((liquid) => getComputedStyle(liquid).animationPlayState), 'paused')
+    await page.reload({ waitUntil: 'networkidle' })
+    assert.equal(await flask.getAttribute('aria-pressed'), 'false')
   } finally {
     await browser.close()
   }

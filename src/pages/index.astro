@@ -1,8 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import ThemeToggle from '../components/ThemeToggle.astro'
+import LabFlask from '../components/LabFlask.astro'
+import languageData from '../data/languages.json'
 import '../styles/fonts.css'
 import '../styles/theme.css'
+
+const totalBytes = languageData.reduce((total, language) => total + language.size, 0)
+if (!totalBytes) throw new Error('GitHub language statistics must not be empty')
+const languages = languageData.map(({ size, node }) => ({ ...node, percentage: size / totalBytes * 100 }))
 
 const experiments = [
   {
@@ -37,16 +43,32 @@ const experiments = [
 >
   <main class="site-shell home">
     <header class="lab-heading">
+      <div class="brand">
       <h1>
         <svg class="wordmark" viewBox="0 0 76 28" width="190" height="70" aria-hidden="true">
           <path fill-rule="evenodd" d="M0 0h4v24h16v4H0z M28 4h4V0h12v4h4v24h-4V16H32v12h-4z M32 4v8h12V4z M56 0h16v4h4v8h-4v4h4v8h-4v4H56z M60 4v8h12V4z M60 16v8h12v-8z" />
         </svg>
         <span>Raghib’s Lab — Experiments</span>
       </h1>
+      <LabFlask />
+      </div>
       <ThemeToggle />
     </header>
 
-    <p class="intro">Four experiments by <a href="https://raghib.io/">Raghib Hasan</a>. They run in your browser; imported sessions stay on your device.</p>
+    <section class="languages" aria-labelledby="languages-title">
+      <div class="language-heading">
+        <h2 id="languages-title">Languages</h2>
+        <a href="https://github.com/ragmha/lab">Source bytes on GitHub ↗</a>
+      </div>
+      <div class="language-bar" aria-hidden="true">
+        {languages.map((language) => <span style={{ width: `${language.percentage}%`, background: language.color ?? 'var(--theme-muted)' }} />)}
+      </div>
+      <ul class="language-legend" role="list">
+        {languages.map((language) => (
+          <li><span class="language-dot" style={{ background: language.color ?? 'var(--theme-muted)' }} aria-hidden="true" /><span>{language.name} <span class="percentage">{language.percentage.toFixed(1)}%</span></span></li>
+        ))}
+      </ul>
+    </section>
 
     <ul class="experiment-grid" role="list">
       {experiments.map((experiment, index) => (
@@ -87,7 +109,7 @@ const experiments = [
   }
 
   :global(.lab-home) {
-    width: min(100% - 3rem, 60rem);
+    width: min(100% - 3rem, 80rem);
     padding-block: clamp(2rem, 7vw, 5rem) 2.5rem;
   }
 
@@ -101,6 +123,7 @@ const experiments = [
     margin-bottom: 2rem;
   }
 
+  .brand { display: flex; align-items: center; gap: 1rem; }
   h1 { margin: 0; line-height: 1; }
   .wordmark { display: block; fill: currentColor; shape-rendering: crispEdges; }
   h1 span {
@@ -126,17 +149,20 @@ const experiments = [
   .lab-heading :global(#theme-toggle[hidden]) { display: block; visibility: hidden; }
   .lab-heading :global(#theme-toggle:hover) { color: var(--theme-text); border-color: currentColor; }
 
-  .intro {
-    max-width: 68ch;
-    margin: 0 0 2.5rem;
-    color: var(--theme-muted);
-    font-size: 0.9rem;
-  }
-  .intro a, nav a { color: var(--theme-blue); text-underline-offset: 0.25em; }
+  .languages { margin: 0 0 2.5rem; }
+  .language-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem; }
+  .language-heading h2 { margin: 0; color: var(--theme-text); font-size: 0.85rem; }
+  .language-heading a { font-size: 0.7rem; }
+  .language-heading a, nav a { color: var(--theme-blue); text-underline-offset: 0.25em; }
+  .language-bar { display: flex; height: 0.55rem; margin-top: 1rem; overflow: hidden; }
+  .language-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0.75rem 0 0; padding: 0; list-style: none; font-size: 0.75rem; }
+  .language-legend li { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
+  .language-dot { width: 0.5rem; height: 0.5rem; flex: none; background: var(--theme-muted); }
+  .percentage { color: var(--theme-muted); }
 
   .experiment-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1.25rem;
     margin: 0;
     padding: 0;
@@ -184,9 +210,14 @@ const experiments = [
   nav a { display: inline-flex; align-items: center; min-height: 2.75rem; text-decoration: none; }
   nav a:hover { text-decoration: underline; }
 
+  @media (max-width: 68rem) {
+    .experiment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
   @media (max-width: 42rem) {
     :global(.lab-home) { width: calc(100% - 2rem); }
     .experiment-grid { grid-template-columns: minmax(0, 1fr); }
-    .wordmark { width: 152px; height: 56px; }
+    .brand { gap: 0.75rem; }
+    .wordmark { width: 114px; height: 42px; }
   }
 </style>

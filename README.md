@@ -39,6 +39,14 @@ play), session replay and comparison downloads in Chromium and WebKit,
 all nine published fixture selections, offline context import through its
 worker, token-diet round switching, themes, small screens, and local links.
 
+The homepage uses a responsive terminal-style grid (four, two, or one column),
+with a pausable SVG flask that starts still for reduced-motion preferences.
+Its language bar shows GitHub Linguist's source-byte breakdown, not usage or
+traffic. CI refreshes the data from GitHub on each main-branch deployment;
+local and PR builds use the checked-in `src/data/languages.json` snapshot,
+so building locally does not require network access or credentials. GitHub's
+language analysis can lag the latest commit. The browser makes no GitHub API calls.
+
 ## Privacy and source data
 
 Imported sessions are parsed on the device, not uploaded. There are no

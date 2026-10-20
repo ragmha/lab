@@ -30,6 +30,19 @@ test('published fixtures match recorded hashes and contain no private machine pa
   }
 })
 
+test('GitHub language snapshot contains positive byte counts, unique names and safe colors', () => {
+  const languages = JSON.parse(readFileSync('src/data/languages.json', 'utf8'))
+  assert.ok(Array.isArray(languages) && languages.length > 0)
+  const names = new Set()
+  for (const { size, node } of languages) {
+    assert.ok(Number.isSafeInteger(size) && size > 0)
+    assert.equal(typeof node.name, 'string')
+    assert.ok(node.name.trim() && !names.has(node.name))
+    names.add(node.name)
+    if (node.color !== null) assert.match(node.color, /^#[0-9a-f]{6}$/i)
+  }
+})
+
 test('GitHub Pages custom domain matches the canonical Astro site', () => {
   assert.equal(readFileSync('public/CNAME', 'utf8').trim(), 'lab.raghib.io')
   assert.equal(config.site, 'https://lab.raghib.io')

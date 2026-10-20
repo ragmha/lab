@@ -1,0 +1,9 @@
+[
+  {"node":{"color":"#ff5a03","name":"Astro"},"size":282412},
+  {"node":{"color":"#3178c6","name":"TypeScript"},"size":232896},
+  {"node":{"color":"#3572A5","name":"Python"},"size":122151},
+  {"node":{"color":"#f1e05a","name":"JavaScript"},"size":61013},
+  {"node":{"color":"#89e051","name":"Shell"},"size":16635},
+  {"node":{"color":"#663399","name":"CSS"},"size":9514},
+  {"node":{"color":"#012456","name":"PowerShell"},"size":5892}
+]
