@@ -24,6 +24,13 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       assert.equal(percentages.length, languages.length)
       percentages.forEach((percentage, index) => assert.ok(Math.abs(percentage - languages[index].size / total * 100) < 0.001))
       assert.equal(await page.locator('#flask-toggle').isDisabled(), true)
+      const baselineGap = await page.evaluate(() => {
+        const wordmark = document.querySelector('.wordmark').getBoundingClientRect()
+        const glass = document.querySelector('.glass-edge').getBoundingClientRect()
+        const scale = document.querySelector('#flask-toggle svg').getScreenCTM().d
+        return Math.abs(wordmark.bottom - (glass.bottom + 1.5 * scale))
+      })
+      assert.ok(baselineGap < 1, `Visible flask and LAB baselines differ by ${baselineGap}px at ${width}px`)
       assert.equal(await page.locator('.experiment-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length), width > 1088 ? 4 : width > 672 ? 2 : 1)
       if (width > 1088) assert.equal(await panels.evaluateAll((links) => new Set(links.map((link) => link.getBoundingClientRect().height)).size), 1)
       assert.ok(await page.locator('.experiment-grid').evaluate((grid) => [...grid.querySelectorAll('a')].every((link) => link.getBoundingClientRect().height >= 44)))
