@@ -2,6 +2,8 @@ import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { run } from 'node:test'
+import { spec } from 'node:test/reporters'
 import { setTimeout } from 'node:timers/promises'
 
 const base = process.env.LAB_TEST_URL ?? 'http://127.0.0.1:4397'
@@ -35,12 +37,19 @@ try {
     }
     if (!ready) throw new Error(`Preview was not ready: ${serverOutput}`)
   }
-  const tests = spawn('bun', [
-    'test', '--bail', '--timeout', '120000',
-    './tests/lab.browser.mjs', './tests/chess.browser.mjs', './tests/session-flame.browser.mjs',
-  ], { env, stdio: 'inherit' })
-  const [code] = await once(tests, 'exit')
-  process.exitCode = code ?? 1
+  Object.assign(process.env, env)
+  const controller = new AbortController()
+  const tests = run({
+    files: ['tests/lab.browser.mjs', 'tests/chess.browser.mjs', 'tests/session-flame.browser.mjs'],
+    concurrency: 1,
+    timeout: 120_000,
+    signal: controller.signal,
+  })
+  tests.on('test:fail', () => {
+    process.exitCode = 1
+    controller.abort()
+  })
+  for await (const output of tests.compose(spec)) process.stdout.write(output)
 } finally {
   if (server && server.exitCode === null) {
     server.kill('SIGTERM')

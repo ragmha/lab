@@ -29,7 +29,8 @@ bun run test:browser
 reproduction scripts, before generating `dist/`. `test:browser` starts its
 own production preview on `127.0.0.1:4397`, runs all browser suites fail-fast,
 and stops the preview. Build first. Set `LAB_TEST_URL` to check an already
-running server instead. CI installs browser OS dependencies and runs unit
+running server instead. Browser suites use Node's native test runner with
+fail-fast cancellation; unit tests use Bun. CI installs browser OS dependencies and runs unit
 tests, the typechecked build, and the same browser checks.
 
 The browser checks cover the real Stockfish worker/WASM (including offline

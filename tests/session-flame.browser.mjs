@@ -90,7 +90,10 @@ test('recorded comparisons keep a shared scale, distinguish context from input a
           }
           return pixels
         })
-        await page.waitForFunction(() => document.querySelector('#compare-a-chart').height > 30)
+        await page.waitForFunction(() => ['a', 'b'].every((slot) => {
+          const canvas = document.querySelector(`#compare-${slot}-chart`)
+          return canvas.style.height && canvas.width === Math.round(canvas.getBoundingClientRect().width * devicePixelRatio)
+        }))
         const aWidth = await rootWidth('a')
         const bWidth = await rootWidth('b')
         assert.ok(Math.abs(aWidth * 2 - bWidth) <= 3, `10s flame is half the width of 20s flame: ${aWidth}, ${bWidth}`)
