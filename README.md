@@ -1,8 +1,9 @@
 # Raghib’s Lab
 
 Independent, browser-only experiments by [Raghib Hasan](https://raghib.io/).
-The canonical site is **https://lab.raghib.io**. Deployment and domain setup
-are separate from this repository; creating it does not publish the site.
+The canonical site is **https://lab.raghib.io**, hosted on free GitHub Pages.
+Pushes to `main` deploy the checked build once the repository's Pages settings
+and custom domain are configured.
 
 | Path | Experiment |
 | --- | --- |
@@ -58,59 +59,52 @@ paid model credits. Normal installation, builds, and tests do not run it.
 Its seeded Python fixture intentionally contains bugs; it is not a passing
 application test suite.
 
-## Hosting: any static host
+## Hosting: GitHub Pages
 
-Upload `dist/` to any static host that serves directory indexes, JavaScript,
-JSONL, fonts, and `.wasm` (`application/wasm`). Keep the same asset paths.
-Astro generates the pages; no Node.js or Bun server is needed in production.
-If the public domain changes, update `site` in `astro.config.mjs` and the
-canonical assertions in `tests/lab.browser.mjs`, then rebuild.
+This public repository uses GitHub Pages for free static hosting. The
+existing CI job installs from the lockfile, runs unit tests, typechecks and
+builds Astro, and runs the browser suites. Only a successful push to `main`
+uploads `dist/` as a Pages artifact and deploys that exact build. Pull requests
+run the checks but never deploy. Deployment uses GitHub's built-in token and
+OIDC permissions; no deployment secrets or external hosting account are needed.
+
+### One-time repository and domain setup
+
+1. In `ragmha/lab` → **Settings → Pages**, select **GitHub Actions** as the
+   build and deployment source.
+2. Set the custom domain to **lab.raghib.io** in those Pages settings.
+   `public/CNAME` also records this domain and is copied to `dist/CNAME`;
+   the file does not replace the custom-domain setting for Actions deployments.
+3. In **Namecheap → Advanced DNS**, add or update this record:
+
+   | Type | Host | Value |
+   | --- | --- | --- |
+   | CNAME | `lab` | `ragmha.github.io` |
+
+   Remove conflicting records for `lab` only. Do not include `https://` or
+   `/lab` in the value. Keep Namecheap nameservers and the blog's existing
+   apex/`www` DNS records unchanged. **raghib.io stays on GitHub Pages** in its
+   own repository; it does not move with the experiments.
+4. Wait for GitHub's domain check and certificate issuance, then enable
+   **Enforce HTTPS**. If the initial deployment ran before Pages was enabled,
+   rerun the workflow after completing the repository setup.
+
+The workflow publishes the site but does not configure Pages settings or DNS.
+Repository administrators handle the one-time setup above.
 
 The original blog’s `/experiments/` and `/experiments/<name>/` redirects
 belong in the **raghib.io repository**, not here. Old blog download URLs may
 remain there as compatibility copies.
 
-### Optional: Cloudflare Pages Free
+### If an experiment needs a backend later
 
-Cloudflare is **not required** for repository separation or any current
-experiment. The included Wrangler tooling is an optional deployment path
-if Pages is selected. No Cloudflare credentials are needed by CI.
+Today's experiments run entirely in the browser. GitHub Pages serves static
+files, not server-side functions, and that is all they currently need. Add
+a separate backend or move hosts only when an actual server-side feature
+requires it; no API endpoints, databases, or paid services are provisioned.
 
-Choose a Pages project name in `wrangler.toml` (`lab` is the initial
-suggestion, not a claim that the project exists). A one-time direct-upload
-setup, only after choosing the host and account:
-
-```sh
-bunx wrangler login
-bunx wrangler pages project create lab --production-branch main
-bun run deploy
-```
-
-`deploy` builds before invoking `wrangler pages deploy dist`. The account
-must have permission to create/deploy that Pages project. Alternatively,
-connect this GitHub repository in Pages, with production branch `main`,
-build command `bun run build`, output `dist`, and Bun 1.3.5 / Node 22.
-Keep Free billing; no paid product is needed for the current static apps.
-
-For the custom subdomain, add **lab.raghib.io** in the Pages project's
-custom-domain settings first. Once Cloudflare provides the actual project
-hostname, add this record in Namecheap Advanced DNS:
-
-| Type | Host | Value |
-| --- | --- | --- |
-| CNAME | `lab` | the actual `<project>.pages.dev` hostname |
-
-Do not guess the hostname, include `https://`, move nameservers, or change
-the apex/blog records. Domain validation and TLS must finish before the
-custom domain works. This repository does not change DNS or deploy itself.
-
-### Optional future Pages Functions
-
-There are deliberately **no Functions today**. When a real server-side
-feature is needed, add Pages Functions under a root `functions/` directory
-and test using `bun run build && bun run pages:dev`. Wrangler deploys that
-directory alongside `dist/`; dashboard drag-and-drop does not compile
-Functions. Scope Function routes to only the new server-side feature so
-existing static apps stay static. Review current Workers Free request/CPU
-limits before enabling it. Add bindings/secrets only for actual needs,
-never commit `.dev.vars`, and do not assume a database or paid plan.
+The build remains portable: `dist/` can be served by another static host with
+directory indexes, JavaScript, JSONL, fonts, and `.wasm` (`application/wasm`).
+Keep the same asset paths and custom domain. If the domain changes, update
+`site` in `astro.config.mjs`, `public/CNAME`, and the canonical assertions in
+the tests, then rebuild.

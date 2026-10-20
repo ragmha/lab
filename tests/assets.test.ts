@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import config from '../astro.config.mjs'
 import recorded from '../src/lib/session-flame-runs.json'
 
 const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex')
@@ -30,14 +30,7 @@ test('published fixtures match recorded hashes and contain no private machine pa
   }
 })
 
-test('all public assets fit the 25 MiB per-file Pages limit', () => {
-  const inspect = (directory: string) => {
-    for (const name of readdirSync(directory)) {
-      const path = join(directory, name)
-      const stat = statSync(path)
-      if (stat.isDirectory()) inspect(path)
-      else assert.ok(stat.size < 25 * 1024 * 1024, path)
-    }
-  }
-  inspect('public')
+test('GitHub Pages custom domain matches the canonical Astro site', () => {
+  assert.equal(readFileSync('public/CNAME', 'utf8').trim(), 'lab.raghib.io')
+  assert.equal(config.site, 'https://lab.raghib.io')
 })
