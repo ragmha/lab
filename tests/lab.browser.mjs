@@ -31,8 +31,10 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
         return Math.abs(wordmark.bottom - (glass.bottom + 1.5 * scale))
       })
       assert.ok(baselineGap < 1, `Visible flask and LAB baselines differ by ${baselineGap}px at ${width}px`)
-      assert.equal(await page.locator('.experiment-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length), width > 1088 ? 4 : width > 672 ? 2 : 1)
-      if (width > 1088) assert.equal(await panels.evaluateAll((links) => new Set(links.map((link) => link.getBoundingClientRect().height)).size), 1)
+      assert.equal(await page.locator('.experiment-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length), width > 1088 ? 3 : width > 672 ? 2 : 1)
+      assert.equal(await page.locator('.experiment-preview img').count(), 4)
+      assert.doesNotMatch(await page.locator('.experiment-preview img').first().evaluate((img) => img.currentSrc), /\.gif$/)
+      if (width > 1088) assert.equal(await panels.evaluateAll((links) => new Set(links.slice(0, 3).map((link) => link.getBoundingClientRect().height)).size), 1)
       assert.ok(await page.locator('.experiment-grid').evaluate((grid) => [...grid.querySelectorAll('a')].every((link) => link.getBoundingClientRect().height >= 44)))
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
       await panels.first().focus()
@@ -43,6 +45,10 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       await page.waitForURL(new URL('/context-autopsy/', base).href)
       await page.close()
     }
+    const motion = await browser.newPage({ reducedMotion: 'no-preference' })
+    await motion.goto(base, { waitUntil: 'networkidle' })
+    assert.deepEqual(await motion.locator('.experiment-preview img').evaluateAll((images) => images.map((img) => new URL(img.currentSrc).pathname)),
+      ['/previews/session-flame.gif', '/previews/context-autopsy.gif', '/previews/token-diet.gif', '/previews/chess.gif'])
   } finally {
     await browser.close()
   }

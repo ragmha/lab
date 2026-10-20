@@ -39,8 +39,12 @@ play), session replay and comparison downloads in Chromium and WebKit,
 all nine published fixture selections, offline context import through its
 worker, token-diet round switching, themes, small screens, and local links.
 
-The homepage uses a responsive terminal-style grid (four, two, or one column),
-with a pausable SVG flask that starts still for reduced-motion preferences.
+The homepage uses a responsive showcase grid (three, two, or one column) with
+animated click-through previews (`public/previews/*.gif`) that fall back to
+static captures for reduced-motion preferences, and a pausable SVG flask that
+starts still for reduced-motion preferences. To re-record the previews, build,
+run `bun run preview`, then `node scripts/record-previews.mjs <preview URL>`
+(requires ffmpeg).
 Its language bar shows GitHub Linguist's source-byte breakdown, not usage or
 traffic. CI refreshes the data from GitHub on each main-branch deployment;
 local and PR builds use the checked-in `src/data/languages.json` snapshot,

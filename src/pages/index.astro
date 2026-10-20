@@ -1,8 +1,13 @@
 ---
+import { Image } from 'astro:assets'
 import BaseLayout from '../layouts/BaseLayout.astro'
 import ThemeToggle from '../components/ThemeToggle.astro'
 import LabFlask from '../components/LabFlask.astro'
 import languageData from '../data/languages.json'
+import sessionFlame from '../assets/lab/session-flame.png'
+import contextAutopsy from '../assets/lab/context-autopsy.png'
+import tokenDiet from '../assets/lab/token-diet.png'
+import chess from '../assets/lab/chess.png'
 import '../styles/fonts.css'
 import '../styles/theme.css'
 
@@ -15,21 +20,29 @@ const experiments = [
     slug: 'session-flame',
     title: 'Where Did the Time Go?',
     description: 'Replay a coding-agent session as a flame chart: prompts, model turns, tools, and sub-agents, with idle time folded away.',
+    image: sessionFlame,
+    alt: 'Colored flame-chart lanes showing prompts, model turns, and tool calls over time.',
   },
   {
     slug: 'context-autopsy',
     title: 'What’s Under the Prompt?',
     description: 'See what happens under the hood when you prompt: context growth, cache reuse, model calls, tools, and cost elsewhere.',
+    image: contextAutopsy,
+    alt: 'Stacked area chart of context growth beside a breakdown of cached and fresh tokens.',
   },
   {
     slug: 'token-diet',
     title: 'Does Your Coding Agent Need a Token Diet?',
     description: 'Compare a coding agent’s token use across two rounds of recorded runs, with the reproduction kit and measurements.',
+    image: tokenDiet,
+    alt: 'Side-by-side token waterfalls comparing a baseline agent with a modified setup.',
   },
   {
     slug: 'chess',
     title: 'Can a Browser Tab Beat You at Chess?',
     description: 'Play Stockfish compiled to WebAssembly. The engine runs on your device; no moves leave the page.',
+    image: chess,
+    alt: 'Green pixel-art chessboard beside a panel explaining the engine’s moves.',
   },
 ]
 ---
@@ -74,13 +87,25 @@ const experiments = [
       {experiments.map((experiment, index) => (
         <li>
           <a class="experiment" href={`/${experiment.slug}/`} aria-labelledby={experiment.slug}>
-            <span class="panel-label" aria-hidden="true">
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <span>{experiment.slug}</span>
-            </span>
-            <h2 id={experiment.slug}>{experiment.title}</h2>
-            <p>{experiment.description}</p>
-            <span class="open-label" aria-hidden="true"><span class="prompt">&gt;</span> open experiment <span>↗</span></span>
+            <picture class="experiment-preview">
+              <source media="(prefers-reduced-motion: no-preference)" srcset={`/previews/${experiment.slug}.gif`} type="image/gif" />
+              <Image
+                src={experiment.image}
+                alt={experiment.alt}
+                widths={[480, 800, 1200]}
+                sizes="(max-width: 42rem) 100vw, (max-width: 68rem) 50vw, 33vw"
+                loading={index === 0 ? 'eager' : 'lazy'}
+                fetchpriority={index === 0 ? 'high' : undefined}
+              />
+            </picture>
+            <div class="experiment-body">
+              <h2 id={experiment.slug}>{experiment.title}</h2>
+              <p>{experiment.description}</p>
+              <div class="panel-label" aria-hidden="true">
+                <span>{String(index + 1).padStart(2, '0')} · {experiment.slug}</span>
+                <span class="open-label"><span class="prompt">&gt;</span> open <span>↗</span></span>
+              </div>
+            </div>
           </a>
         </li>
       ))}
@@ -109,7 +134,7 @@ const experiments = [
   }
 
   :global(.lab-home) {
-    width: min(100% - 3rem, 80rem);
+    width: min(100% - 3rem, 88rem);
     padding-block: clamp(2rem, 7vw, 5rem) 2.5rem;
   }
 
@@ -162,7 +187,7 @@ const experiments = [
 
   .experiment-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1.25rem;
     margin: 0;
     padding: 0;
@@ -173,36 +198,58 @@ const experiments = [
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 1.25rem;
+    overflow: hidden;
     border: 1px solid var(--theme-rule-strong);
+    border-radius: 0.5rem;
+    background: var(--theme-bg);
     color: var(--theme-text);
     text-decoration: none;
+  }
+  .experiment-preview {
+    display: block;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--theme-rule);
+    background: var(--theme-surface);
+  }
+  .experiment-preview :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--theme-rule-strong);
+    border-radius: 0.25rem;
+  }
+  .experiment-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 1.25rem;
   }
   .panel-label {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 1rem;
-    margin: -1.25rem -1.25rem 1.25rem;
-    padding: 0.6rem 1.25rem;
-    border-bottom: 1px solid var(--theme-rule-strong);
-    color: var(--theme-muted);
-    font-size: 0.7rem;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--theme-rule);
+    color: var(--theme-faint);
+    font-size: 0.72rem;
   }
   h2 {
-    margin: 0 0 0.75rem;
-    color: var(--theme-blue);
-    font-size: 1rem;
+    margin: 0 0 0.65rem;
+    color: var(--theme-text);
+    font-size: 0.98rem;
     line-height: 1.5;
     letter-spacing: normal;
     text-wrap: balance;
   }
-  .experiment p { margin: 0 0 1.5rem; color: var(--theme-muted); font-size: 0.85rem; }
-  .open-label { margin-top: auto; font-size: 0.75rem; }
-  .open-label > :last-child { float: right; }
+  .experiment p { margin: 0 0 1.25rem; color: var(--theme-muted); font-size: 0.82rem; }
+  .open-label { color: var(--theme-muted); font-size: 0.72rem; }
   .prompt { display: inline-block; width: 1.5ch; color: var(--theme-blue); }
-  .experiment:hover { border-color: var(--theme-blue); background: var(--theme-surface); }
+  .experiment:hover { border-color: var(--theme-blue); }
+  .experiment:hover h2 { color: var(--theme-blue); }
   .experiment:focus-visible { background: var(--theme-text); color: var(--theme-bg); }
-  .experiment:focus-visible :is(h2, p, .panel-label, .prompt) { color: inherit; }
+  .experiment:focus-visible :is(h2, p, .panel-label, .open-label, .prompt) { color: inherit; }
   .experiment:focus-visible .panel-label { border-color: currentColor; }
 
   footer, nav { display: flex; align-items: center; flex-wrap: wrap; gap: 1.25rem; }
