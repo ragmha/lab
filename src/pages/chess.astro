@@ -1,0 +1,403 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ThemeToggle from '../components/ThemeToggle.astro'
+import '../styles/site.css'
+import { Chess } from 'chess.js'
+import { contextBudget, pieceSprites, pieceNames, recentPlies, squares, skillLevel, searchTime } from '../lib/chess'
+
+const description =
+  'Play a local chess AI and follow each move through a live diagram: rules checks, Stockfish search, and the reply. Everything runs in your browser.'
+const start = new Chess()
+---
+
+<BaseLayout
+  title="Chess AI: Watch the Engine Think"
+  description={description}
+  bodyClass="site-surface chess-body"
+  pageClass="chess-page"
+  defaultTheme="dark"
+>
+  <!-- Full-viewport app frame, like session-flame: the board takes the height
+       left over, and the live trace scrolls inside its own panel. -->
+  <header class="app-bar">
+    <div class="app-title">
+      <a class="app-back" href="/"><span aria-hidden="true">←</span> Experiments</a>
+      <h1 id="page-title">Can a Browser Tab Beat You at Chess?</h1>
+      <p class="intro">Make a move, then follow what happens behind the board. Stockfish runs on your device, not on a server.</p>
+    </div>
+    <div class="app-actions"><ThemeToggle /></div>
+  </header>
+  <main class="stage" aria-labelledby="page-title">
+    <div class="chess-lab">
+      <section class="play" aria-label="Play chess">
+        <div class="play-bar">
+          <div class="players">
+            <span><i class="player-ink" aria-hidden="true"></i>You <small>White</small></span>
+            <span><i class="engine-ink" aria-hidden="true"></i>Stockfish <small>Black</small></span>
+          </div>
+          <div class="controls">
+            <button id="chess-retry" type="button" hidden>Retry engine</button>
+            <button id="chess-reset" type="button" disabled>New game</button>
+          </div>
+        </div>
+        <div class="board-frame">
+          <div class="board" id="chess-board" role="group" aria-label="Chess board" aria-describedby="board-help">
+            {squares.map((square, i) => {
+              const piece = start.get(square)
+              return (
+                <button type="button" class:list={{ dark: (i + Math.floor(i / 8)) % 2 === 1 }}
+                  data-square={square} data-color={piece?.color} disabled
+                  aria-label={piece ? `${square} ${piece.color === 'w' ? 'white' : 'black'} ${pieceNames[piece.type]}` : square}
+                  aria-pressed="false">
+                  <span class="piece" aria-hidden="true" set:html={piece ? pieceSprites[piece.type] : ''} />
+                  {i % 8 === 0 && <span class="rank" aria-hidden="true">{8 - Math.floor(i / 8)}</span>}
+                  {i >= 56 && <span class="file" aria-hidden="true">{'abcdefgh'[i % 8]}</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <p id="chess-status" class="status" role="status" aria-live="polite">Starting the board…</p>
+        <noscript><p>Enable JavaScript to play. The engine runs locally in your browser.</p></noscript>
+      </section>
+
+      <aside class="trace" aria-labelledby="trace-title" tabindex="0">
+        <header class="trace-heading">
+          <h2 id="trace-title">Behind the move</h2>
+          <div class="view-switch" role="group" aria-label="Panel view">
+            <button type="button" data-view="history" aria-controls="chess-history" aria-pressed="true" disabled>Moves</button>
+            <button type="button" data-view="details" aria-controls="chess-details" aria-pressed="false" disabled>Steps</button>
+            <button type="button" data-view="context" aria-controls="chess-context" aria-pressed="false" disabled>Context</button>
+          </div>
+        </header>
+        <p class="system-note"><strong>System</strong> Legal moves only · skill {skillLevel}/20 · {searchTime} ms search</p>
+        <div id="chess-history">
+          <p id="chess-history-empty">Make your first move. Your move and Stockfish's reply will each add a box below.</p>
+          <ol id="chess-timeline" class="move-timeline" aria-label="Move history"></ol>
+        </div>
+        <template id="chess-move-template">
+          <li class="move-event">
+            <svg class="move-connector" viewBox="0 0 32 24" aria-hidden="true">
+              <path d="M4 0V12H28V24M23 18H33M26 21H30" />
+            </svg>
+            <div class="move-label"><span data-move-actor></span><span data-move-state></span></div>
+            <strong class="move-name" data-move-title></strong>
+            <p data-move-copy></p>
+            <p class="move-meta" data-move-meta hidden></p>
+          </li>
+        </template>
+        <div id="chess-details" hidden>
+        <label class="turn-picker" for="chess-turn"><span>Inspect turn</span>
+          <select id="chess-turn" disabled><option value="">Waiting for your first move</option></select>
+        </label>
+        <ol class="flow" id="chess-flow" aria-label="Move processing diagram">
+          <li class="flow-step human" data-step="player">
+            <div class="step-label"><strong>You / player</strong><span data-state>Waiting</span></div>
+            <p data-copy>Select a piece to begin.</p>
+          </li>
+          <li class="flow-step rules" data-step="validate">
+            <div class="step-label"><strong>Tool / chess.js</strong><span data-state>Next</span></div>
+            <p data-copy>Checks the move against the rules and updates the position.</p>
+          </li>
+          <li class="flow-step engine" data-step="search">
+            <div class="step-label"><strong>AI / local search</strong><span data-state>Next</span></div>
+            <p data-copy>Stockfish explores replies; its neural network evaluates positions.</p>
+            <dl class="search-stats">
+              <div><dt>Depth</dt><dd id="search-depth">—</dd></div>
+              <div><dt>Nodes</dt><dd id="search-nodes">—</dd></div>
+              <div><dt>Time</dt><dd id="search-time">—</dd></div>
+            </dl>
+            <p id="search-candidate" class="candidate">Candidate line appears during search.</p>
+          </li>
+          <li class="flow-step rules" data-step="verify">
+            <div class="step-label"><strong>Tool / chess.js</strong><span data-state>Next</span></div>
+            <p data-copy>Checks the engine's reply before it reaches the board.</p>
+          </li>
+          <li class="flow-step engine" data-step="reply">
+            <div class="step-label"><strong>AI / played move</strong><span data-state>Next</span></div>
+            <p data-copy>The reply appears here. Then it is your turn again.</p>
+          </li>
+        </ol>
+        <p id="trace-return" class="return-note">Your move starts the loop.</p>
+        <div class="notation">
+          <h3>Score sheet</h3>
+          <p id="chess-moves">No moves yet.</p>
+        </div>
+        <details class="wire">
+          <summary>Under the hood</summary>
+          <p>A Web Worker searches off the main UI thread. UCI is the text protocol used to talk to the engine.</p>
+          <pre id="chess-commands">No search sent yet.</pre>
+          <p>Depth counts half-moves (plies), not the whole tree. Nodes are search visits, not unique positions. The candidate line is a forecast, not moves already played. Skill {skillLevel} may choose a weaker move than the top line.</p>
+          <p>This is a chess engine with a neural evaluator, not an LLM or a chat-agent tool loop.</p>
+        </details>
+        </div>
+        <div id="chess-context" hidden>
+          <h3>If a language model played Black</h3>
+          <p class="context-note">Illustrative. Stockfish has no context window and reads none of this. This is what a harness would send a language model for the latest turn, built from the real game and engine output. Tokens ≈ characters ÷ 4.</p>
+          <p id="chess-context-empty">Make a move to see the context an agent would receive.</p>
+          <div id="chess-context-body" hidden>
+            <div class="budget">
+              <p><span>This context</span><span id="context-used"></span></p>
+              <div class="meter" aria-hidden="true"><i id="context-used-bar"></i></div>
+              <p><span>Resend everything</span><span id="context-transcript"></span></p>
+              <div class="meter" aria-hidden="true"><i id="context-transcript-bar"></i></div>
+            </div>
+            <ol id="chess-context-blocks" class="context-blocks" aria-label="Context window, in the order it is sent"></ol>
+            <p id="context-dropped" class="context-dropped"></p>
+            <details class="wire">
+              <summary>The rules this harness follows</summary>
+              <ul class="context-rules">
+                <li><strong>Pin</strong> the instructions and tool definitions; they never change.</li>
+                <li><strong>Replace</strong> history with state: one FEN line restores the whole board.</li>
+                <li><strong>Window</strong> the last {recentPlies} plies verbatim, for intent and repetition.</li>
+                <li><strong>Summarize</strong> older moves into a sentence of facts.</li>
+                <li><strong>Drop</strong> stale tool results once the position reflects them.</li>
+                <li><strong>Verify</strong> the answer with chess.js before it touches the board.</li>
+              </ul>
+              <p>Budget: {contextBudget} tokens, kept small so the trade-offs show early.</p>
+            </details>
+          </div>
+        </div>
+        <details class="wire">
+          <summary>How to play</summary>
+          <p id="board-help">White goes first. Select a light piece, then a marked square. Arrow keys move between squares. Pawns promote to queens.</p>
+        </details>
+        <p class="credit">
+          All game computation stays in this tab. Engine:
+          <a href="https://github.com/nmrugg/stockfish.js">Stockfish.js 19.0.1</a>, lite single-threaded
+          (<a href="/chess/COPYING.txt">GPLv3</a> ·
+          <a href="/chess/SOURCE.txt">source and build information</a>).
+          Rules: <a href="https://github.com/jhlywa/chess.js">chess.js</a>.
+          Reloading clears the game.
+          By <a href="https://raghib.io/">Raghib Hasan</a>.
+        </p>
+      </aside>
+    </div>
+  </main>
+</BaseLayout>
+
+<script>
+  import '../scripts/chess'
+</script>
+
+<style>
+  :global(html:has(.chess-body)), :global(.chess-body) { height: 100%; overflow: hidden; }
+  :global(.site-surface .chess-page) {
+    --app-gutter: clamp(0.75rem, 2.5vw, 2rem);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    width: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+  }
+  .app-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.5rem var(--app-gutter); border-bottom: 1px solid var(--theme-rule); }
+  .app-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75rem; min-width: 0; }
+  .app-back { color: var(--theme-muted); font-size: 0.75rem; text-decoration: none; }
+  .app-back:hover { color: var(--theme-text); text-decoration: underline; }
+  .app-bar h1 { margin: 0; font-size: 0.95rem; font-weight: 700; letter-spacing: 0; line-height: 1.4; }
+  .app-bar .intro { flex-basis: 100%; margin: 0; color: var(--theme-muted); font-size: 0.72rem; line-height: 1.5; }
+  /* ThemeToggle renders hidden until theme.js runs; reserve its slot so nothing shifts. */
+  .app-actions { flex: none; display: flex; justify-content: end; min-width: 4.5rem; min-height: 2.25rem; }
+  .app-actions :global(#theme-toggle) { min-height: 2.25rem; padding: 0.25rem 0.65rem; border: 1px solid var(--theme-rule-strong); border-radius: 0; background: none; color: var(--theme-text); font: inherit; font-size: 0.75rem; cursor: pointer; }
+  /* The stage is a size container: the board takes whichever is smaller, the
+     width left beside the trace or the height left around the board. */
+  .stage { min-height: 0; padding: 0.75rem var(--app-gutter); container-type: size; }
+  .chess-lab {
+    /* Four Game Boy shades, never hues. Night (the site default) lights pale pixels
+       on a dark screen; the board tokens keep light squares and White's pieces lighter. */
+    --ink: #9bbc0f;
+    --dark: #5f8f1f;
+    --light: #1e3c1e;
+    --paper: #0a170a;
+    --square-light: var(--dark);
+    --square-dark: var(--light);
+    --piece-white: var(--ink);
+    --piece-black: var(--paper);
+    --faded-ink: var(--dark);
+    /* Offset rectangles leave the corners out, so frames step like 8-bit sprites. */
+    --pixel-frame: 0 -3px var(--ink), 0 3px var(--ink), -3px 0 var(--ink), 3px 0 var(--ink);
+    --trace: clamp(17rem, 26vw, 22rem);
+    --gap: clamp(0.75rem, 2vw, 1.5rem);
+    --chrome: 5.4rem;
+    --board: min(100cqw - var(--trace) - var(--gap), 100cqh - var(--chrome));
+    display: grid;
+    grid-template-columns: var(--board) minmax(var(--trace), 28rem);
+    justify-content: center;
+    gap: var(--gap);
+    height: 100%;
+  }
+  :global(:root[data-theme='light']) .chess-lab {
+    --ink: #0f380f;
+    --dark: #306230;
+    --light: #8bac0f;
+    --paper: #9bbc0f;
+    --square-light: var(--paper);
+    --square-dark: var(--dark);
+    --piece-white: var(--paper);
+    --piece-black: var(--ink);
+  }
+  .play { min-width: 0; min-height: 0; overflow-y: auto; }
+  .play-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.75rem; margin-bottom: 0.4rem; }
+  .players { display: flex; gap: 1rem; font-size: 0.75rem; line-height: 1.2rem; }
+  .players > span { display: flex; align-items: center; gap: 0.35rem; }
+  .players small { color: var(--theme-muted); font-size: 0.7rem; }
+  .players i { display: inline-block; width: 0.65rem; height: 0.65rem; border: 1px solid currentColor; }
+  .player-ink { background: var(--piece-white); }
+  .engine-ink { background: var(--piece-black); }
+  .controls { display: flex; gap: 0.5rem; }
+  .controls button { min-height: 2rem; padding: 0.3rem 0.7rem; border: 1px solid var(--theme-rule-strong, currentColor); border-radius: 0; background: transparent; color: inherit; font: inherit; font-size: 0.75rem; cursor: pointer; }
+  .controls button:hover { background: var(--theme-surface); border-color: currentColor; }
+  .controls button:disabled { cursor: wait; opacity: 0.6; }
+  .board-frame {
+    position: relative;
+    padding: calc(var(--board) * 0.025);
+    background: var(--paper);
+    border: 3px solid var(--ink);
+  }
+  .board-frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgb(15 56 15 / 0.08) 0 1px, transparent 1px 3px);
+  }
+  .board { display: grid; grid-template-columns: repeat(8, 1fr); border: 1px solid var(--ink); }
+  .board button {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-width: 0;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--square-light);
+    color: var(--piece-black);
+    cursor: pointer;
+    isolation: isolate;
+  }
+  .board button.dark { background: var(--square-dark); color: var(--piece-white); }
+  .piece { width: 88%; }
+  .piece :global(svg) { display: block; width: 100%; height: 100%; }
+  /* White sprites are pale with a dark outline; black sprites invert it, so both read on either square. */
+  .board button[data-color='w'] .piece :global(.body), .board button[data-color='b'] .piece :global(.edge) { fill: var(--piece-white); }
+  .board button[data-color='w'] .piece :global(.edge), .board button[data-color='b'] .piece :global(.body) { fill: var(--piece-black); }
+  .board button[data-last='true'] { box-shadow: inset 0 0 0 3px currentColor; }
+  .board button[aria-pressed='true'] { background: var(--light); color: var(--ink); box-shadow: inset 0 0 0 4px var(--ink); }
+  .board button[data-legal='true']::after { content: ''; position: absolute; inset: 40%; background: currentColor; z-index: -1; }
+  .board button[data-legal='true'][data-color]::after { inset: 6%; background: transparent; border: 3px dashed currentColor; }
+  .board button:hover:not(:disabled) { outline: 2px solid currentColor; outline-offset: -4px; }
+  .board button:focus-visible { outline: 3px dashed currentColor; outline-offset: -5px; z-index: 1; }
+  .board button:disabled { cursor: wait; }
+  .rank, .file { position: absolute; font: 0.56rem/1 var(--font-mono); color: inherit; }
+  .rank { left: 2px; top: 2px; }
+  .file { right: 2px; bottom: 2px; }
+  .chess-lab .status { min-height: 2.9em; margin: 0.45rem 0 0; font-size: 0.8rem; line-height: 1.45; }
+  .trace {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding: 0.75rem;
+    border: 3px solid var(--ink);
+    border-radius: 0;
+    box-shadow: 4px 4px 0 var(--dark);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+  .trace:focus-visible { outline: 3px solid var(--theme-text); outline-offset: 3px; }
+  .trace h2 { margin: 0; color: var(--ink); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .trace h3 { margin: 0 0 0.25rem; color: var(--ink); font-size: 0.7rem; }
+  .trace p { margin: 0; font-size: 0.7rem; line-height: 1.45; }
+  .trace a { color: var(--ink); }
+  .trace-heading { position: sticky; top: -0.75rem; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.75rem; margin: -0.75rem -0.75rem 0; padding: 0.35rem 0.75rem; background: var(--paper); border-bottom: 3px solid var(--ink); }
+  .view-switch { display: flex; }
+  .view-switch button { min-height: 1.75rem; padding: 0.25rem 0.35rem; border: 2px solid var(--ink); border-radius: 0; background: var(--light); color: var(--ink); font: inherit; font-size: 0.66rem; cursor: pointer; }
+  .view-switch button + button { border-left: 0; }
+  .view-switch button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+  .trace :is(.context-note, #chess-context-empty) { margin-block: 0.25rem 0.65rem; }
+  .budget { margin-bottom: 0.85rem; }
+  .budget p { display: flex; justify-content: space-between; gap: 0.5rem; font-variant-numeric: tabular-nums; }
+  .meter { height: 0.6rem; margin: 0.15rem 0 0.4rem; border: 2px solid var(--ink); background: var(--paper); overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--dark); }
+  .meter i[data-over='true'] { background: repeating-linear-gradient(90deg, var(--ink) 0 4px, var(--dark) 4px 8px); }
+  .context-blocks { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; padding: 0; margin: 0; list-style: none; }
+  .context-blocks :global(li) { min-width: 0; margin: 0 3px; padding: 0.35rem 0.55rem; box-shadow: var(--pixel-frame); background: var(--light); }
+  .context-blocks :global(li[data-policy='Pinned']) { background: var(--ink); color: var(--paper); }
+  .context-blocks :global(li[data-policy='Tool result']) { background: var(--paper); }
+  .context-blocks :global(.step-label) { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 0.75rem; margin-bottom: 0.1rem; font-size: 0.64rem; }
+  .context-blocks :global(.step-label span) { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .context-blocks :global(code) { display: block; font: 0.64rem/1.45 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .trace .context-dropped { margin-top: 0.85rem; padding-top: 0.35rem; border-top: 2px dashed var(--ink); }
+  .context-rules { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.66rem; line-height: 1.45; }
+  .context-rules li { margin-block: 0.2rem; }
+  .turn-picker { display: flex; align-items: center; gap: 0.4rem; min-width: 0; margin-bottom: 0.65rem; font-size: 0.68rem; }
+  .turn-picker select { flex: 1; min-width: 0; padding: 0.25rem 0.3rem; color: var(--ink); border: 1px solid var(--faded-ink); border-radius: 0; background: var(--paper); font: inherit; text-overflow: ellipsis; }
+  .turn-picker select:disabled { opacity: 1; color: var(--ink); }
+  .trace .system-note { margin-block: 0.5rem 0.65rem; padding-block: 0.35rem; border-block: 2px dashed var(--ink); color: var(--ink); font-size: 0.66rem; }
+  .system-note strong { color: var(--ink); margin-right: 0.35rem; }
+  .move-timeline { display: grid; gap: 1.5rem; padding: 0; margin: 0; list-style: none; }
+  .move-event { position: relative; min-width: 0; margin: 0 1.5rem 0 0.2rem; padding: 0.4rem 0.65rem; box-shadow: var(--pixel-frame); background: var(--light); overflow-wrap: anywhere; }
+  .move-event[data-actor='engine'] { margin: 0 0.2rem 0 1.5rem; background: var(--ink); color: var(--paper); }
+  .move-event:is([data-pending='true'], [data-failed='true']) { box-shadow: none; outline: 3px dashed var(--ink); background: var(--paper); color: var(--ink); }
+  .move-label { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.25rem 0.5rem; font-size: 0.65rem; }
+  .move-label [data-move-state] { font-size: 0.6rem; text-transform: uppercase; }
+  .move-name { display: block; margin-block: 0.1rem; font-size: 1rem; line-height: 1.25; }
+  .trace .move-meta { margin-top: 0.2rem; padding-top: 0.2rem; border-top: 2px dotted currentColor; font-size: 0.64rem; font-variant-numeric: tabular-nums; }
+  /* Each elbow connects consecutive moves; spacing represents move order, not elapsed time. */
+  .move-connector { position: absolute; top: 100%; left: calc(50% - 0.25rem); width: 2rem; height: 1.5rem; overflow: visible; fill: none; stroke: var(--ink); stroke-width: 3; shape-rendering: crispEdges; }
+  .move-event[data-actor='engine'] .move-connector { left: calc(50% - 1.75rem); transform: scaleX(-1); }
+  .move-event:last-child .move-connector { display: none; }
+  .flow { list-style: none; display: grid; gap: 0.7rem; padding: 0; margin: 0; }
+  .flow-step { position: relative; padding: 0.35rem 0.55rem; box-shadow: var(--pixel-frame); margin-inline: 3px; }
+  .flow-step:not(:last-child)::after { content: '▼'; position: absolute; left: calc(50% - 0.3rem); bottom: -0.75rem; height: 0.7rem; color: var(--ink); font-size: 0.7rem; line-height: 0.7rem; }
+  .human { background: var(--light); }
+  .rules { background: var(--paper); }
+  .engine { background: var(--ink); color: var(--paper); }
+  .trace .engine :is(h3, a) { color: inherit; }
+  .step-label { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.1rem; font-size: 0.64rem; }
+  .step-label [data-state] { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  /* The step working right now carries a printed drop shadow, so the eye lands there first. */
+  .flow-step[data-active='true'] { box-shadow: var(--pixel-frame), 6px 6px 0 var(--dark); }
+  .flow-step[data-active='true'] [data-state] { font-weight: 700; }
+  .flow-step[data-failed='true'] { box-shadow: none; outline: 3px dashed var(--ink); background: var(--paper); color: var(--ink); }
+  .search-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; margin: 0.3rem 0; padding-block: 0.25rem; border-block: 2px dotted currentColor; }
+  .search-stats div:not(:first-child) { text-align: right; }
+  .search-stats dt { font-size: 0.56rem; }
+  .search-stats dd { margin: 0; font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .trace .candidate { font-size: 0.64rem; }
+  .trace .return-note { margin-top: 0.5rem; text-align: center; font-weight: 600; }
+  .notation { margin-top: 0.65rem; padding-top: 0.5rem; border-top: 1px solid var(--faded-ink); }
+  .notation p { overflow-wrap: anywhere; }
+  .wire { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--faded-ink); }
+  .wire summary { cursor: pointer; font-weight: 600; }
+  .wire p { margin-top: 0.5rem; font-size: 0.66rem; }
+  .wire pre { margin: 0.5rem 0 0; padding: 0.6rem; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--ink); color: var(--paper); font: 0.64rem/1.55 var(--font-mono); }
+  .trace :is(button, select, summary):focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .trace .credit { margin-top: 0.65rem; padding-top: 0.5rem; border-top: 2px dashed var(--ink); color: var(--ink); font-size: 0.64rem; }
+  /* Narrow screens stack the board over the trace and keep the frame; the trace keeps a share of the height. */
+  @media (max-width: 48rem) {
+    .app-bar .intro { display: none; }
+    .chess-lab {
+      --board: min(100cqw, 100cqh - var(--chrome) - var(--gap) - max(8.5rem, 28cqh));
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    .play { width: var(--board); justify-self: center; overflow: visible; }
+  }
+  @media (max-width: 26rem) {
+    .players small { display: none; }
+  }
+  /* Landscape phones are too short for a board and a trace: let the page scroll instead. */
+  @media (max-height: 30rem) {
+    :global(html:has(.chess-body)), :global(.chess-body) { height: auto; overflow: visible; }
+    :global(.site-surface .chess-page) { height: auto; min-height: 100dvh; }
+    .stage { container-type: inline-size; }
+    .chess-lab { --board: min(100cqw - var(--trace) - var(--gap), 26rem); height: auto; }
+    .play, .trace { overflow: visible; }
+  }
+</style>

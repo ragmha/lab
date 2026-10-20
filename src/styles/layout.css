@@ -1,0 +1,19 @@
+:root {
+  --layout-width: 960px;
+  --layout-gutter: clamp(1rem, 4vw, 1.25rem);
+  --layout-gap: 4rem;
+  --layout-top: 2.25rem;
+  --layout-bottom: 2.5rem;
+  --layout-nav-width: 6.5rem;
+  --layout-content-offset: 1.4rem;
+  --layout-header-top: 3rem;
+}
+
+@media (max-width: 600px) {
+  :root {
+    --layout-gap: 2rem;
+    --layout-top: 2rem;
+    --layout-content-offset: 0rem;
+    --layout-header-top: 1.5rem;
+  }
+}

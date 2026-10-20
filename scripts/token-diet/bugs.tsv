@@ -1,0 +1,3 @@
+invoicer/invoice.py	line_tax(line_gross, rate, inclusive=False)	line_tax(line_gross - share, rate, inclusive=False)
+invoicer/rates.py	self.overrides.get(category) or self.standard	self.overrides.get(category, self.standard)
+invoicer/money.py	ROUND_HALF_EVEN	ROUND_HALF_UP

@@ -1,0 +1,1947 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import SiteHeader from '../components/SiteHeader.astro'
+import '../styles/site.css'
+import { modelPrices, pricingDate } from '../lib/model-pricing'
+import { analyzeUsage, demoEvents, findings, parseUsage, sessionCost } from '../lib/agent-usage'
+
+const sample = analyzeUsage([parseUsage(demoEvents)])
+const sampleFindings = findings(sample)
+const sampleCoverage =
+  `Illustrative sample · ${sample.sessions} sessions · ${sample.sources.join(' + ')} · ${sample.coverage}`
+const count = (total: { value: number | null; missing: number }) =>
+  total.value === null ? '—' : `${new Intl.NumberFormat('en-US').format(total.value)}${total.missing ? '+' : ''}`
+const sampleCost = sessionCost(sample)
+const sampleCostFormat = new Intl.NumberFormat('en-US', {
+  style: 'currency', currency: 'USD', maximumSignificantDigits: 4,
+})
+const sampleCostText = sampleCost.low === null || sampleCost.high === null
+  ? '—'
+  : Math.abs(sampleCost.high - sampleCost.low) < 0.000001
+    ? sampleCostFormat.format(sampleCost.low)
+    : `${sampleCostFormat.format(sampleCost.low)}–${sampleCostFormat.format(sampleCost.high)}`
+const sampleFacts = [
+  ['Model calls', count(sample.totals.requests)],
+  ['Input from cache', sample.totals.input.value && sample.totals.read.value !== null
+    ? new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 }).format(sample.totals.read.value / sample.totals.input.value)
+    : '—'],
+  ['Peak context per call', new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+    .format(Math.max(0, ...sample.calls.map((call) => call.input ?? 0)))],
+  ['Estimated API cost', sampleCostText],
+]
+
+const description =
+  'See how Claude Code, Codex, and GitHub Copilot sessions use the model: context per call, cache reuse, output, tools, and cross-model cost. Runs in your browser.'
+const home = new URL('/', Astro.site ?? Astro.url)
+const appJsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@graph': [{
+    '@type': 'WebApplication',
+    name: 'What’s Under the Prompt?',
+    url: new URL(Astro.url.pathname, home).href,
+    description,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Any (runs in a web browser)',
+    browserRequirements: 'Requires JavaScript',
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: 0, priceCurrency: 'USD' },
+    author: { '@type': 'Person', name: 'Raghib Hasan', url: 'https://raghib.io/' },
+    isPartOf: { '@id': `${home.href}#website` },
+  }],
+}).replace(/</g, '\\u003c')
+---
+
+<BaseLayout
+  title="What’s Under the Prompt? Agent Token Analyzer"
+  description={description}
+  bodyClass="site-surface experiment-surface"
+  pageClass="site-page"
+  defaultTheme="dark"
+>
+  <script is:inline type="application/ld+json" set:html={appJsonLd} />
+  <div class="workspace">
+    <SiteHeader />
+    <main class="calculator">
+      <header class="app-head">
+        <div class="app-title">
+          <h1>What’s Under the Prompt?</h1>
+          <p class="intro">Inspect context, cache reuse, output, and tools in a sample session—or your own.</p>
+          <p id="coverage" class="coverage">{sampleCoverage}</p>
+        </div>
+        <section id="results" class="results" aria-label="Session summary" tabindex="-1">
+          <div id="summary" class="summary">
+            {sampleFacts.map(([label, value]) => <div><span>{label}</span><strong>{value}</strong></div>)}
+          </div>
+        </section>
+        <noscript>
+          <p class="notice">Enable JavaScript to view the sample report and use the calculator.</p>
+        </noscript>
+      </header>
+
+      <div class="tab-row">
+        <div class="dashboard-tabs" role="tablist" aria-label="Experiment sections">
+          <button id="overview-tab" type="button" role="tab" aria-selected="true" aria-controls="overview-panel" tabindex="0">Overview</button>
+          <button id="models-tab" type="button" role="tab" aria-selected="false" aria-controls="models-panel" tabindex="-1">Model savings</button>
+          <button id="tools-tab" type="button" role="tab" aria-label="Tools and coverage notes" aria-selected="false" aria-controls="tools-panel" tabindex="-1">Tools</button>
+          <button id="data-tab" type="button" role="tab" aria-selected="false" aria-controls="data-panel" tabindex="-1">Your session</button>
+        </div>
+        <a class="all-link" href="/">All experiments</a>
+      </div>
+
+      <section id="overview-panel" class="tab-panel overview-grid" role="tabpanel" aria-labelledby="overview-tab" tabindex="0">
+        <section id="timeline-panel" class="panel timeline-panel" aria-labelledby="timeline-heading" hidden={sample.calls.filter((call) => call.input !== null || call.output !== null).length < 2}>
+          <div class="chart-head">
+            <h2 id="timeline-heading">Context, call by call</h2>
+            <fieldset class="toggle">
+              <legend class="visually-hidden">Chart view</legend>
+              <label><input type="radio" name="timeline-mode" value="call" checked /> Per call</label>
+              <label><input type="radio" name="timeline-mode" value="total" /> Running total</label>
+            </fieldset>
+          </div>
+          <p class="table-note">Hover, tap, or focus the chart and use arrow keys to inspect each call.</p>
+          <div class="chart-wrap">
+            <svg id="timeline" class="context-chart" viewBox="0 0 720 280" tabindex="0" role="img"></svg>
+            <div id="timeline-tip" class="chart-tip" role="status" aria-live="polite" hidden></div>
+          </div>
+          <ul class="legend">
+            <li><span class="swatch read"></span>Cached input</li>
+            <li><span class="swatch fresh"></span>Fresh input</li>
+            <li><span class="swatch output"></span>Output</li>
+          </ul>
+        </section>
+
+        <div class="overview-side">
+          <section class="panel signature-panel" aria-labelledby="mix-heading">
+            <div class="chart-head">
+              <h2 id="mix-heading">Token signature</h2>
+              <span id="token-total" class="token-total"></span>
+            </div>
+            <div id="token-mix" class="token-mix" role="img"></div>
+            <ul id="token-legend" class="legend"></ul>
+          </section>
+
+          <section id="findings-panel" class="panel" aria-labelledby="findings-heading">
+            <h2 id="findings-heading">What stands out</h2>
+            <ul id="findings-list" class="findings">{sampleFindings.slice(0, 3).map((note) => <li>{note}</li>)}</ul>
+            <details id="more-findings" class="more-findings" hidden>
+              <summary>Show more findings</summary>
+              <ul id="additional-findings-list" class="findings"></ul>
+            </details>
+          </section>
+        </div>
+      </section>
+
+      <section id="models-panel" class="tab-panel models-grid" role="tabpanel" aria-labelledby="models-tab" tabindex="0" hidden>
+        <section class="panel savings-panel" aria-labelledby="savings-heading">
+          <h2 id="savings-heading">Same task. Lower cost?</h2>
+          <div class="savings-controls">
+            <label for="savings-current">Current model
+              <select id="savings-current">
+                <option value="recorded">As recorded</option>
+                {modelPrices.map((price) => <option value={price.id}>{price.name}</option>)}
+              </select>
+            </label>
+            <label for="savings-model">Compare with
+              <select id="savings-model">
+                {modelPrices.map((price) => <option value={price.id}>{price.name}</option>)}
+              </select>
+            </label>
+          </div>
+          <p id="savings-result" class="savings-result" role="status" aria-live="polite"></p>
+          <div class="chart-wrap savings-wrap">
+            <svg id="savings-chart" class="savings-chart" role="img" aria-label="Estimated cost over repeated task runs"></svg>
+          </div>
+          <div id="savings-legend" class="savings-legend">
+            <span class="current-line"><span id="savings-current-name">Current</span> <strong id="savings-current-cost"></strong></span>
+            <span class="alternative-line"><span id="savings-model-name">Alternative</span> <strong id="savings-model-cost"></strong></span>
+          </div>
+          <label class="savings-runs" for="savings-runs">
+            Task runs <output id="savings-run-count" for="savings-runs">100</output>
+            <input id="savings-runs" type="range" min="1" max="1000" value="100" />
+          </label>
+          <p class="table-note">Same token workload, different prices. Quality may differ. API estimates—not your Copilot bill.</p>
+          <details class="rate-table">
+            <summary>Assumptions</summary>
+            <p class="table-note">
+              One run repeats the entire loaded workload, even if it contains several sessions.
+              Token counts and cache reuse stay fixed; models may tokenize differently, need more attempts,
+              or not support the same context and tools. Lines show midpoint estimates; ranges show pricing
+              uncertainty. Savings exclude switching costs and are not measured profit.
+            </p>
+          </details>
+        </section>
+
+        <section class="panel rates-panel" aria-labelledby="comparison-heading">
+          <h2 id="comparison-heading">Every model, same workload</h2>
+          <p class="table-note">
+            Provider-published API rates, last checked <time datetime={pricingDate}>{pricingDate}</time>.
+            Recorded models are highlighted.
+          </p>
+          <ol id="cost-chart" class="bar-chart"></ol>
+          <details id="comparison-details" class="rate-table">
+            <summary>Exact rates</summary>
+            <div class="table-wrap">
+              <table class="sortable">
+                <thead>
+                  <tr>
+                    <th scope="col"><button type="button" data-sort="model" aria-label="Sort by model">Model</button></th>
+                    <th scope="col">Provider</th>
+                    <th scope="col">Context / rate notes</th>
+                    <th scope="col"><button type="button" data-sort="benchmark" aria-label="Sort by one million input plus one million output tokens">1M in + 1M out</button></th>
+                    <th scope="col" aria-sort="ascending"><button type="button" data-sort="cost" aria-label="Sort by workload cost">Workload cost</button></th>
+                  </tr>
+                </thead>
+                <tbody id="comparison-sort-body"></tbody>
+              </table>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Model</th>
+                    <th scope="col">Estimated total</th>
+                    <th scope="col">Input</th>
+                    <th scope="col">Cached input</th>
+                    <th scope="col">5-minute write</th>
+                    <th scope="col">1-hour write</th>
+                    <th scope="col">Output</th>
+                  </tr>
+                </thead>
+                <tbody id="comparison-body"></tbody>
+              </table>
+            </div>
+            <p class="table-note">
+              Rates are USD per 1 million tokens. A “+” on a token total means some records
+              did not report that category. Cache writes without a reported TTL are shown as
+              a cost range when the provider has different TTL rates. Prices exclude batch
+              discounts, regional uplifts, taxes, storage fees, and tool fees unless noted.
+              Reasoning tokens are included in output.
+            </p>
+          </details>
+          <details id="recorded-models" class="rate-table" hidden>
+            <summary>How each model was used</summary>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th scope="col">Model</th><th scope="col">Calls</th><th scope="col">Input tokens</th><th scope="col">Cached</th><th scope="col">Output tokens</th></tr></thead>
+                <tbody id="recorded-body"></tbody>
+              </table>
+            </div>
+          </details>
+        </section>
+      </section>
+
+      <section id="tools-panel" class="tab-panel tools-grid" role="tabpanel" aria-labelledby="tools-tab" tabindex="0" hidden>
+        <section id="tool-activity" class="panel" aria-labelledby="tools-heading" hidden>
+          <h2 id="tools-heading">Tools the agent reached for</h2>
+          <ol id="tools-chart" class="bar-chart"></ol>
+          <p id="failure-count" class="table-note"></p>
+        </section>
+        <section id="warnings-panel" class="panel warnings" aria-labelledby="warnings-heading" hidden>
+          <h2 id="warnings-heading">Coverage notes</h2>
+          <ul id="warnings-list"></ul>
+        </section>
+      </section>
+
+      <section id="data-panel" class="tab-panel data-grid" role="tabpanel" aria-labelledby="data-tab" tabindex="0" hidden>
+        <section class="panel import-panel" aria-labelledby="import-heading">
+          <h2 id="import-heading">Analyze your own session</h2>
+          <p>
+            Drop JSON or JSONL logs from Copilot, Codex, Claude Code, or OpenTelemetry.
+            Files are processed locally.
+          </p>
+          <label class="dropzone" for="session-files">
+            <span><strong>Choose or drop logs</strong></span>
+            <span>20 files max · 20 MiB each · 50 MiB total</span>
+            <input id="session-files" type="file" accept=".json,.jsonl,application/json" multiple />
+          </label>
+          <div class="actions">
+            <button id="demo-button" type="button">Reload sample report</button>
+            <button id="clear-button" type="button" class="quiet" hidden>Clear results</button>
+          </div>
+          <p id="status" class="status" role="status" aria-live="polite">Sample report loaded. Add a session to replace it.</p>
+          <details class="sources-help">
+            <summary>Supported files and paths</summary>
+            <dl class="sources">
+              <div><dt>GitHub Copilot CLI</dt><dd><code>~/.copilot/session-state/&lt;session&gt;/events.jsonl</code></dd></div>
+              <div><dt>Codex CLI</dt><dd><code>~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl</code></dd></div>
+              <div><dt>Claude Code</dt><dd><code>~/.claude/projects/&lt;project&gt;/&lt;session&gt;.jsonl</code></dd></div>
+              <div><dt>OpenTelemetry</dt><dd>GenAI chat and tool spans as OTLP JSON</dd></div>
+            </dl>
+          </details>
+          <details class="export-help">
+            <summary>Having trouble finding the session file?</summary>
+            <p>
+              These folders are hidden. On macOS, press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>G</kbd> in
+              the file picker and paste the folder path; on Windows, paste the path with
+              <code>%USERPROFILE%</code> in place of <code>~</code>. Codex and Claude Code
+              files can be dropped directly. Copilot names each session folder by ID, so these
+              helpers list IDs and dates, then copy the chosen raw file locally.
+            </p>
+            <div class="actions">
+              <a href="/copilot-export.sh" download>Download Copilot Bash helper</a>
+              <a href="/copilot-export.ps1" download>Download Copilot PowerShell helper</a>
+            </div>
+            <pre><code>bash copilot-export.sh --list
+bash copilot-export.sh --session SESSION_ID --output copilot-events.jsonl</code></pre>
+            <pre><code>.\copilot-export.ps1 -List
+.\copilot-export.ps1 -Session SESSION_ID -Output copilot-events.jsonl</code></pre>
+            <p>
+              Review raw logs before sharing; they may contain private conversation or tool data.
+            </p>
+          </details>
+        </section>
+
+        <section class="panel manual-entry" aria-labelledby="manual-heading">
+          <h2 id="manual-heading">Enter token counts instead</h2>
+          <p>No session log? Enter counts to compare model prices.</p>
+          <form id="manual-form">
+            <label>
+              Model used
+              <select id="manual-model">
+                {modelPrices.map((price) => <option value={price.id}>{price.name}</option>)}
+              </select>
+            </label>
+            <div class="token-inputs">
+              <label>
+                Uncached input
+                <input id="uncached-input" inputmode="decimal" value="0" autocomplete="off" />
+              </label>
+              <label>
+                Cached input reads
+                <input id="cache-read" inputmode="decimal" value="0" autocomplete="off" />
+              </label>
+              <label>
+                Cache writes (TTL unknown)
+                <input id="cache-write" inputmode="decimal" value="0" autocomplete="off" />
+              </label>
+              <label>
+                5-minute cache writes
+                <input id="cache-write-5m" inputmode="decimal" value="0" autocomplete="off" />
+              </label>
+              <label>
+                1-hour cache writes
+                <input id="cache-write-1h" inputmode="decimal" value="0" autocomplete="off" />
+              </label>
+              <label>
+                Output + reasoning
+                <input id="output-tokens" inputmode="decimal" value="0" autocomplete="off" />
+              </label>
+            </div>
+            <p id="manual-error" class="error" role="alert" hidden></p>
+            <div class="actions">
+              <button id="manual-submit" type="submit">Compare model costs</button>
+            </div>
+          </form>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    import { findModelPrice } from '../lib/model-pricing'
+    import {
+      analyzeUsage,
+      compareModels,
+      demoEvents,
+      estimateCost,
+      findings,
+      manualUsage,
+      parseUsage,
+      parseTokenInput,
+      projectModelSavings,
+      sessionCost,
+      type Analysis,
+      type Usage,
+      type UsageTotals,
+    } from '../lib/agent-usage'
+    import type { WorkerRequest, WorkerResponse } from '../lib/agent-usage.worker'
+
+    const worker = new Worker(new URL('../lib/agent-usage.worker.ts', import.meta.url), { type: 'module' })
+    const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
+    const fileInput = byId<HTMLInputElement>('session-files')
+    const status = byId<HTMLParagraphElement>('status')
+    const results = byId<HTMLElement>('results')
+    const clearButton = byId<HTMLButtonElement>('clear-button')
+    const dashboardTabs = [...document.querySelectorAll<HTMLButtonElement>('.dashboard-tabs [role="tab"]')]
+    const numberFormat = new Intl.NumberFormat()
+    const compactFormat = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+    const percentFormat = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 })
+    const timeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+    const currencyFormat = new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'USD', maximumSignificantDigits: 4,
+    })
+    let lastAnalysis: Analysis | null = null
+    let pricingWorkload: Usage[] = []
+    let sortBy: 'model' | 'benchmark' | 'cost' = 'cost'
+    let sortDirection: 1 | -1 = 1
+
+    function activateDashboardTab(activeTab: HTMLButtonElement, focus = false) {
+      for (const tab of dashboardTabs) {
+        const selected = tab === activeTab
+        tab.setAttribute('aria-selected', String(selected))
+        tab.tabIndex = selected ? 0 : -1
+        const panelId = tab.getAttribute('aria-controls')
+        const panel = panelId ? document.getElementById(panelId) : null
+        if (panel instanceof HTMLElement) panel.hidden = !selected
+      }
+      if (focus) activeTab.focus()
+    }
+
+    dashboardTabs.forEach((tab) => {
+      tab.addEventListener('click', () => activateDashboardTab(tab))
+      tab.addEventListener('keydown', (event) => {
+        const tabs = dashboardTabs.filter((option) => !option.hidden)
+        const index = tabs.indexOf(tab)
+        const nextIndex = event.key === 'ArrowRight' ? (index + 1) % tabs.length
+          : event.key === 'ArrowLeft' ? (index - 1 + tabs.length) % tabs.length
+            : event.key === 'Home' ? 0
+              : event.key === 'End' ? tabs.length - 1
+                : -1
+        if (nextIndex < 0) return
+        event.preventDefault()
+        const nextTab = tabs[nextIndex]
+        if (nextTab) activateDashboardTab(nextTab, true)
+      })
+    })
+
+    function showReportTabs(visible: boolean) {
+      for (const tab of dashboardTabs) tab.hidden = !visible && tab.id !== 'data-tab'
+      if (!visible) activateDashboardTab(byId<HTMLButtonElement>('data-tab'))
+    }
+
+    function element<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = '') {
+      const node = document.createElement(tag)
+      if (className) node.className = className
+      if (text) node.textContent = text
+      return node
+    }
+
+    function cell(tag: 'td' | 'th', text: string, scope?: 'row') {
+      const node = element(tag, '', text)
+      if (scope) node.scope = scope
+      return node
+    }
+
+    function tokenTotal(total: UsageTotals[keyof UsageTotals]) {
+      return total.value === null ? '—' : `${numberFormat.format(total.value)}${total.missing ? '+' : ''}`
+    }
+
+    function estimatedCost(low: number | null, high: number | null) {
+      if (low === null || high === null) return '—'
+      return Math.abs(high - low) < 0.000001
+        ? currencyFormat.format(low)
+        : `${currencyFormat.format(low)}–${currencyFormat.format(high)}`
+    }
+
+    type Bar = { label: string; value: number; extra?: number; text: string; highlight?: boolean }
+    function renderBars(list: HTMLElement, bars: Bar[]) {
+      list.replaceChildren()
+      const max = Math.max(0, ...bars.map((bar) => bar.value + (bar.extra ?? 0)))
+      for (const bar of bars) {
+        const item = element('li', bar.highlight ? 'highlight' : '')
+        const track = element('span', 'bar-track')
+        const fill = element('span', 'bar-fill')
+        fill.style.width = `${max ? (bar.value / max) * 100 : 0}%`
+        track.append(fill)
+        if (bar.extra) {
+          const range = element('span', 'bar-range')
+          range.style.width = `${(bar.extra / max) * 100}%`
+          track.append(range)
+        }
+        item.append(element('span', 'bar-label', bar.label), track, element('span', 'bar-value', bar.text))
+        list.append(item)
+      }
+    }
+
+    function tokenParts(analysis: Analysis) {
+      const value = (field: 'input' | 'output' | 'read' | 'write') => analysis.totals[field].value ?? 0
+      const read = value('read')
+      const write = value('write') + (analysis.totals.cacheWrite5m.value ?? 0) +
+        (analysis.totals.cacheWrite1h.value ?? 0)
+      const parts = [
+        { name: 'Fresh input', className: 'fresh', tokens: Math.max(0, value('input') - read - write) },
+        { name: 'Cached input', className: 'read', tokens: read },
+        { name: 'Cache writes', className: 'write', tokens: write },
+        { name: 'Output', className: 'output', tokens: value('output') },
+      ]
+      return { parts, total: parts.reduce((sum, part) => sum + part.tokens, 0) }
+    }
+
+    function fillTokenBar(mix: HTMLElement, analysis: Analysis) {
+      const { parts, total } = tokenParts(analysis)
+      mix.replaceChildren()
+      mix.setAttribute('aria-label', parts.map((part) =>
+        `${part.name}: ${numberFormat.format(part.tokens)} tokens`).join(', '))
+      for (const part of parts) {
+        if (!part.tokens) continue
+        const segment = element('span', `segment ${part.className}`)
+        segment.style.flexGrow = String(part.tokens)
+        segment.title = `${part.name}: ${numberFormat.format(part.tokens)}`
+        if (part.tokens / total >= 0.12) segment.textContent = compactFormat.format(part.tokens)
+        mix.append(segment)
+      }
+    }
+
+    function renderTokenMix(analysis: Analysis) {
+      const { parts, total } = tokenParts(analysis)
+      const legend = byId('token-legend')
+      fillTokenBar(byId('token-mix'), analysis)
+      legend.replaceChildren()
+      byId('token-total').textContent = `${compactFormat.format(total)} tokens`
+      for (const part of parts) {
+        const share = total ? part.tokens / total : 0
+        const item = element('li')
+        item.append(element('span', `swatch ${part.className}`),
+          `${part.name} · ${compactFormat.format(part.tokens)} · ${percentFormat.format(share)}`)
+        legend.append(item)
+      }
+    }
+
+    type Point = { label: string; at: number | null; model: string; read: number; fresh: number; output: number }
+    let timelinePoints: Point[] = []
+    let timelineIndex = -1
+    let timelineMode: 'call' | 'total' = 'call'
+    const svgNS = 'http://www.w3.org/2000/svg'
+    const chart = { width: 720, height: 280, left: 56, right: 12, top: 12, bottom: 32 }
+
+    function svg<K extends keyof SVGElementTagNameMap>(tag: K, attributes: Record<string, string | number>, text = '') {
+      const node = document.createElementNS(svgNS, tag)
+      for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, String(value))
+      if (text) node.textContent = text
+      return node
+    }
+
+    function chartSeries() {
+      if (timelineMode === 'call') return timelinePoints
+      let read = 0, fresh = 0, output = 0
+      return timelinePoints.map((point) => ({
+        ...point, read: read += point.read, fresh: fresh += point.fresh, output: output += point.output,
+      }))
+    }
+
+    function renderTimeline(calls: Usage[]) {
+      const panel = byId('timeline-panel')
+      const visible = calls.filter((call) => call.input !== null || call.output !== null)
+      panel.hidden = visible.length < 2
+      timelinePoints = []
+      timelineIndex = -1
+      if (panel.hidden) return
+      // ponytail: bucket long sessions so the chart stays readable without a charting library.
+      const size = Math.ceil(visible.length / 160)
+      for (let index = 0; index < visible.length; index += size) {
+        const group = visible.slice(index, index + size)
+        const models = [...new Set(group.map((call) => call.model))]
+        timelinePoints.push({
+          label: group.length === 1 ? `Call ${index + 1}` : `Calls ${index + 1}–${index + group.length}`,
+          at: group.find((call) => call.at !== null)?.at ?? null,
+          model: models.length === 1 ? models[0] : `${models.length} models`,
+          read: group.reduce((sum, call) => sum + (call.read ?? 0), 0),
+          fresh: group.reduce((sum, call) => sum + Math.max(0, (call.input ?? 0) - (call.read ?? 0)), 0),
+          output: group.reduce((sum, call) => sum + (call.output ?? 0), 0),
+        })
+      }
+      drawTimeline()
+    }
+
+    function drawTimeline() {
+      const root = byId('timeline') as unknown as SVGSVGElement
+      root.replaceChildren()
+      const points = chartSeries()
+      if (!points.length) return
+      chart.width = Math.max(320, Math.round(root.clientWidth || 720))
+      chart.height = Math.max(160, Math.round(root.clientHeight || 280))
+      root.setAttribute('viewBox', `0 0 ${chart.width} ${chart.height}`)
+      const { width, height, left, right, top, bottom } = chart
+      const plotWidth = width - left - right
+      const plotHeight = height - top - bottom
+      const max = Math.max(1, ...points.map((point) => point.read + point.fresh + point.output))
+      const x = (index: number) => left + (points.length === 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth)
+      const y = (value: number) => top + plotHeight - (value / max) * plotHeight
+
+      for (let tick = 0; tick <= 4; tick++) {
+        const value = (max / 4) * tick
+        root.append(
+          svg('line', { x1: left, x2: width - right, y1: y(value), y2: y(value), class: 'grid' }),
+          svg('text', { x: left - 8, y: y(value) + 4, 'text-anchor': 'end', class: 'axis' }, compactFormat.format(value)),
+        )
+      }
+      const firstTime = points.find((point) => point.at !== null)?.at
+      const lastTime = points.findLast((point) => point.at !== null)?.at
+      const axisTimeFormat = width < 520
+        ? new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+        : timeFormat
+      root.append(
+        svg('text', { x: left, y: height - 8, class: 'axis' }, firstTime ? axisTimeFormat.format(firstTime) : 'First call'),
+        svg('text', { x: width - right, y: height - 8, 'text-anchor': 'end', class: 'axis' }, lastTime ? axisTimeFormat.format(lastTime) : 'Last call'),
+      )
+
+      const layers = [
+        { className: 'read', value: (point: Point) => point.read },
+        { className: 'fresh', value: (point: Point) => point.read + point.fresh },
+        { className: 'output', value: (point: Point) => point.read + point.fresh + point.output },
+      ]
+      let lower = points.map(() => 0)
+      for (const layer of layers) {
+        const upper = points.map(layer.value)
+        const edge = upper.map((value, index) => `${x(index)},${y(value)}`)
+        const base = lower.map((value, index) => `${x(index)},${y(value)}`).reverse()
+        root.append(svg('polygon', { points: [...edge, ...base].join(' '), class: `area ${layer.className}` }))
+        root.append(svg('polyline', { points: edge.join(' '), class: `edge ${layer.className}` }))
+        lower = upper
+      }
+
+      const guide = svg('g', { class: 'guide' })
+      root.append(guide)
+      const hit = svg('rect', { x: left, y: top, width: plotWidth, height: plotHeight, class: 'hit' })
+      root.append(hit)
+      const peak = points.reduce((best, point, index) =>
+        point.read + point.fresh > points[best].read + points[best].fresh ? index : best, 0)
+      root.setAttribute('aria-label', `${timelineMode === 'call' ? 'Tokens per call' : 'Running token total'} across ${points.length} points; peak ${compactFormat.format(max)} tokens at ${points[peak].label}.`)
+
+      const select = (index: number) => {
+        timelineIndex = Math.max(0, Math.min(points.length - 1, index))
+        const point = points[timelineIndex]
+        const total = point.read + point.fresh + point.output
+        guide.replaceChildren(
+          svg('line', { x1: x(timelineIndex), x2: x(timelineIndex), y1: top, y2: top + plotHeight }),
+          svg('circle', { cx: x(timelineIndex), cy: y(total), r: 4 }),
+        )
+        const tip = byId('timeline-tip')
+        tip.hidden = false
+        tip.replaceChildren(
+          element('strong', '', `${point.label}${timelineMode === 'total' ? ' (running total)' : ''}`),
+          element('span', '', [point.model, point.at ? timeFormat.format(point.at) : ''].filter(Boolean).join(' · ')),
+          element('span', '', `Cached input ${numberFormat.format(point.read)}`),
+          element('span', '', `Fresh input ${numberFormat.format(point.fresh)}`),
+          element('span', '', `Output ${numberFormat.format(point.output)}`),
+          element('span', '', point.read + point.fresh
+            ? `${percentFormat.format(point.read / (point.read + point.fresh))} of input from cache` : ''),
+        )
+        const share = (x(timelineIndex) - left) / plotWidth
+        tip.style.left = `${Math.min(Math.max(share * 100, 0), 100)}%`
+        tip.style.transform = `translateX(${share > 0.6 ? '-100%' : '0'})`
+      }
+      const fromPointer = (event: PointerEvent) => {
+        const box = root.getBoundingClientRect()
+        const position = ((event.clientX - box.left) / box.width) * width
+        select(Math.round(((position - left) / plotWidth) * (points.length - 1)))
+      }
+      root.onpointermove = fromPointer
+      root.onpointerdown = fromPointer
+      root.onpointerleave = () => { if (document.activeElement !== root) hideTip() }
+      root.onfocus = () => select(timelineIndex < 0 ? peak : timelineIndex)
+      root.onblur = hideTip
+      root.onkeydown = (event) => {
+        const step = { ArrowRight: 1, ArrowLeft: -1, End: points.length, Home: -points.length }[event.key]
+        if (step === undefined) return
+        event.preventDefault()
+        select((timelineIndex < 0 ? peak : timelineIndex) + step)
+      }
+      if (timelineIndex >= 0) select(timelineIndex)
+
+      function hideTip() {
+        guide.replaceChildren()
+        byId('timeline-tip').hidden = true
+      }
+    }
+
+    function renderComparison(analysis: Analysis, workload: Usage[]) {
+      pricingWorkload = workload
+      byId<HTMLDetailsElement>('comparison-details').open = false
+      const comparison = compareModels(workload)
+      const recorded = analysis.models.flatMap((model) => {
+        const price = findModelPrice(model.model)
+        return price ? [price.id] : []
+      })
+      const rows = comparison.map(({ price, estimate }) => {
+        const benchmark = estimateCost([manualUsage(price.id, 1_000_000, 0, 0, 1_000_000)], price)
+        return { price, estimate, benchmark }
+      })
+      rows.sort((a, b) => {
+        const direction = sortDirection
+        if (sortBy === 'model') return direction * a.price.name.localeCompare(b.price.name)
+        const aValue = sortBy === 'benchmark' ? a.benchmark.low : a.estimate.low
+        const bValue = sortBy === 'benchmark' ? b.benchmark.low : b.estimate.low
+        return direction * ((aValue ?? Infinity) - (bValue ?? Infinity))
+      })
+
+      renderBars(byId('cost-chart'), [...rows].filter(({ estimate }) => estimate.low !== null)
+        .sort((a, b) => (a.estimate.low ?? Infinity) - (b.estimate.low ?? Infinity))
+        .map(({ price, estimate }) => ({
+          label: price.name,
+          value: estimate.low!,
+          extra: (estimate.high ?? estimate.low!) - estimate.low!,
+          text: estimatedCost(estimate.low, estimate.high),
+          highlight: recorded.includes(price.id),
+        })))
+
+      const sortableBody = byId<HTMLTableSectionElement>('comparison-sort-body')
+      sortableBody.replaceChildren()
+      for (const { price, estimate, benchmark } of rows) {
+        const row = element('tr', recorded.includes(price.id) ? 'recorded' : '')
+        row.append(cell('th', price.name, 'row'))
+        const provider = cell('td', '')
+        const providerLink = element('a', '', price.provider)
+        providerLink.href = price.source
+        providerLink.rel = 'noreferrer'
+        provider.append(providerLink)
+        row.append(provider)
+        row.append(cell('td', [price.context, price.note].filter(Boolean).join(' · ')))
+        row.append(cell('td', estimatedCost(benchmark.low, benchmark.high)))
+        row.append(cell('td', estimatedCost(estimate.low, estimate.high)))
+        sortableBody.append(row)
+      }
+
+      const rateBody = byId<HTMLTableSectionElement>('comparison-body')
+      rateBody.replaceChildren()
+      for (const { price, estimate } of comparison) {
+        const row = element('tr', recorded.includes(price.id) ? 'recorded' : '')
+        const write5m = price.rates[2] || price.rates[0]
+        const write1h = price.write1h ?? write5m
+        row.append(
+          cell('th', price.name, 'row'),
+          cell('td', estimatedCost(estimate.low, estimate.high)),
+          cell('td', currencyFormat.format(price.rates[0])),
+          cell('td', currencyFormat.format(price.rates[1])),
+          cell('td', currencyFormat.format(write5m)),
+          cell('td', currencyFormat.format(write1h)),
+          cell('td', currencyFormat.format(price.rates[3])),
+        )
+        rateBody.append(row)
+      }
+      renderSavings()
+    }
+
+    function showAnalysis(analysis: Analysis, isExample = false) {
+      lastAnalysis = analysis
+      byId<HTMLSelectElement>('savings-current').value = 'recorded'
+      byId<HTMLSelectElement>('savings-model').value = ''
+      showReportTabs(true)
+      const overviewTab = dashboardTabs[0]
+      if (overviewTab) activateDashboardTab(overviewTab)
+      results.hidden = false
+      clearButton.hidden = false
+      const sessionLabel = `${analysis.sessions} session${analysis.sessions === 1 ? '' : 's'}`
+      const coverage = [sessionLabel, ...analysis.sources, analysis.coverage].join(' · ')
+      byId('coverage').textContent = isExample ? `Illustrative sample · ${coverage}` : coverage
+
+      const summary = byId<HTMLDivElement>('summary')
+      summary.replaceChildren()
+      const cost = sessionCost(analysis)
+      const recordedCost = estimatedCost(cost.low, cost.high)
+      const cacheShare = analysis.totals.input.value && analysis.totals.read.value !== null
+        ? percentFormat.format(analysis.totals.read.value / analysis.totals.input.value) : '—'
+      const peakContext = Math.max(0, ...analysis.calls.map((call) => call.input ?? 0))
+      const facts = [
+        ['Model calls', tokenTotal(analysis.totals.requests)],
+        ['Input from cache', cacheShare],
+        ['Peak context per call', peakContext ? compactFormat.format(peakContext) : '—'],
+        ['Estimated API cost', recordedCost],
+      ]
+      if (analysis.totals.nanoAiu.value !== null) facts.push(['Copilot nano-AIU', tokenTotal(analysis.totals.nanoAiu)])
+      for (const [label, value] of facts) {
+        const item = element('div')
+        item.append(element('span', '', label), element('strong', '', value))
+        summary.append(item)
+      }
+
+      const notes = findings(analysis)
+      byId('findings-panel').hidden = notes.length === 0
+      byId('findings-list').replaceChildren(...notes.slice(0, 3).map((note) => element('li', '', note)))
+      const remainingFindings = notes.slice(3)
+      const moreFindings = byId<HTMLDetailsElement>('more-findings')
+      moreFindings.hidden = remainingFindings.length === 0
+      moreFindings.open = false
+      moreFindings.querySelector('summary')!.textContent =
+        `Show ${remainingFindings.length} more finding${remainingFindings.length === 1 ? '' : 's'}`
+      byId('additional-findings-list').replaceChildren(
+        ...remainingFindings.map((note) => element('li', '', note)),
+      )
+
+      renderTokenMix(analysis)
+      renderTimeline(analysis.calls)
+
+      const write5m = analysis.totals.cacheWrite5m.value ?? 0
+      const write1h = analysis.totals.cacheWrite1h.value ?? 0
+      const write = analysis.totals.write.value
+      const input = analysis.totals.input.value
+      const cacheRead = analysis.totals.read.value
+      byId<HTMLSelectElement>('manual-model').value = findModelPrice(analysis.models[0]?.model ?? '')?.id ??
+        byId<HTMLSelectElement>('manual-model').value
+      const uncachedInput = input === null || cacheRead === null || write === null
+        ? null : Math.max(0, input - cacheRead - write - write5m - write1h)
+      byId<HTMLInputElement>('uncached-input').value = uncachedInput === null ? '' : String(uncachedInput)
+      byId<HTMLInputElement>('cache-read').value = cacheRead === null ? '' : String(cacheRead)
+      byId<HTMLInputElement>('cache-write').value = write === null ? '' : String(write)
+      byId<HTMLInputElement>('cache-write-5m').value = String(write5m)
+      byId<HTMLInputElement>('cache-write-1h').value = String(write1h)
+      byId<HTMLInputElement>('output-tokens').value = analysis.totals.output.value === null
+        ? '' : String(analysis.totals.output.value)
+      renderComparison(analysis, analysis.workload)
+
+      const modelPanel = byId<HTMLElement>('recorded-models')
+      const modelBody = byId<HTMLTableSectionElement>('recorded-body')
+      modelBody.replaceChildren()
+      modelPanel.hidden = analysis.models.length === 0
+      for (const model of analysis.models) {
+        const row = element('tr')
+        row.append(
+          cell('th', model.model, 'row'),
+          cell('td', tokenTotal(model.totals.requests)),
+          cell('td', tokenTotal(model.totals.input)),
+          cell('td', model.totals.input.value && model.totals.read.value !== null
+            ? percentFormat.format(model.totals.read.value / model.totals.input.value) : '—'),
+          cell('td', tokenTotal(model.totals.output)),
+        )
+        modelBody.append(row)
+      }
+
+      byId<HTMLElement>('tool-activity').hidden = analysis.tools.length === 0
+      renderBars(byId('tools-chart'), [...analysis.tools].sort((a, b) => b.count - a.count).slice(0, 12).map((tool) => ({
+        label: tool.name,
+        value: tool.count,
+        text: `${numberFormat.format(tool.count)}${tool.failed ? ` · ${tool.failed} failed` : ''}`,
+      })))
+      byId('failure-count').textContent = `${numberFormat.format(analysis.failedCalls)} failed model call${analysis.failedCalls === 1 ? '' : 's'}`
+
+      const warningPanel = byId<HTMLElement>('warnings-panel')
+      const warningList = byId<HTMLUListElement>('warnings-list')
+      byId('warnings-heading').textContent = `Coverage notes (${analysis.warnings.length})`
+      warningList.replaceChildren()
+      warningPanel.hidden = analysis.warnings.length === 0
+      for (const warning of analysis.warnings) warningList.append(element('li', '', warning))
+    }
+
+    function savingsUnavailable(message: string) {
+      document.getElementById('savings-chart')!.replaceChildren()
+      byId('savings-legend').hidden = true
+      byId('savings-result').textContent = message
+      byId<HTMLInputElement>('savings-runs').disabled = true
+    }
+
+    function renderSavings() {
+      const modelSelect = byId<HTMLSelectElement>('savings-model')
+      const currentSelect = byId<HTMLSelectElement>('savings-current')
+      const current = findModelPrice(currentSelect.value)
+      if (currentSelect.value !== 'recorded' && !current) {
+        savingsUnavailable('Choose a current model with a published rate.')
+        return
+      }
+      if (!modelSelect.value) {
+        const recorded = new Set(pricingWorkload.map((record) => findModelPrice(record.model)?.id))
+        const comparison = compareModels(pricingWorkload)
+        const cheapest = comparison.find(({ price, estimate }) =>
+          estimate.low !== null && (current ? price.id !== current.id : !recorded.has(price.id)))
+          ?? comparison.find(({ estimate }) => estimate.low !== null)
+        modelSelect.value = cheapest?.price.id ?? modelSelect.options[0].value
+      }
+      const alternative = findModelPrice(modelSelect.value)
+      if (!alternative) {
+        savingsUnavailable('Choose a comparison model with a published rate.')
+        return
+      }
+      const runsInput = byId<HTMLInputElement>('savings-runs')
+      const runs = runsInput.valueAsNumber
+      const projection = projectModelSavings(pricingWorkload, alternative, runs, current)
+      byId('savings-run-count').textContent = numberFormat.format(runs)
+      if (!projection.available) {
+        savingsUnavailable(`${projection.reason} Choose a priced model or enter complete token counts.`)
+        return
+      }
+      runsInput.disabled = false
+      byId('savings-legend').hidden = false
+      const [low, high] = projection.savings
+      const result = low === 0 && high === 0 ? 'No estimated savings'
+        : low >= 0 ? `Estimated savings: ${estimatedCost(low, high)}`
+          : high <= 0 ? `Estimated extra cost: ${estimatedCost(-high, -low)}`
+            : `Savings uncertain: ${estimatedCost(low, high)}`
+      byId('savings-result').textContent = `${result} at ${numberFormat.format(runs)} run${runs === 1 ? '' : 's'}.`
+
+      const recordedModels = [...new Set(pricingWorkload.map((record) =>
+        findModelPrice(record.model)?.name ?? record.model))]
+      const currentName = current?.name ?? (recordedModels.length === 1 ? recordedModels[0] : 'Recorded model mix')
+      byId('savings-current-name').textContent = currentName
+      byId('savings-model-name').textContent = alternative.name
+      byId('savings-current-cost').textContent = estimatedCost(...projection.current)
+      byId('savings-model-cost').textContent = estimatedCost(...projection.alternative)
+
+      const plot = document.getElementById('savings-chart')!
+      const width = Math.max(280, plot.clientWidth)
+      const height = Math.max(200, plot.clientHeight || 250)
+      const left = 60, right = width - 16, top = 28, bottom = height - 44
+      const currentMid = (projection.current[0] + projection.current[1]) / 2
+      const alternativeMid = (projection.alternative[0] + projection.alternative[1]) / 2
+      const maximum = Math.max(currentMid, alternativeMid) * 1.12 || 1
+      const y = (value: number) => bottom - value / maximum * (bottom - top)
+      const axisCost = new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: 'USD', notation: 'compact', maximumSignificantDigits: 3,
+      })
+      plot.setAttribute('viewBox', `0 0 ${width} ${height}`)
+      plot.setAttribute('aria-label',
+        `${currentName}: ${estimatedCost(...projection.current)}. ${alternative.name}: ${estimatedCost(...projection.alternative)}. ${result} over ${runs} runs. Lines show midpoint estimates.`)
+      plot.replaceChildren()
+      for (let tick = 0; tick <= 4; tick++) {
+        const value = maximum * tick / 4
+        plot.append(svg('line', { x1: left, x2: right, y1: y(value), y2: y(value), class: 'savings-grid' }),
+          svg('text', { x: left - 8, y: y(value) + 4, 'text-anchor': 'end' }, axisCost.format(value)))
+      }
+      const ticks = [...new Set([0, Math.round(runs / 2), runs])]
+      for (const tick of ticks) {
+        plot.append(svg('text', {
+          x: left + (right - left) * tick / runs, y: bottom + 18, 'text-anchor': 'middle',
+        }, compactFormat.format(tick)))
+      }
+      plot.append(
+        svg('text', { x: left, y: 14 }, 'Cost (USD)'),
+        svg('text', { x: (left + right) / 2, y: height - 4, 'text-anchor': 'middle' }, 'Task runs'),
+        svg('path', {
+          d: `M ${left} ${bottom} L ${right} ${y(currentMid)} L ${right} ${y(alternativeMid)} Z`,
+          class: 'savings-gap',
+        }),
+      )
+      for (const [name, value] of [['current', currentMid], ['alternative', alternativeMid]] as const) {
+        plot.append(svg('line', {
+          x1: left, y1: bottom, x2: right, y2: y(value), class: `savings-line ${name}`,
+        }), svg('circle', { cx: right, cy: y(value), r: 4, class: `savings-dot ${name}` }))
+      }
+    }
+
+    let busy = false
+    let analysisIsExample = false
+    let focusResultsAfterAnalysis = true
+    function setBusy(value: boolean) {
+      busy = value
+      fileInput.disabled = value
+      byId<HTMLButtonElement>('demo-button').disabled = value
+      byId<HTMLButtonElement>('manual-submit').disabled = value
+      clearButton.disabled = value
+    }
+
+    function clearAnalysis() {
+      showReportTabs(false)
+      results.hidden = true
+      clearButton.hidden = true
+      lastAnalysis = null
+      pricingWorkload = []
+      savingsUnavailable('Load a session or enter token counts to estimate savings.')
+      timelinePoints = []
+      timelineIndex = -1
+      byId('timeline-tip').hidden = true
+      byId('token-total').textContent = ''
+      byId<HTMLDetailsElement>('more-findings').open = false
+      byId<HTMLDetailsElement>('more-findings').hidden = true
+      for (const id of ['summary', 'findings-list', 'additional-findings-list', 'token-mix', 'token-legend', 'timeline', 'cost-chart', 'comparison-sort-body', 'recorded-body', 'comparison-body', 'tools-chart', 'warnings-list']) {
+        byId(id).replaceChildren()
+      }
+      for (const id of ['coverage', 'failure-count']) byId(id).textContent = ''
+      for (const id of ['findings-panel', 'timeline-panel', 'recorded-models', 'tool-activity', 'warnings-panel']) byId<HTMLElement>(id).hidden = true
+    }
+
+    function analyze(request: WorkerRequest, label: string, focusResults = true) {
+      if (busy) return
+      clearAnalysis()
+      analysisIsExample = Boolean(request.demo)
+      focusResultsAfterAnalysis = focusResults
+      setBusy(true)
+      status.textContent = label
+      worker.postMessage(request)
+    }
+
+    function loadFiles(files: File[]) {
+      if (files.length) analyze({ files }, `Reading ${files.length} file${files.length === 1 ? '' : 's'} locally…`)
+    }
+
+    fileInput.addEventListener('change', () => {
+      loadFiles(Array.from(fileInput.files ?? []))
+      fileInput.value = ''
+    })
+
+    const dropzone = document.querySelector<HTMLElement>('.dropzone')!
+    for (const eventName of ['dragenter', 'dragover']) {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault()
+        dropzone.classList.add('dragging')
+      })
+    }
+    for (const eventName of ['dragleave', 'drop']) {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault()
+        dropzone.classList.remove('dragging')
+      })
+    }
+    dropzone.addEventListener('drop', (event) => {
+      loadFiles(Array.from((event as DragEvent).dataTransfer?.files ?? []))
+    })
+
+    worker.addEventListener('message', ({ data }: MessageEvent<WorkerResponse>) => {
+      if (data.type === 'progress') {
+        status.textContent = `Read ${data.done} of ${data.total} files locally…`
+      } else if (data.type === 'result') {
+        setBusy(false)
+        showAnalysis(data.analysis, analysisIsExample)
+        status.textContent = analysisIsExample
+          ? 'Sample report loaded. Add a session to replace it.'
+          : 'Analysis complete. Files were processed in this browser.'
+        if (focusResultsAfterAnalysis) results.focus()
+      } else {
+        setBusy(false)
+        status.textContent = data.message
+      }
+    })
+    worker.addEventListener('error', () => {
+      setBusy(false)
+      status.textContent = 'The local analysis worker stopped unexpectedly. Try a smaller export.'
+    })
+
+    byId<HTMLButtonElement>('demo-button').addEventListener('click', () => analyze({ demo: demoEvents }, 'Loading sample report…'))
+    byId<HTMLButtonElement>('clear-button').addEventListener('click', () => {
+      clearAnalysis()
+      status.textContent = 'Results cleared.'
+    })
+
+    for (const id of ['savings-model', 'savings-current', 'savings-runs']) {
+      byId(id).addEventListener('input', renderSavings)
+    }
+    for (const id of ['savings-model', 'savings-current']) {
+      byId(id).addEventListener('change', renderSavings)
+    }
+    // Charts sit in hidden tabs, so redraw on any size change, including when a tab is shown.
+    function onResize(target: Element, draw: () => void) {
+      let size = ''
+      let frame = 0
+      new ResizeObserver(([entry]) => {
+        const { width, height } = entry.contentRect
+        const next = width ? `${Math.round(width)}x${Math.round(height)}` : ''
+        if (next === size) return
+        size = next
+        cancelAnimationFrame(frame)
+        if (next) frame = requestAnimationFrame(draw)
+      }).observe(target)
+    }
+    onResize(byId('savings-chart'), () => { if (pricingWorkload.length) renderSavings() })
+
+    for (const radio of document.querySelectorAll<HTMLInputElement>('input[name="timeline-mode"]')) {
+      radio.addEventListener('change', () => {
+        timelineMode = radio.value === 'total' ? 'total' : 'call'
+        drawTimeline()
+      })
+    }
+    onResize(byId('timeline'), () => { if (timelinePoints.length) drawTimeline() })
+
+    const manualForm = byId<HTMLFormElement>('manual-form')
+    const manualError = byId<HTMLParagraphElement>('manual-error')
+    function currentManualUsage() {
+      return manualUsage(
+        byId<HTMLSelectElement>('manual-model').value,
+        parseTokenInput(byId<HTMLInputElement>('uncached-input').value),
+        parseTokenInput(byId<HTMLInputElement>('cache-read').value),
+        parseTokenInput(byId<HTMLInputElement>('cache-write').value),
+        parseTokenInput(byId<HTMLInputElement>('output-tokens').value),
+        parseTokenInput(byId<HTMLInputElement>('cache-write-5m').value),
+        parseTokenInput(byId<HTMLInputElement>('cache-write-1h').value),
+      )
+    }
+
+    function refreshComparison() {
+      if (!lastAnalysis) return
+      try {
+        manualError.hidden = true
+        renderComparison(lastAnalysis, [currentManualUsage()])
+      } catch (cause) {
+        manualError.textContent = cause instanceof Error ? cause.message : 'Enter valid token counts.'
+        manualError.hidden = false
+        pricingWorkload = []
+        savingsUnavailable('Enter valid token counts to estimate savings.')
+      }
+    }
+
+    manualForm.addEventListener('input', refreshComparison)
+    for (const control of manualForm.querySelectorAll('select')) {
+      control.addEventListener('change', refreshComparison)
+    }
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-sort]')) {
+      button.addEventListener('click', () => {
+        const next = button.dataset.sort as typeof sortBy
+        if (next === sortBy) sortDirection = sortDirection === 1 ? -1 : 1
+        else { sortBy = next; sortDirection = 1 }
+        for (const option of document.querySelectorAll<HTMLButtonElement>('[data-sort]')) {
+          option.closest('th')?.setAttribute('aria-sort', option === button
+            ? sortDirection === 1 ? 'ascending' : 'descending'
+            : 'none')
+        }
+        if (lastAnalysis) renderComparison(lastAnalysis, pricingWorkload)
+      })
+    }
+
+    manualForm.addEventListener('submit', (event) => {
+      event.preventDefault()
+      manualError.hidden = true
+      try {
+        const record = currentManualUsage()
+        showAnalysis(analyzeUsage([{ usage: [record], tools: [], warnings: [], recognized: 1, sources: [] }]))
+        activateDashboardTab(byId<HTMLButtonElement>('models-tab'))
+        status.textContent = 'Estimate calculated from your manual token assumptions.'
+        results.focus()
+      } catch (cause) {
+        manualError.textContent = cause instanceof Error ? cause.message : 'Enter valid token counts.'
+        manualError.hidden = false
+      }
+    })
+
+    showAnalysis(analyzeUsage([parseUsage(demoEvents)]), true)
+    status.textContent = 'Sample report loaded. Add a session to replace it.'
+  </script>
+
+  <style>
+    :global(body.experiment-surface .site-header) {
+      max-width: none;
+      padding: 1rem var(--app-gutter) 0;
+    }
+
+    :global(body.experiment-surface .header-controls) {
+      width: auto;
+    }
+
+    .workspace {
+      --app-gutter: clamp(1rem, 3vw, 2.5rem);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      height: 100dvh;
+    }
+
+    .calculator {
+      --calc-panel: var(--theme-surface);
+      --calc-muted: var(--theme-muted, #8d9287);
+      --calc-line: var(--theme-rule, #2a2d27);
+      --signature-fresh: #72b7f2;
+      --signature-read: #86d28d;
+      --signature-write: #efb44c;
+      --signature-output: #bd97de;
+      --signature-ink: #171717;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      width: 100%;
+      max-width: 110rem;
+      min-height: 0;
+      margin: 0 auto;
+      padding: 0 var(--app-gutter);
+    }
+
+    .app-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 0.75rem 2.5rem;
+      padding-block: 1.25rem 1rem;
+    }
+
+    .app-head h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 600;
+      line-height: 1.3;
+      text-wrap: balance;
+    }
+
+    .app-head .intro {
+      margin: 0.35rem 0 0;
+      max-width: 60ch;
+      font-size: 0.9rem;
+    }
+
+    .app-head .coverage {
+      margin: 0.35rem 0 0;
+      font-size: 0.75rem;
+    }
+
+    .app-head noscript {
+      grid-column: 1 / -1;
+    }
+
+    .tab-row {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid var(--calc-line);
+    }
+
+    .all-link {
+      flex: 0 0 auto;
+      padding-bottom: 0.7rem;
+      color: var(--calc-muted);
+      font-size: 0.8rem;
+      text-underline-offset: 0.2em;
+    }
+
+    .all-link:hover {
+      color: var(--theme-text);
+    }
+
+    .calculator section + section {
+      margin-top: 0;
+    }
+
+    .intro,
+    .calculator .panel > p {
+      color: var(--calc-muted);
+    }
+
+    .notice,
+    .panel {
+      padding: 1rem;
+      border: 1px solid var(--calc-line);
+      background: var(--calc-panel);
+    }
+
+    .notice strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .notice p,
+    .panel p {
+      margin: 0.5rem 0 0;
+    }
+
+    .panel :is(h2, h3) {
+      margin: 0 0 0.75rem;
+      font-size: 1rem;
+    }
+
+    .chart-head h2 {
+      margin-bottom: 0;
+    }
+
+    .panel code,
+    .panel pre {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+    }
+
+    .dropzone {
+      display: grid;
+      gap: 0.2rem;
+      margin-top: 1rem;
+      padding: 1.25rem;
+      border: 1px dashed var(--calc-muted);
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .dropzone span + span {
+      color: var(--calc-muted);
+      font-size: 0.8rem;
+    }
+
+    .dropzone input {
+      width: 100%;
+      margin-top: 0.75rem;
+      font: inherit;
+    }
+
+    .dropzone.dragging {
+      border-color: var(--theme-text);
+      background: var(--calc-panel);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .actions button,
+    .actions a {
+      min-height: 2.5rem;
+      padding: 0.45rem 0.75rem;
+      border: 1px solid var(--calc-line);
+      border-radius: 0;
+      background: var(--theme-text);
+      color: var(--theme-bg);
+      font: inherit;
+      font-size: 0.85rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .savings-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .savings-controls label {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+    }
+
+    .savings-result {
+      margin: 1.25rem 0 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .savings-panel {
+      --savings-accent: var(--signature-read);
+      display: flex;
+      flex-direction: column;
+    }
+    :global(:root[data-theme='light']) .savings-panel { --savings-accent: #256b37; }
+
+    .savings-wrap:has(> .savings-chart:empty) { display: none; }
+
+    .savings-chart {
+      overflow: visible;
+    }
+
+    .savings-chart :global(text) { fill: var(--calc-muted); font: 11px var(--font-mono); }
+    .savings-chart :global(.savings-grid) { stroke: var(--calc-line); }
+    .savings-chart :global(.savings-gap) { fill: var(--savings-accent); opacity: 0.12; }
+    .savings-chart :global(.savings-line) { stroke-width: 2; vector-effect: non-scaling-stroke; }
+    .savings-chart :global(.savings-line.current) { stroke: var(--theme-text); stroke-dasharray: 6 4; }
+    .savings-chart :global(.savings-line.alternative) { stroke: var(--savings-accent); }
+    .savings-chart :global(.savings-dot.current) { fill: var(--theme-text); }
+    .savings-chart :global(.savings-dot.alternative) { fill: var(--savings-accent); }
+
+    .savings-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .savings-legend > span::before {
+      content: '';
+      display: inline-block;
+      width: 1.25rem;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+      border-top: 2px dashed var(--theme-text);
+    }
+
+    .savings-legend .alternative-line::before { border-top: 2px solid var(--savings-accent); }
+    .savings-legend strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .savings-runs {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 0.25rem;
+      margin-top: 1.25rem;
+      font-size: 0.85rem;
+    }
+
+    .savings-runs input {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-height: 2rem;
+      margin: 0;
+      accent-color: var(--theme-text);
+    }
+
+    .savings-runs output { font-variant-numeric: tabular-nums; }
+    .savings-runs input:disabled { opacity: 0.5; }
+
+    .actions .quiet {
+      background: transparent;
+      color: inherit;
+    }
+
+    .actions button:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+
+    .status,
+    .table-note,
+    .coverage {
+      color: var(--calc-muted);
+      font-size: 0.82rem;
+    }
+
+    .export-help {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--calc-line);
+    }
+
+    .export-help summary {
+      cursor: pointer;
+    }
+
+    .export-help pre {
+      max-width: 100%;
+      margin: 0.75rem 0 0;
+      padding: 0.75rem;
+      overflow-x: auto;
+      border: 1px solid var(--calc-line);
+      background: var(--theme-bg);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    #manual-form > label {
+      display: grid;
+      gap: 0.35rem;
+      margin-top: 1rem;
+    }
+
+    #manual-form input,
+    #manual-form select,
+    .savings-controls select {
+      width: 100%;
+      min-width: 0;
+      min-height: 2.6rem;
+      padding: 0.45rem;
+      border: 1px solid var(--calc-line);
+      border-radius: 0;
+      background: var(--theme-bg);
+      color: inherit;
+      font: inherit;
+    }
+
+    .token-inputs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    #manual-form select,
+    .savings-controls select {
+      appearance: none;
+      padding-right: 2rem;
+      background:
+        linear-gradient(45deg, transparent 50%, currentColor 50%) right 1.05rem center / 0.35rem 0.35rem no-repeat,
+        linear-gradient(-45deg, transparent 50%, currentColor 50%) right 0.75rem center / 0.35rem 0.35rem no-repeat,
+        var(--theme-bg);
+    }
+
+    .token-inputs label {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      align-items: end;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+    }
+
+    .error {
+      color: #ff9b8f;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, auto);
+    }
+
+    .summary > :global(div) {
+      display: grid;
+      gap: 0.2rem;
+      min-width: 0;
+      padding: 0.15rem 1.25rem;
+      border-left: 1px solid var(--calc-line);
+    }
+
+    .summary :global(span) {
+      color: var(--calc-muted);
+      font-size: 0.72rem;
+      white-space: nowrap;
+    }
+
+    .summary :global(strong) {
+      font-size: 1.15rem;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .dashboard-tabs {
+      display: flex;
+      gap: 1.5rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .dashboard-tabs button {
+      flex: 0 0 auto;
+      min-height: 2.75rem;
+      padding: 0.55rem 0;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--calc-muted);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .dashboard-tabs button[aria-selected="true"] {
+      border-bottom-color: var(--theme-text);
+      color: var(--theme-text);
+    }
+
+    .dashboard-tabs button:hover {
+      color: var(--theme-text);
+    }
+
+    .tab-panel {
+      display: grid;
+      grid-row: 3;
+      grid-template-rows: minmax(0, 1fr);
+      gap: 1rem;
+      min-height: 0;
+      padding-block: 1rem var(--app-gutter);
+    }
+
+    .tab-panel:focus-visible {
+      outline-offset: -2px;
+    }
+
+    .tab-panel > .panel,
+    .overview-side {
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    .overview-grid {
+      grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 0.9fr);
+    }
+
+    .models-grid {
+      grid-template-columns: minmax(0, 1.4fr) minmax(20rem, 1fr);
+    }
+
+    .tools-grid,
+    .data-grid {
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    }
+
+    .overview-side {
+      display: grid;
+      align-content: start;
+      gap: 1rem;
+    }
+
+    .timeline-panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    .panel table {
+      width: 100%;
+      margin-top: 0.5rem;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    .panel :global(th),
+    .panel :global(td) {
+      padding: 0.55rem 0.45rem;
+      border-bottom: 1px solid var(--calc-line);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .panel :global(th:first-child),
+    .panel :global(td:first-child) {
+      text-align: left;
+    }
+
+    .panel thead th {
+      color: var(--calc-muted);
+      font-weight: 500;
+    }
+
+    .panel :global(tr.recorded) {
+      background: color-mix(in srgb, var(--theme-text) 8%, transparent);
+    }
+
+    .panel ul {
+      margin-bottom: 0;
+    }
+
+    .warnings {
+      border-color: #806b3d;
+    }
+
+    .sources {
+      display: grid;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+
+    .sources div {
+      display: grid;
+      grid-template-columns: 11rem minmax(0, 1fr);
+      gap: 1rem;
+    }
+
+    .sources dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .calculator :global(.segment.fresh) { background: var(--signature-fresh); }
+    .calculator :global(.segment.read) { background: var(--signature-read); }
+    .calculator :global(.segment.write) { background: var(--signature-write); }
+    .calculator :global(.segment.output) { background: var(--signature-output); }
+
+    .calculator :global(.token-mix) {
+      display: flex;
+      height: 2.25rem;
+      gap: 1px;
+      margin-top: 0.85rem;
+      overflow: hidden;
+      border: 1px solid var(--calc-line);
+      background: var(--calc-line);
+    }
+
+    .calculator :global(.token-mix .segment) {
+      display: grid;
+      min-width: 0;
+      place-items: center;
+      overflow: hidden;
+      color: var(--signature-ink);
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .calculator :global(.token-total) {
+      color: var(--calc-muted);
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .calculator :global(.legend) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      padding: 0;
+      list-style: none;
+      color: var(--calc-muted);
+      font-size: 0.875rem;
+    }
+
+    .calculator :global(.swatch) {
+      display: inline-block;
+      width: 0.75rem;
+      height: 0.75rem;
+      margin-right: 0.5rem;
+      vertical-align: -0.05rem;
+    }
+
+    .calculator :global(.swatch.fresh) { background: var(--signature-fresh); }
+    .calculator :global(.swatch.read) { background: var(--signature-read); }
+    .calculator :global(.swatch.write) { background: var(--signature-write); }
+    .calculator :global(.swatch.output) { background: var(--signature-output); }
+
+    .signature-panel .legend {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.55rem 0.8rem;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .chart-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+    }
+
+    .toggle {
+      display: flex;
+      gap: 1rem;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-size: 0.85rem;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .chart-wrap {
+      position: relative;
+      flex: 1 1 0;
+      min-height: 12rem;
+      margin-top: 1rem;
+    }
+
+    .chart-wrap > svg {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .context-chart {
+      touch-action: pan-y;
+      cursor: crosshair;
+    }
+
+    .context-chart:focus-visible {
+      outline: 2px solid var(--theme-text);
+      outline-offset: 4px;
+    }
+
+    .calculator :global(.context-chart .grid) { stroke: var(--theme-rule); }
+    .calculator :global(.context-chart .axis) { fill: var(--calc-muted); font-size: 11px; font-family: inherit; }
+    .calculator :global(.context-chart .area.read) { fill: var(--signature-read); }
+    .calculator :global(.context-chart .area.fresh) { fill: var(--signature-fresh); }
+    .calculator :global(.context-chart .area.output) { fill: var(--signature-output); }
+    .calculator :global(.context-chart .edge) { fill: none; stroke: var(--theme-rule-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .calculator :global(.context-chart .hit) { fill: transparent; }
+    .calculator :global(.context-chart .guide line) { stroke: var(--theme-text); stroke-dasharray: 3 3; }
+    .calculator :global(.context-chart .guide circle) { fill: var(--theme-bg, Canvas); stroke: var(--theme-text); stroke-width: 2; }
+
+    .chart-tip {
+      position: absolute;
+      top: 0.5rem;
+      display: grid;
+      gap: 0.15rem;
+      min-width: 13rem;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--theme-rule-strong);
+      background: var(--theme-bg, Canvas);
+      font-size: 0.8rem;
+      pointer-events: none;
+    }
+
+    .chart-tip :global(span:empty) { display: none; }
+
+    .findings {
+      display: grid;
+      gap: 0.5rem;
+      margin: 0.75rem 0 0;
+      padding-left: 1.1rem;
+    }
+
+    .more-findings {
+      margin-top: 0.75rem;
+    }
+
+    .more-findings summary {
+      color: var(--calc-muted);
+      cursor: pointer;
+      font-size: 0.82rem;
+    }
+
+    .calculator .bar-chart {
+      display: grid;
+      gap: 0.5rem;
+      margin: 1rem 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .bar-chart :global(li) {
+      display: grid;
+      grid-template-columns: 11rem minmax(0, 1fr) 9rem;
+      align-items: center;
+      gap: 1rem;
+      color: var(--calc-muted);
+      font-size: 0.875rem;
+    }
+
+    .bar-chart :global(li.highlight) {
+      color: var(--theme-text);
+      font-weight: 700;
+    }
+
+    .calculator :global(.bar-track) {
+      display: flex;
+      height: 0.9rem;
+    }
+
+    .calculator :global(.bar-fill) {
+      background: var(--theme-muted);
+    }
+
+    .calculator :global(.highlight .bar-fill) {
+      background: var(--theme-highlight);
+      outline: 1px solid var(--theme-rule-strong);
+    }
+
+    .calculator :global(.bar-range) {
+      background: color-mix(in srgb, var(--theme-muted) 35%, transparent);
+    }
+
+    .calculator :global(.bar-value) {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rates-panel .bar-chart :global(li) {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.2rem 1rem;
+    }
+
+    .rates-panel :global(.bar-track) {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+
+    .rate-table summary {
+      cursor: pointer;
+      margin: 1rem 0 0.5rem;
+    }
+
+    .sources-help,
+    .export-help {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--calc-line);
+    }
+
+    .sources-help summary {
+      cursor: pointer;
+    }
+
+    .manual-entry > p {
+      color: var(--calc-muted);
+    }
+
+    .warnings ul {
+      margin-bottom: 0;
+    }
+
+    .sortable th button {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: inherit;
+      cursor: pointer;
+    }
+
+    .sortable th button:hover,
+    .sortable th button:focus-visible {
+      color: var(--theme-text);
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
+    }
+
+    .sortable th[aria-sort="ascending"] button::after { content: " ↑"; }
+    .sortable th[aria-sort="descending"] button::after { content: " ↓"; }
+
+    .sortable :global(tr.recorded) {
+      background: color-mix(in srgb, var(--theme-highlight) 12%, transparent);
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 600px) {
+      .token-inputs,
+      .sources div {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.25rem;
+      }
+
+      .bar-chart :global(li) {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.25rem 1rem;
+      }
+
+      .calculator :global(.bar-track) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+    }
+
+    @media (max-width: 64rem) {
+      .app-head {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .summary > :global(div:first-child) {
+        padding-left: 0;
+        border-left: 0;
+      }
+    }
+
+    /* Small or short screens: keep the tabs, let the page scroll naturally. */
+    @media (max-width: 48rem), (max-height: 36rem) {
+      .workspace {
+        height: auto;
+        min-height: 100dvh;
+      }
+
+      .calculator,
+      .tab-panel {
+        grid-template-rows: none;
+      }
+
+      .tab-panel {
+        grid-row: auto;
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .tab-panel > .panel,
+      .overview-side {
+        overflow: visible;
+      }
+
+      .chart-wrap {
+        flex: 0 0 auto;
+        height: 15rem;
+      }
+    }
+
+    @media (max-width: 48rem) {
+      .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem 0;
+      }
+
+      .summary > :global(div:nth-child(odd)) {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      .summary :global(strong) {
+        white-space: normal;
+      }
+
+      .summary > :global(div) {
+        align-content: start;
+      }
+
+      .dashboard-tabs {
+        gap: clamp(0.75rem, 3vw, 1rem);
+      }
+
+      .dashboard-tabs button {
+        font-size: clamp(0.78rem, 3.5vw, 0.85rem);
+      }
+
+      .all-link {
+        display: none;
+      }
+    }
+  </style>
+</BaseLayout>

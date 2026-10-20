@@ -1,0 +1,56 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro'
+---
+
+<SiteLayout
+  title="Experiments"
+  description="Interactive experiments and technical demonstrations by Raghib Hasan."
+>
+  <Fragment slot="heading">Experiments</Fragment>
+  <p>Four experiments by <a href="https://raghib.io/">Raghib Hasan</a>. They run in your browser; imported sessions stay on your device.</p>
+  <ul class="experiment-list" role="list">
+    <li>
+      <h2><a href="/session-flame/">Where Did the Time Go?</a></h2>
+      <p>Replay a coding-agent session as a flame chart: prompts, model turns, tools, and sub-agents, with idle time folded away.</p>
+    </li>
+    <li>
+      <h2><a href="/context-autopsy/">What’s Under the Prompt?</a></h2>
+      <p>See what happens under the hood when you prompt: context growth, cache reuse, model calls, tools, and cost elsewhere.</p>
+    </li>
+    <li>
+      <h2><a href="/token-diet/">Does Your Coding Agent Need a Token Diet?</a></h2>
+      <p>Compare a coding agent’s token use across two rounds of recorded runs, with the reproduction kit and measurements.</p>
+    </li>
+    <li>
+      <h2><a href="/chess/">Can a Browser Tab Beat You at Chess?</a></h2>
+      <p>Play Stockfish compiled to WebAssembly. The engine runs on your device; no moves leave the page.</p>
+    </li>
+  </ul>
+</SiteLayout>
+
+<style>
+  .experiment-list {
+    display: grid;
+    gap: 1rem;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .experiment-list li {
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--theme-rule);
+  }
+
+  .experiment-list h2 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .experiment-list p {
+    margin: 0.25rem 0 0;
+    color: var(--theme-muted);
+    font-size: 0.8rem;
+  }
+</style>

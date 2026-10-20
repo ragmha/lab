@@ -1,0 +1,3266 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ThemeToggle from '../components/ThemeToggle.astro'
+import { ICONS, PHASES, clock, demoSession, iconLabel, modelAt, narrate, parseSession, summarize, type Icon } from '../lib/session-flame'
+import recorded from '../lib/session-flame-runs.json'
+import '../styles/site.css'
+
+// Bar row, ruler and event-lane heights in CSS pixels, shared with the client script through data attributes.
+const ROW = 18
+const RULER = 26
+const LANE = 12
+const HEAD = RULER + PHASES.length * LANE
+const sample = parseSession(demoSession())
+const sampleSummary = summarize(sample, 'Illustrative sample')
+// The client opens on the first event; render the same story so nothing shifts when it takes over.
+const STORY_HINT = 'Press Play or Next to follow it step by step.'
+const models = [...new Map(recorded.runs.map((run) => [run.model, run.label]))]
+const tabs = [
+  ['flame', 'Flame'],
+  ['transcript', 'Transcript'],
+  ['breakdown', 'Breakdown'],
+]
+
+const description =
+  'See where a coding-agent session spent its time: prompts, model turns, tools, and sub-agents as an interactive flame chart. Runs in your browser.'
+const home = new URL('/', Astro.site ?? Astro.url)
+const appJsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@graph': [{
+    '@type': 'WebApplication',
+    name: 'Where Did the Time Go?',
+    url: new URL(Astro.url.pathname, home).href,
+    description,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Any (runs in a web browser)',
+    browserRequirements: 'Requires JavaScript',
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: 0, priceCurrency: 'USD' },
+    author: { '@type': 'Person', name: 'Raghib Hasan', url: 'https://raghib.io/' },
+    isPartOf: { '@id': `${home.href}#website` },
+  }],
+}).replace(/</g, '\\u003c')
+---
+
+<BaseLayout
+  title="Where Did the Time Go? Session Flame Chart"
+  description={description}
+  bodyClass="site-surface flame-body"
+  pageClass="flame-page"
+  defaultTheme="dark"
+>
+  <script is:inline type="application/ld+json" set:html={appJsonLd} />
+  <header class="app-bar">
+    <div class="app-title">
+      <a class="app-back" href="/"><span aria-hidden="true">←</span> Experiments</a>
+      <h1 id="page-title">Where Did the Time Go?</h1>
+      <p id="coverage" class="coverage">{sampleSummary.coverage}</p>
+    </div>
+    <div class="app-tabs" role="tablist" aria-label="Session views">
+      {tabs.map(([id, label], index) => (
+        <button
+          id={`tab-${id}`}
+          type="button"
+          role="tab"
+          aria-selected={index === 0 ? 'true' : 'false'}
+          aria-controls={`panel-${id}`}
+          tabindex={index === 0 ? 0 : -1}
+        >{label}</button>
+      ))}
+    </div>
+    <div class="app-actions">
+      <button id="replay-toggle" type="button" aria-expanded="true" aria-controls="transport">Replay</button>
+      <button id="help-button" type="button" aria-haspopup="dialog">Help</button>
+      <label class="open-log">
+        Open log
+        <input id="session-file" class="visually-hidden" type="file" accept=".jsonl,.json,application/json" />
+      </label>
+      <ThemeToggle />
+    </div>
+  </header>
+
+  <div id="transport" class="transport" role="group" aria-label="Session replay controls">
+    <div class="actions">
+      <button id="replay-play" type="button">Play</button>
+      <button id="replay-previous" type="button" class="quiet" aria-label="Previous event">Previous</button>
+      <button id="replay-next" type="button" class="quiet" aria-label="Next event">Next</button>
+    </div>
+    <ol id="story-steps" class="story-steps" aria-label="Where this event sits in the agent's loop">
+      {PHASES.filter(({ id }) => id !== 'system').map(({ id, label, hint }) => (
+        <li data-phase={id} title={hint}>{label}<span class="count"></span></li>
+      ))}
+    </ol>
+    <div class="actions story-toggle">
+      <button id="timeline-toggle" type="button" class="quiet" aria-expanded="false" aria-controls="replay-more">Timeline</button>
+    </div>
+    <p id="story-line" class="story-line" aria-live="polite" data-hint={STORY_HINT}>{narrate(sample.timeline[0])} {STORY_HINT}</p>
+    <p class="context-gauge" title="Context is the prompt size of the latest model call when the log has usage records; otherwise the size Copilot CLI reported at compaction or shutdown.">
+      <span id="gauge-model" class="gauge-model">{modelAt(sample.timeline, 0)}</span>
+      <span class="gauge" aria-hidden="true"><span id="gauge-fill"></span></span>
+      <span id="gauge-text">Context not measured yet</span>
+    </p>
+    <div id="replay-more" class="replay-more" hidden>
+    <span id="replay-clock" class="replay-clock">0:00.00 / {clock(sample.total, 2)}</span>
+    <label for="replay-position" class="visually-hidden">Session playhead</label>
+    <input
+      id="replay-position"
+      type="range"
+      min="0"
+      max={sample.length}
+      step="any"
+      value="0"
+      aria-describedby="replay-help"
+    />
+    <label class="replay-option">
+      Speed
+      <select id="replay-speed">
+        <option value="1">1×</option>
+        <option value="4" selected>4×</option>
+        <option value="16">16×</option>
+      </select>
+    </label>
+    <label class="replay-option"><input id="replay-skip-idle" type="checkbox" checked /> Skip idle</label>
+    <span id="replay-state" class="replay-state">Paused</span>
+    <p id="replay-help" class="visually-hidden">
+      The clock shows recorded time. Long idle gaps are compressed in the chart and playhead.
+      Click or drag the chart ruler to seek; Space on the chart plays or pauses.
+    </p>
+    </div>
+  </div>
+
+  <main class="app-main">
+    <noscript>
+      <p class="notice">Enable JavaScript to explore the flame chart.</p>
+    </noscript>
+    <div class="app-panels">
+      <section id="panel-flame" class="panel-flame" role="tabpanel" aria-labelledby="tab-flame">
+        <div class="chart-tools">
+          <div class="run-picker" role="group" aria-label="Recorded TodoMVC run">
+            <label><span class="run-label">Model</span>
+              <select id="run-model">
+                <option value="sample">Illustrative sample</option>
+                {models.map(([model, label]) => <option value={model}>{label}</option>)}
+                <option value="file" disabled>Your log</option>
+              </select>
+            </label>
+            <label><span class="run-label">Context</span>
+              <select id="run-context" disabled>
+                <option value="default">Default</option>
+                <option value="long_context">Long</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions">
+            <button id="zoom-in" type="button" class="quiet">Zoom in</button>
+            <button id="zoom-out" type="button" class="quiet">Zoom out</button>
+            <button id="zoom-fit" type="button" class="quiet">Fit</button>
+            <button id="compare-open" type="button" class="quiet" aria-controls="comparison">Compare</button>
+          </div>
+          <p id="view-range" class="coverage">Whole session</p>
+        </div>
+        <div class="flame">
+          <canvas id="overview" class="overview" aria-hidden="true"></canvas>
+          <div class="chart-wrap">
+            <div id="chart-scroll" class="chart-scroll">
+              <canvas
+                id="chart"
+                class="chart"
+                tabindex="0"
+                role="application"
+                aria-roledescription="flame chart"
+                aria-label="Session flame chart"
+                aria-describedby="chart-help"
+                data-row={ROW}
+                data-ruler={RULER}
+                data-lane={LANE}
+                style={`height: ${HEAD + sample.rows * ROW}px`}
+              ></canvas>
+            </div>
+            <div id="chart-tip" class="chart-tip" hidden></div>
+          </div>
+        </div>
+        <details class="chart-help">
+          <summary>Chart controls</summary>
+          <p id="chart-help" class="table-note">
+            Scroll or pinch to zoom at the pointer; drag, Shift-scroll or scroll sideways to pan;
+            click or drag the ruler to seek. The lanes under the ruler sort every recorded event by what the agent was doing;
+            click a tick to jump to it. While replaying, work running at the playhead is outlined
+            and work yet to start fades. Click a bar to expand it to the full width: only its
+            own work stays below, and the work that caused it stacks above as a grey trail.
+            Click a trail bar, press Escape or zoom out past it to step back out; Fit shows the
+            whole session again.
+            With the chart focused, arrow keys move between bars, W and S zoom, A and D pan, 0
+            fits, Enter expands the selection, and Space plays or pauses. Shaded breaks fold idle
+            stretches longer than a minute.
+          </p>
+        </details>
+      </section>
+
+      <section id="panel-transcript" class="panel-fill" role="tabpanel" aria-labelledby="tab-transcript" hidden>
+        <div class="log-head">
+          <h2>Session events</h2>
+          <p id="replay-count" class="table-note"></p>
+        </div>
+        <div id="phase-filter" class="phase-filter" role="group" aria-label="Show event categories"></div>
+        <ol id="replay-events" class="replay-events" aria-label="Recorded events up to the playhead"></ol>
+      </section>
+
+      <section id="panel-breakdown" class="panel-text" role="tabpanel" aria-labelledby="tab-breakdown" hidden>
+        <h2>Where the time went</h2>
+        <p id="headline" class="headline">{sampleSummary.headline}</p>
+        <div id="spectrum" class="spectrum" aria-hidden="true"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Activity</th>
+                <th scope="col">Time</th>
+                <th scope="col">Of active</th>
+                <th scope="col">Spans</th>
+                <th scope="col">Failed</th>
+              </tr>
+            </thead>
+            <tbody id="share-body"></tbody>
+          </table>
+        </div>
+        <p class="table-note">
+          Each moment counts once, split evenly across the innermost work running then. Colors run
+          from red to violet in order of time taken. Select an activity to pick it out in the chart.
+        </p>
+      </section>
+
+    </div>
+
+    <aside id="app-aside" class="app-aside" aria-label="Session details">
+      <section class="aside-section" aria-labelledby="playhead-title">
+        <h2 id="playhead-title">At the playhead</h2>
+        <p id="replay-phase" class="phase"></p>
+        <h3 id="replay-event-title">Session start</h3>
+        <p id="replay-event-meta" class="table-note"></p>
+        <h4>Running now</h4>
+        <p id="replay-running" class="table-note"></p>
+        <h4 id="replay-content-label">Details</h4>
+        <pre id="replay-content" class="replay-content"></pre>
+        <div id="replay-reasoning-block" hidden>
+          <h4>Reasoning</h4>
+          <pre id="replay-reasoning" class="replay-content"></pre>
+        </div>
+        <details id="replay-raw" class="raw">
+          <summary>Raw event</summary>
+          <pre id="replay-raw-json"></pre>
+        </details>
+        <div class="actions">
+          <button id="replay-inspect" type="button" class="quiet">Inspect related span</button>
+        </div>
+      </section>
+
+      <section id="inspector" class="aside-section" aria-labelledby="inspector-title">
+        <h2 id="inspector-title">Selected span</h2>
+        <p id="inspector-empty" class="table-note">
+          Select a bar in the chart.
+        </p>
+        <div id="inspector-body" hidden>
+          <nav aria-label="Span path"><ol id="crumbs" class="crumbs"></ol></nav>
+          <p id="span-title" class="span-title"></p>
+          <dl id="span-facts" class="facts"></dl>
+          <details id="raw" class="raw">
+            <summary id="raw-summary">Raw events</summary>
+            <div class="actions">
+              <button id="copy-json" type="button" class="quiet">Copy JSON</button>
+            </div>
+            <pre id="raw-json"></pre>
+          </details>
+        </div>
+      </section>
+    </aside>
+  </main>
+  <dialog id="help" class="help-dialog panel-text" aria-labelledby="help-title">
+    <div class="help-head">
+      <h2 id="help-title">Play a session back</h2>
+      <form method="dialog" class="actions"><button type="submit" class="quiet">Close</button></form>
+    </div>
+    <p>
+      Follow a coding-agent session's prompts, responses, and tool calls alongside a flame
+      chart of the work. The sample is illustrative.
+    </p>
+    <p>
+      Press Next to step through one event at a time. The strip under the controls lights the
+      step of the loop you are in and says in plain words what the agent is doing; the counts
+      show how many turns, tool calls and results it has taken since your prompt. Open Timeline
+      to scrub, change speed or skip idle time. Replay in the header hides the whole bar to
+      give the chart more room; Space on the chart still plays and pauses.
+    </p>
+    <h2>Recorded TodoMVC runs</h2>
+    <p>
+      The Model and Context menus load real Copilot CLI {recorded.cli} logs recorded on
+      {recorded.recorded}. Each model got the same prompt once per context tier, in an empty
+      folder, with every tool allowed and nothing able to ask for approval, so some shell commands
+      show as denied. Runs went two at a time. System prompts, file paths and hidden reasoning were
+      stripped before publishing.
+    </p>
+    <p>
+      All runs share the slowest run's time scale, so a shorter flame means a faster run. The
+      context tier only raised the prompt limit shown in the menu: this small task read under 30k
+      tokens on every call, so tier differences here are ordinary run-to-run variation. HydraFusion
+      has no context tier. It works out of band and logs its tool calls only when it commits the
+      result, so its tool bars are replays and its fusion phases carry the real time. HydraFusion
+      Max was recorded too, but its solver was still working when the 15-minute cap stopped it,
+      so it is left out rather than shown half finished. One run per setting is a demonstration,
+      not a benchmark or a ranking.
+    </p>
+    <h2>What the lanes mean</h2>
+    <p>
+      To compare models or context payloads, choose Compare in the Flame view and import
+      recorded runs of the same task. They share a wall-clock scale with no folded idle gaps.
+      The model/context gauge in replay reports the current model and the last recorded context
+      reading; it does not estimate missing measurements or predict another model's speed.
+    </p>
+    <p>
+      Every recorded event lands in one step of the agent's loop: it is asked, reasons, acts,
+      observes the result, then answers.
+    </p>
+    <dl class="phase-key">
+      {PHASES.map((phase) => (
+        <div>
+          <dt><span class="phase">{phase.label}</span></dt>
+          <dd>{phase.hint}</dd>
+        </div>
+      ))}
+    </dl>
+    <h2>What the icons mean</h2>
+    <p>Bars, transcript rows and the playhead panel show the kind of work at a glance.</p>
+    <dl class="icon-key">
+      {(Object.keys(ICONS) as Icon[]).map((id) => (
+        <div>
+          <dt><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d={ICONS[id]} /></svg></dt>
+          <dd>{iconLabel(id)}</dd>
+        </div>
+      ))}
+    </dl>
+    <h2>Load your own session</h2>
+    <p>
+      Open a GitHub Copilot CLI <code>events.jsonl</code> file, or drop one anywhere on this
+      page. It is read in this browser and never uploaded. One file, 100 MiB at most.
+    </p>
+    <div class="actions">
+      <button id="choose-file" type="button">Choose events.jsonl</button>
+      <button id="sample-button" type="button" class="quiet">Reload sample</button>
+    </div>
+    <p id="status" class="status">Showing the illustrative sample.</p>
+    <details class="export-help">
+      <summary>Where is the file?</summary>
+      <p>
+        Each session has its own folder:
+        <code>~/.copilot/session-state/&lt;session&gt;/events.jsonl</code>. The folder is
+        hidden; on macOS, press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>G</kbd> in the file picker and
+        paste the path, and on Windows use <code>%USERPROFILE%</code> in place of
+        <code>~</code>. These helpers list session IDs and dates, then copy one raw log.
+      </p>
+      <div class="actions">
+        <a href="/copilot-export.sh" download>Download Bash helper</a>
+        <a href="/copilot-export.ps1" download>Download PowerShell helper</a>
+      </div>
+      <pre><code>bash copilot-export.sh --list
+bash copilot-export.sh --session SESSION_ID --output copilot-events.jsonl</code></pre>
+      <pre><code>.\copilot-export.ps1 -List
+.\copilot-export.ps1 -Session SESSION_ID -Output copilot-events.jsonl</code></pre>
+      <p>Review raw logs before sharing; they may contain private conversation or tool data.</p>
+    </details>
+    <p class="credit">
+      Inspired by <a href="https://jfhelin.github.io/copilot-ledger/agentviz/">AgentViz</a>.
+      By <a href="https://raghib.io/">Raghib Hasan</a>.
+    </p>
+  </dialog>
+  <section id="comparison" class="comparison" aria-labelledby="comparison-title" hidden>
+    <div class="help-head">
+      <h2 id="comparison-title" tabindex="-1">Compare recorded runs</h2>
+      <div class="actions"><button id="compare-close" type="button" class="quiet">Back to session</button></div>
+    </div>
+    <p>
+      Compare the same TodoMVC task across models or input sizes. Width is elapsed time,
+      not context capacity. The illustrative sample is not evidence.
+    </p>
+    <details class="comparison-guide">
+      <summary>How to make a fair comparison</summary>
+      <p>
+        Use the same starter commit, prompt, Copilot CLI version, tools, permissions and acceptance
+        tests. Compare one model with small and large input payloads, then repeat with another model.
+        Change one variable at a time; keep reasoning settings consistent and record cache conditions.
+        Repeat each condition. A larger context window alone does not mean more tokens were sent.
+        Tools, output length and idle time also affect the duration. Context snapshots are occasional
+        measurements, not a continuous peak; only per-call usage records establish input size.
+      </p>
+      <p>
+        Choose 2–6 Copilot CLI events.jsonl files (100 MiB combined). Claude and OpenAI models
+        are supported when run through Copilot CLI; native Claude Code and Codex logs use different
+        schemas. Files stay in this browser. Importing another set replaces the comparison.
+      </p>
+    </details>
+    <div class="comparison-import">
+      <label for="compare-files">Choose recorded logs</label>
+      <input id="compare-files" type="file" multiple accept=".jsonl,.json,application/json" aria-describedby="compare-status" />
+      <div class="actions"><button id="compare-export" type="button" class="quiet" disabled>Download evidence for gist</button></div>
+    </div>
+    <p id="compare-status" class="table-note" role="status">No comparison logs loaded. Choose at least two runs; no model calls will be made.</p>
+    <div id="compare-results" hidden>
+      <p id="compare-scale" class="comparison-scale"></p>
+      <p class="table-note">Aligned at the first prompt; idle gaps included. Equal widths mean equal time. Colors match work kinds across runs.</p>
+      <ul id="compare-warnings" class="comparison-warnings"></ul>
+      {['a', 'b'].map((slot, index) => (
+        <article class="comparison-run">
+          <div class="comparison-choice">
+            <label for={`compare-${slot}`}>Run {index === 0 ? 'A' : 'B'}</label>
+            <select id={`compare-${slot}`} aria-describedby={`compare-${slot}-facts`}></select>
+            <div class="actions"><button id={`compare-${slot}-inspect`} type="button" class="quiet">Inspect run</button></div>
+          </div>
+          <p id={`compare-${slot}-facts`} class="comparison-facts"></p>
+          <p id={`compare-${slot}-notes`} class="table-note"></p>
+          <canvas id={`compare-${slot}-chart`} class="comparison-chart" role="img"></canvas>
+        </article>
+      ))}
+    </div>
+  </section>
+  <p id="announcer" class="visually-hidden" aria-live="polite"></p>
+
+  <script>
+    import {
+      GAP_WIDTH,
+      ICONS,
+      INK,
+      PHASES,
+      advanceReplay,
+      axisOf,
+      clock,
+      commonAncestor,
+      demoSession,
+      edgeColor,
+      fillColor,
+      eventIndexAt,
+      expandedRows,
+      formatDuration,
+      formatOffset,
+      iconLabel,
+      iconOf,
+      kindLabel,
+      contextAt,
+      loopSoFar,
+      modelAt,
+      narrate,
+      parseSession,
+      replayDetail,
+      spanLabel,
+      summarize,
+      formatTokens,
+      tickStep,
+      ticks,
+      timeOf,
+      type Gap,
+      type Icon,
+      type Marker,
+      type Phase,
+      type Session,
+      type Span,
+      type SpanStatus,
+    } from '../lib/session-flame'
+    import {
+      comparisonBar, comparisonMarkdown, comparisonScale, comparisonWarnings,
+      runEvidence, tokenRangeLabel, type ComparisonRun,
+    } from '../lib/session-comparison'
+    import recorded from '../lib/session-flame-runs.json'
+
+    const MAX_BYTES = 100 * 1024 * 1024
+    const MIN_RANGE = 5
+    const RAW_LIMIT = 20_000
+    const OVERVIEW_HEIGHT = 32
+    const REPLAY_LIMIT = 100
+    const STATUS: Record<SpanStatus, string> = {
+      ok: 'Completed',
+      failed: 'Failed',
+      open: 'Still running when the log ended',
+    }
+
+    const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
+    const chart = byId<HTMLCanvasElement>('chart')
+    const scroller = byId<HTMLDivElement>('chart-scroll')
+    const overview = byId<HTMLCanvasElement>('overview')
+    const tip = byId<HTMLDivElement>('chart-tip')
+    const status = byId<HTMLParagraphElement>('status')
+    const fileInput = byId<HTMLInputElement>('session-file')
+    const sampleButton = byId<HTMLButtonElement>('sample-button')
+    const aside = byId<HTMLElement>('app-aside')
+    const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+    const announcer = byId<HTMLParagraphElement>('announcer')
+    const viewRange = byId<HTMLParagraphElement>('view-range')
+    const raw = byId<HTMLDetailsElement>('raw')
+    const rawJson = byId<HTMLPreElement>('raw-json')
+    const copyButton = byId<HTMLButtonElement>('copy-json')
+    const help = byId<HTMLDialogElement>('help')
+    const playButton = byId<HTMLButtonElement>('replay-play')
+    const previousButton = byId<HTMLButtonElement>('replay-previous')
+    const nextButton = byId<HTMLButtonElement>('replay-next')
+    const scrubber = byId<HTMLInputElement>('replay-position')
+    const replaySpeed = byId<HTMLSelectElement>('replay-speed')
+    const skipIdle = byId<HTMLInputElement>('replay-skip-idle')
+    const replayEvents = byId<HTMLOListElement>('replay-events')
+    const replayRaw = byId<HTMLDetailsElement>('replay-raw')
+    const inspectButton = byId<HTMLButtonElement>('replay-inspect')
+    const ROW = Number(chart.dataset.row)
+    const RULER = Number(chart.dataset.ruler)
+    const LANE = Number(chart.dataset.lane)
+    // Bars start below the ruler and one event lane per phase.
+    const HEAD = RULER + PHASES.length * LANE
+    const phaseLabel = new Map(PHASES.map((phase) => [phase.id, phase.label]))
+    const laneIndex = new Map(PHASES.map((phase, index) => [phase.id, index]))
+    const phaseFilter = byId<HTMLDivElement>('phase-filter')
+    const hiddenPhases = new Set<Phase>()
+    const ICON_SIZE = 11
+    const iconPaths = new Map((Object.keys(ICONS) as Icon[]).map((id) => [id, new Path2D(ICONS[id])]))
+    const context = chart.getContext('2d')!
+    const overviewContext = overview.getContext('2d')!
+    const numberFormat = new Intl.NumberFormat('en-US')
+    const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' })
+
+    let session: Session = parseSession(demoSession())
+    // Recorded runs share the slowest run's time axis, so a faster run draws a shorter flame.
+    let shared = 0
+    const runModel = byId<HTMLSelectElement>('run-model')
+    const runContext = byId<HTMLSelectElement>('run-context')
+    const SHARED = Math.max(...recorded.runs.map((run) => run.length))
+    const tierName = (tier: string) => tier === 'long_context' ? 'Long' : 'Default'
+    // Any load supersedes a recorded run that is still downloading.
+    let runRequest = 0
+    let active = 0
+    let rows: Span[][] = []
+    // The chart is expanded into `focus`: its ancestors form a trail on top, its subtree fills the rest.
+    let focus = session.root
+    let rowOf = new Map<Span, number>()
+    let tween = 0
+    let from = 0
+    let to = 1
+    let selected: Span | null = null
+    let hovered: Span | null = null
+    let filter: string | null = null
+    let frame = 0
+    let busy = false
+    let playhead = 0
+    let playing = false
+    let playbackFrame = 0
+    let previousFrame = 0
+    let currentEvent = -1
+    let renderedEvent = -2
+    let renderedThrough = -2
+    const comparison = byId('comparison')
+    const compareFiles = byId<HTMLInputElement>('compare-files')
+    const compareExport = byId<HTMLButtonElement>('compare-export')
+    const compareStatus = byId('compare-status')
+    const compareSlots = ['a', 'b'] as const
+    const compareSelects = compareSlots.map((slot) => byId<HTMLSelectElement>(`compare-${slot}`))
+    let comparisonRuns: ComparisonRun[] = []
+
+    function element<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = '') {
+      const node = document.createElement(tag)
+      if (className) node.className = className
+      if (text) node.textContent = text
+      return node
+    }
+
+    function icon(id: Icon) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      svg.setAttribute('class', 'icon')
+      svg.setAttribute('viewBox', '0 0 16 16')
+      svg.setAttribute('role', 'img')
+      svg.setAttribute('aria-label', iconLabel(id))
+      path.setAttribute('d', ICONS[id])
+      svg.append(path)
+      return svg
+    }
+
+    function drawIcon(id: Icon, x: number, y: number, color: string) {
+      context.save()
+      context.translate(x, y)
+      context.scale(ICON_SIZE / 16, ICON_SIZE / 16)
+      context.strokeStyle = color
+      context.lineWidth = 1.6
+      context.lineCap = 'round'
+      context.lineJoin = 'round'
+      context.stroke(iconPaths.get(id)!)
+      context.restore()
+    }
+
+    const clip = (value: string, chars: number) =>
+      value.length <= chars ? value : `${value.slice(0, Math.max(1, chars - 1))}…`
+    const replayPreview = (value: string) => value.length <= RAW_LIMIT ? value
+      : `${value.slice(0, RAW_LIMIT)}\n… Preview truncated. Inspect the related span to copy its full raw events.`
+    const extent = () => Math.max(session.length, MIN_RANGE, shared)
+    const announce = (message: string) => { announcer.textContent = message }
+    const describe = (span: Span) =>
+      `${spanLabel(span)}. ${kindLabel(span.kind)}, ${formatDuration(span.end - span.start)}, starts ${formatOffset(span.start)}.`
+
+    interface Theme {
+      bg: string
+      surface: string
+      text: string
+      muted: string
+      rule: string
+      strong: string
+      highlight: string
+      highlightText: string
+      light: boolean
+      font: string
+    }
+
+    function theme(): Theme {
+      const style = getComputedStyle(document.documentElement)
+      const read = (name: string) => style.getPropertyValue(name).trim()
+      return {
+        bg: read('--theme-bg'),
+        surface: read('--theme-surface'),
+        text: read('--theme-text'),
+        muted: read('--theme-muted'),
+        rule: read('--theme-rule'),
+        strong: read('--theme-rule-strong'),
+        highlight: read('--theme-highlight'),
+        highlightText: read('--theme-highlight-text'),
+        light: document.documentElement.dataset.theme === 'light',
+        font: getComputedStyle(chart).fontFamily,
+      }
+    }
+
+    interface Paint { fill: string; ink: string; edge: string }
+
+    function painter(colors: Theme) {
+      const cache = new Map<string, Paint>()
+      return (span: Span) => {
+        let paint = cache.get(span.key)
+        if (!paint) {
+          const hue = session.hues.get(span.key) ?? 0
+          paint = span.key === '@session' ? { fill: colors.surface, ink: colors.muted, edge: colors.strong }
+            : span.key === '@prompt' ? { fill: colors.highlight, ink: colors.highlightText, edge: '' }
+              : { fill: fillColor(hue), ink: INK, edge: colors.light ? edgeColor(hue) : '' }
+          cache.set(span.key, paint)
+        }
+        return paint
+      }
+    }
+
+    function toneColor(tone: Marker['tone'], colors: Theme) {
+      if (tone === 'error') return colors.light ? '#b3261e' : '#ff9b8f'
+      if (tone === 'warning') return colors.light ? '#8a5a00' : '#efb44c'
+      return colors.muted
+    }
+
+    // Failed spans carry diagonal ink hatching over their fill.
+    const hatch = (() => {
+      const tile = document.createElement('canvas')
+      tile.width = tile.height = 8
+      const tileContext = tile.getContext('2d')!
+      tileContext.strokeStyle = 'rgba(17, 17, 17, 0.5)'
+      tileContext.lineWidth = 1.5
+      tileContext.beginPath()
+      for (const offset of [-8, 0, 8]) {
+        tileContext.moveTo(offset, 8)
+        tileContext.lineTo(offset + 8, 0)
+      }
+      tileContext.stroke()
+      return context.createPattern(tile, 'repeat')
+    })()
+
+    function prepare(canvas: HTMLCanvasElement, target: CanvasRenderingContext2D, height: number) {
+      const width = canvas.clientWidth
+      const ratio = Math.min(window.devicePixelRatio || 1, 2)
+      const pixelWidth = Math.round(width * ratio)
+      const pixelHeight = Math.round(height * ratio)
+      if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+        canvas.width = pixelWidth
+        canvas.height = pixelHeight
+      }
+      target.setTransform(ratio, 0, 0, ratio, 0, 0)
+      target.clearRect(0, 0, width, height)
+      return width
+    }
+
+    function schedule() {
+      if (!frame) frame = requestAnimationFrame(draw)
+    }
+
+    function draw() {
+      frame = 0
+      if (!comparison.hidden) {
+        drawComparison()
+        return
+      }
+      const colors = theme()
+      const paintOf = painter(colors)
+      const height = Math.max(HEAD + rows.length * ROW, scroller.clientHeight)
+      if (chart.style.height !== `${height}px`) chart.style.height = `${height}px`
+      const width = prepare(chart, context, height)
+      if (!width) return
+      // The ruler and event lanes stay pinned to the top of the scroller.
+      const top = Math.min(scroller.scrollTop, height - HEAD)
+      const scale = width / (to - from)
+      const px = (x: number) => (x - from) * scale
+      context.font = `11px ${colors.font}`
+      context.textBaseline = 'middle'
+      const charWidth = context.measureText('0').width || 6.6
+
+      const step = tickStep(96 / scale)
+      const decimals = step < 10 ? 3 : step < 100 ? 2 : step < 1000 ? 1 : 0
+      const marks = ticks(session, from, to, step)
+      context.fillStyle = colors.rule
+      for (const tick of marks) context.fillRect(Math.round(px(tick.x)), HEAD, 1, height - HEAD)
+
+      // While replaying, work that has not started yet fades back.
+      const replaying = playhead > 0 && playhead < session.total
+      const trailPaint = paintOf(session.root)
+      for (const span of session.spans) {
+        const row = rowOf.get(span)
+        if (row === undefined || span.x1 < from || span.x0 > to) continue
+        const left = Math.max(px(span.x0), -2)
+        const right = Math.min(px(span.x1), width + 2)
+        const barWidth = Math.max(1, right - left)
+        const y = HEAD + row * ROW
+        // Ancestors of the expanded span read as a neutral trail.
+        const paint = span.depth < focus.depth ? trailPaint : paintOf(span)
+        const dim = filter !== null && span.key !== filter
+        context.globalAlpha = (dim ? 0.25 : 1) * (replaying && span.start > playhead ? 0.3 : 1)
+        context.fillStyle = paint.fill
+        context.fillRect(left, y, barWidth, ROW - 1)
+        if (paint.edge && barWidth > 3) {
+          context.strokeStyle = paint.edge
+          context.lineWidth = 1
+          context.strokeRect(left + 0.5, y + 0.5, barWidth - 1, ROW - 2)
+        }
+        if (span.status === 'failed' && hatch) {
+          context.fillStyle = hatch
+          context.fillRect(left, y, barWidth, ROW - 1)
+        }
+        if (span.status === 'open' && px(span.x1) <= width && barWidth > 16) {
+          // Unfinished work fades out at its last known moment.
+          const fade = context.createLinearGradient(right - 16, 0, right, 0)
+          fade.addColorStop(0, 'rgba(0, 0, 0, 0)')
+          fade.addColorStop(1, 'rgba(0, 0, 0, 0.9)')
+          context.globalCompositeOperation = 'destination-out'
+          context.fillStyle = fade
+          context.fillRect(right - 16, y, 16, ROW - 1)
+          context.globalCompositeOperation = 'source-over'
+        }
+        if (!dim) {
+          // The session bar spans every fold, so its label stops at the next one.
+          const fold = span === session.root ? session.gaps.map((gap) => px(gap.x)).find((x) => x > Math.max(left, 0) + 8) : undefined
+          const room = Math.min(right, width, fold ?? width) - Math.max(left, 0) - 8
+          if (room >= ICON_SIZE) {
+            const x = Math.max(left, 0) + 4
+            drawIcon(span.kind, x, y + (ROW - 1 - ICON_SIZE) / 2, paint.ink)
+            const chars = Math.floor((room - ICON_SIZE - 4) / charWidth)
+            if (chars >= 3) {
+              context.fillStyle = paint.ink
+              context.fillText(clip(spanLabel(span), chars), x + ICON_SIZE + 4, y + ROW / 2)
+            }
+          }
+        }
+      }
+      context.globalAlpha = 1
+
+      for (const gap of session.gaps) {
+        const start = px(gap.x)
+        const end = px(gap.x + GAP_WIDTH)
+        if (end < 0 || start > width) continue
+        context.globalAlpha = 0.72
+        context.fillStyle = colors.bg
+        context.fillRect(start, HEAD, end - start, height - HEAD)
+        context.globalAlpha = 1
+        context.fillStyle = colors.strong
+        context.fillRect(Math.round(start), 0, 1, height)
+        context.fillRect(Math.round(end), 0, 1, height)
+      }
+
+      const outline = (span: Span, lineWidth: number, color: string) => {
+        const row = rowOf.get(span)
+        if (row === undefined || span.x1 < from || span.x0 > to) return
+        const left = Math.max(px(span.x0), -2)
+        const barWidth = Math.max(1, Math.min(px(span.x1), width + 2) - left)
+        context.strokeStyle = color
+        context.lineWidth = lineWidth
+        context.strokeRect(left - lineWidth / 2, HEAD + row * ROW - lineWidth / 2, barWidth + lineWidth, ROW - 1 + lineWidth)
+      }
+      if (replaying) {
+        // Outline the stack of work running at the playhead.
+        for (const span of session.spans) {
+          if (span !== session.root && span.start <= playhead && playhead < span.end) outline(span, 1, colors.text)
+        }
+      }
+      if (hovered && hovered !== selected) outline(hovered, 1, colors.muted)
+      if (selected) outline(selected, 2, colors.text)
+
+      context.fillStyle = colors.bg
+      context.fillRect(0, top, width, HEAD)
+      for (const tick of marks) {
+        const x = Math.round(px(tick.x))
+        context.fillStyle = colors.strong
+        context.fillRect(x, top + RULER - 6, 1, 6)
+        const label = clock(tick.time, decimals)
+        const end = x + 8 + label.length * charWidth
+        // Labels give way to the canvas edge and to folded gaps, which carry their own labels.
+        if (end > width || session.gaps.some((gap) => px(gap.x) > x && px(gap.x) < end)) continue
+        context.fillStyle = colors.muted
+        context.fillText(label, x + 4, top + 9)
+      }
+      context.fillStyle = colors.strong
+      context.fillRect(0, top + RULER - 1, width, 1)
+      drawLanes(px, width, top, colors)
+      for (const gap of session.gaps) {
+        const start = px(gap.x)
+        const end = px(gap.x + GAP_WIDTH)
+        if (end < 0 || start > width) continue
+        context.fillStyle = colors.strong
+        context.fillRect(Math.round(start), top, 1, HEAD)
+        context.fillRect(Math.round(end), top, 1, HEAD)
+        const idle = formatDuration(gap.end - gap.start)
+        const label = [`${idle} idle`, idle].find((text) => text.length * charWidth + 8 <= end - start)
+        if (label) {
+          context.fillStyle = colors.muted
+          context.textAlign = 'center'
+          context.fillText(label, (start + end) / 2, top + 9)
+          context.textAlign = 'start'
+        }
+      }
+      for (const marker of session.markers) {
+        const x = px(marker.x)
+        if (x < -6 || x > width + 6) continue
+        context.fillStyle = toneColor(marker.tone, colors)
+        context.beginPath()
+        context.moveTo(x - 4, top + RULER - 9)
+        context.lineTo(x + 4, top + RULER - 9)
+        context.lineTo(x, top + RULER - 2)
+        context.closePath()
+        context.fill()
+      }
+
+      drawPlayhead(context, px(axisOf(session, playhead)), width, top, height, colors)
+      drawOverview(colors, paintOf)
+      const range = to - from
+      const places = range < 1e4 ? 2 : range < 6e4 ? 1 : 0
+      const shown = from <= 0 && to >= extent()
+        ? shared > session.length ? `Whole run on the shared ${clock(shared)} scale` : 'Whole session'
+        : `${clock(timeOf(session, from), places)} – ${clock(timeOf(session, to), places)}`
+      viewRange.textContent = focus === session.root ? shown : `Inside ${kindLabel(focus.kind).toLowerCase()} · ${shown}`
+    }
+
+    function drawLanes(px: (x: number) => number, width: number, top: number, colors: Theme) {
+      const lanesTop = top + RULER
+      for (let lane = 0; lane < PHASES.length; lane++) {
+        context.fillStyle = colors.rule
+        context.fillRect(0, lanesTop + (lane + 1) * LANE - 1, width, 1)
+      }
+      session.timeline.forEach((entry, index) => {
+        const x = Math.round(px(axisOf(session, entry.at)))
+        if (x < -2 || x > width + 2) return
+        const y = lanesTop + laneIndex.get(entry.phase)! * LANE
+        const current = index === currentEvent
+        context.globalAlpha = hiddenPhases.has(entry.phase) ? 0.25 : 1
+        // Ticks fill in as the replay passes them.
+        context.fillStyle = current || entry.at <= playhead ? colors.text : colors.muted
+        context.fillRect(current ? x - 1 : x, y + 2, current ? 3 : 1, LANE - 5)
+      })
+      context.globalAlpha = 1
+      context.font = `10px ${colors.font}`
+      for (const phase of PHASES) {
+        const y = lanesTop + laneIndex.get(phase.id)! * LANE
+        const label = phase.label.toUpperCase()
+        context.globalAlpha = 0.85
+        context.fillStyle = colors.bg
+        context.fillRect(0, y, context.measureText(label).width + 8, LANE - 1)
+        context.globalAlpha = hiddenPhases.has(phase.id) ? 0.4 : 1
+        context.fillStyle = colors.muted
+        context.fillText(label, 4, y + LANE / 2)
+      }
+      context.globalAlpha = 1
+      context.fillStyle = colors.strong
+      context.fillRect(0, top + HEAD - 1, width, 1)
+      context.font = `11px ${colors.font}`
+    }
+
+    function drawOverview(colors: Theme, paintOf: (span: Span) => Paint) {
+      const width = prepare(overview, overviewContext, OVERVIEW_HEIGHT)
+      if (!width) return
+      const scale = width / extent()
+      const band = Math.min(4, (OVERVIEW_HEIGHT - 4) / session.rows)
+      for (const span of session.spans) {
+        overviewContext.fillStyle = paintOf(span).fill
+        overviewContext.fillRect(span.x0 * scale, 2 + span.row * band, Math.max(1, (span.x1 - span.x0) * scale), band > 2 ? band - 1 : band)
+      }
+      const start = from * scale
+      const end = to * scale
+      overviewContext.globalAlpha = 0.65
+      overviewContext.fillStyle = colors.bg
+      overviewContext.fillRect(0, 0, start, OVERVIEW_HEIGHT)
+      overviewContext.fillRect(end, 0, width - end, OVERVIEW_HEIGHT)
+      overviewContext.globalAlpha = 1
+      overviewContext.strokeStyle = colors.text
+      overviewContext.lineWidth = 1
+      overviewContext.strokeRect(Math.round(start) + 0.5, 0.5, Math.max(2, Math.round(end - start) - 1), OVERVIEW_HEIGHT - 1)
+      drawPlayhead(overviewContext, axisOf(session, playhead) * scale, width, 0, OVERVIEW_HEIGHT, colors)
+    }
+
+    function drawPlayhead(target: CanvasRenderingContext2D, x: number, width: number, top: number, height: number, colors: Theme) {
+      if (x < 0 || x > width) return
+      x = Math.max(1, Math.min(width - 1, Math.round(x)))
+      target.fillStyle = colors.bg
+      target.fillRect(x - 2, top, 4, height - top)
+      target.fillStyle = colors.text
+      target.fillRect(x - 1, top, 2, height - top)
+      target.beginPath()
+      target.moveTo(x - 5, top)
+      target.lineTo(x + 5, top)
+      target.lineTo(x, top + 7)
+      target.closePath()
+      target.fill()
+    }
+
+    function renderReplay() {
+      const through = eventIndexAt(session.timeline, playhead)
+      const at = clock(playhead, 2)
+      scrubber.value = String(axisOf(session, playhead))
+      scrubber.style.setProperty('--progress', `${(axisOf(session, playhead) / Math.max(session.length, 1)) * 100}%`)
+      scrubber.setAttribute('aria-valuetext', `${at} of ${clock(session.total, 2)} recorded time`)
+      byId('replay-clock').textContent = `${at} / ${clock(session.total, 2)}`
+      byId('replay-state').textContent = playhead >= session.total ? 'End of session' : playing ? 'Playing' : 'Paused'
+      // Rewriting the label every frame swaps the text node under the pointer, and WebKit then drops the click.
+      const label = playing ? 'Pause' : playhead >= session.total ? 'Play again' : 'Play'
+      if (playButton.textContent !== label) playButton.textContent = label
+      previousButton.disabled = currentEvent <= 0
+      nextButton.disabled = currentEvent >= session.timeline.length - 1
+      const running = session.spans.filter((span) => span !== session.root && span.start <= playhead && playhead < span.end)
+      const names = running.filter((span) => span.kind !== 'prompt').map((span) => {
+        if (span.kind === 'turn') return span.parent?.kind === 'agent' ? `${span.parent.name}: model turn` : 'Model turn'
+        return span.name
+      })
+      byId('replay-running').textContent = playhead >= session.total
+        ? 'End of the recording. Unfinished spans remain marked in the chart.'
+        : names.length ? names.join(' · ') : running.length ? 'Between turns' : 'Idle between prompts'
+
+      if (renderedThrough !== through) {
+        const restoreFocus = replayEvents.contains(document.activeElement)
+        renderedThrough = through
+        // Walk back from the playhead so the list always ends on the latest shown event.
+        const shown: number[] = []
+        let hidden = 0
+        for (let index = through; index >= 0; index--) {
+          if (hiddenPhases.has(session.timeline[index].phase)) hidden++
+          else if (shown.length < REPLAY_LIMIT) shown.push(index)
+        }
+        shown.reverse()
+        const capped = through + 1 - hidden > REPLAY_LIMIT
+        byId('replay-count').textContent = `${through + 1} / ${session.timeline.length} events`
+          + `${hidden ? ` · ${hidden} hidden` : ''}${capped ? ` · latest ${REPLAY_LIMIT}` : ''}`
+        replayEvents.replaceChildren(...shown.map((index) => {
+          const entry = session.timeline[index]
+          const detail = replayDetail(entry)
+          const item = element('li')
+          const button = element('button', 'replay-event')
+          button.type = 'button'
+          button.dataset.eventIndex = String(index)
+          const description = element('span', 'event-description')
+          description.append(element('span', '', detail.title))
+          if (entry.event.type === 'user.message' || entry.event.type === 'assistant.message') {
+            description.append(element('span', 'event-excerpt', clip(detail.text.replace(/\s+/g, ' '), 100)))
+          }
+          button.append(element('span', 'when', clock(entry.at, 2)), element('span', 'phase', phaseLabel.get(entry.phase)), icon(iconOf(entry)), description)
+          button.addEventListener('click', () => seek(entry.at, index))
+          item.append(button)
+          return item
+        }))
+        if (restoreFocus) replayEvents.querySelector<HTMLButtonElement>(`[data-event-index="${currentEvent}"]`)?.focus({ preventScroll: true })
+        replayEvents.scrollTop = replayEvents.scrollHeight
+      }
+      if (renderedEvent !== currentEvent) {
+        renderedEvent = currentEvent
+        const entry = session.timeline[currentEvent]
+        inspectButton.disabled = !entry
+        if (entry) {
+          const detail = replayDetail(entry)
+          byId('replay-phase').textContent = phaseLabel.get(entry.phase) ?? ''
+          byId('replay-event-title').replaceChildren(icon(iconOf(entry)), detail.title)
+          byId('replay-event-meta').textContent = `${formatOffset(entry.at)} · ${iconLabel(iconOf(entry))} · ${entry.event.type}`
+          byId('replay-content-label').textContent = detail.label
+          byId('replay-content').textContent = replayPreview(detail.text || 'No content recorded for this event.')
+          byId('replay-reasoning-block').hidden = !detail.reasoning
+          byId('replay-reasoning').textContent = replayPreview(detail.reasoning ?? '')
+          storyLine.textContent = currentEvent === 0 ? `${narrate(entry)} ${storyLine.dataset.hint}` : narrate(entry)
+        } else {
+          storyLine.textContent = storyLine.dataset.hint ?? ''
+          byId('replay-phase').textContent = ''
+          byId('replay-event-title').textContent = 'Before the first event'
+          byId('replay-event-meta').textContent = ''
+          byId('replay-content-label').textContent = 'Details'
+          byId('replay-content').textContent = 'Play or choose Next event to begin.'
+          byId('replay-reasoning-block').hidden = true
+        }
+        const reading = entry ? contextAt(session.timeline, currentEvent) : undefined
+        const share = reading?.limit ? Math.min(1, reading.tokens / reading.limit) : 0
+        byId('gauge-model').textContent = entry ? modelAt(session.timeline, currentEvent) : ''
+        byId('gauge-fill').style.width = `${share * 100}%`
+        byId('gauge-text').textContent = !reading
+          ? 'Context not measured yet'
+          : `Context ${formatTokens(reading.tokens)}${reading.limit ? ` of ${formatTokens(reading.limit)} (${Math.round(share * 100)}%)` : ''}${reading.at < entry!.at ? ` · measured at ${clock(reading.at)}` : ''}`
+        const counts = entry ? loopSoFar(session.timeline, currentEvent) : null
+        for (const step of storySteps) {
+          const phase = step.dataset.phase as Phase
+          const count = counts?.[phase] ?? 0
+          step.toggleAttribute('data-done', count > 0)
+          if (entry?.phase === phase) step.setAttribute('aria-current', 'step')
+          else step.removeAttribute('aria-current')
+          step.querySelector('.count')!.textContent = count > 1 ? ` ×${count}` : ''
+        }
+        fillReplayRaw()
+      }
+      for (const button of replayEvents.querySelectorAll<HTMLButtonElement>('button')) {
+        if (Number(button.dataset.eventIndex) === currentEvent) button.setAttribute('aria-current', 'true')
+        else button.removeAttribute('aria-current')
+      }
+    }
+
+    const storyLine = byId('story-line')
+    const storySteps = [...document.querySelectorAll<HTMLLIElement>('#story-steps li')]
+    const timelineToggle = byId('timeline-toggle')
+    timelineToggle.addEventListener('click', () => {
+      const open = timelineToggle.getAttribute('aria-expanded') !== 'true'
+      timelineToggle.setAttribute('aria-expanded', String(open))
+      byId('replay-more').hidden = !open
+    })
+    const replayToggle = byId('replay-toggle')
+    replayToggle.addEventListener('click', () => {
+      const open = replayToggle.getAttribute('aria-expanded') !== 'true'
+      replayToggle.setAttribute('aria-expanded', String(open))
+      byId('transport').hidden = !open
+    })
+
+    function fillReplayRaw() {
+      if (!replayRaw.open) return
+      const entry = session.timeline[currentEvent]
+      byId('replay-raw-json').textContent = entry ? replayPreview(JSON.stringify(entry.event, null, 2)) : ''
+    }
+
+    function movePlayhead(at: number, index?: number) {
+      playhead = Math.max(0, Math.min(session.total, at))
+      currentEvent = index ?? eventIndexAt(session.timeline, playhead)
+      const x = axisOf(session, playhead)
+      if (x < from || x > to) {
+        const range = to - from
+        setView(x - range * 0.2, x + range * 0.8)
+      }
+      renderReplay()
+      schedule()
+    }
+
+    function pauseReplay() {
+      playing = false
+      cancelAnimationFrame(playbackFrame)
+      playbackFrame = 0
+      renderReplay()
+    }
+
+    function seek(at: number, index?: number) {
+      pauseReplay()
+      movePlayhead(at, index)
+    }
+
+    function playback(now: number) {
+      if (!playing) return
+      const elapsed = (now - previousFrame) * Number(replaySpeed.value)
+      previousFrame = now
+      movePlayhead(advanceReplay(session, playhead, elapsed, skipIdle.checked))
+      if (playhead >= session.total) {
+        pauseReplay()
+        announce('Replay reached the end of the session.')
+      } else {
+        playbackFrame = requestAnimationFrame(playback)
+      }
+    }
+
+    function togglePlayback() {
+      if (playing) {
+        pauseReplay()
+        announce(`Replay paused at ${clock(playhead, 2)}.`)
+        return
+      }
+      if (playhead >= session.total) movePlayhead(0)
+      playing = true
+      previousFrame = performance.now()
+      renderReplay()
+      playbackFrame = requestAnimationFrame(playback)
+      announce('Playing session replay.')
+    }
+
+    function setView(start: number, end: number) {
+      const range = Math.min(extent(), Math.max(MIN_RANGE, end - start))
+      const middle = (start + end) / 2
+      from = Math.max(0, Math.min(extent() - range, middle - range / 2))
+      to = from + range
+      schedule()
+    }
+
+    // Zooming or panning past an expanded bar steps out to the ancestor that still covers the view.
+    function widen() {
+      const covers = (span: Span) => {
+        const slack = Math.max(0, MIN_RANGE - (span.x1 - span.x0)) + 1e-6
+        return from >= span.x0 - slack && to <= span.x1 + slack
+      }
+      let next = focus
+      while (next.parent && !covers(next)) next = next.parent
+      if (next === focus) return
+      arrange(next)
+      announce(next === session.root ? 'Showing the whole session.' : `Stepped out to ${spanLabel(next)}.`)
+    }
+    const zoom = (factor: number, anchor: number) => {
+      cancelAnimationFrame(tween)
+      setView(anchor - (anchor - from) * factor, anchor + (to - anchor) * factor)
+      widen()
+    }
+    const pan = (delta: number) => {
+      cancelAnimationFrame(tween)
+      setView(from + delta, to + delta)
+      widen()
+    }
+    const axisAt = (x: number) => from + (x / chart.clientWidth) * (to - from)
+    const focusPoint = () => selected && selected.x1 >= from && selected.x0 <= to
+      ? (Math.max(selected.x0, from) + Math.min(selected.x1, to)) / 2
+      : (from + to) / 2
+
+    function arrange(next: Span) {
+      focus = next
+      rowOf = expandedRows(next)
+      rows = []
+      for (const span of session.spans) {
+        const row = rowOf.get(span)
+        if (row !== undefined) (rows[row] ??= []).push(span)
+      }
+      schedule()
+    }
+
+    /** Eases the view to a range so an expand or collapse reads as one motion. */
+    function glide(start: number, end: number) {
+      cancelAnimationFrame(tween)
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return setView(start, end)
+      const [startFrom, startTo] = [from, to]
+      const began = performance.now()
+      const step = (now: number) => {
+        const t = Math.min(1, (now - began) / 240)
+        const eased = 1 - (1 - t) ** 3
+        setView(startFrom + (start - startFrom) * eased, startTo + (end - startTo) * eased)
+        if (t < 1) tween = requestAnimationFrame(step)
+      }
+      tween = requestAnimationFrame(step)
+    }
+
+    /** Expands a span to the full width, keeping only its ancestors and its own subtree. */
+    function expand(span: Span) {
+      arrange(span)
+      scroller.scrollTop = 0
+      glide(span.x0, span.x1)
+      announce(span === session.root ? 'Showing the whole session.' : `Expanded ${spanLabel(span)}. Escape steps out.`)
+    }
+
+    function collapse() {
+      arrange(session.root)
+      glide(0, extent())
+    }
+
+    function reveal(span: Span) {
+      if (span.x1 < from || span.x0 > to) pan((span.x0 + span.x1) / 2 - (from + to) / 2)
+      const y = HEAD + (rowOf.get(span) ?? 0) * ROW
+      if (y < scroller.scrollTop + HEAD || y + ROW > scroller.scrollTop + scroller.clientHeight) {
+        scroller.scrollTop = y - (scroller.clientHeight + HEAD) / 2
+      }
+    }
+
+    // A span picked elsewhere (log, transcript) may sit outside the expanded subtree.
+    const ensureShown = (span: Span) => { if (!rowOf.has(span)) arrange(commonAncestor(focus, span)) }
+
+    // Expanding keeps the playhead, so work inside the expanded span is not faded as yet to come.
+    function select(span: Span | null, show: boolean, follow = true) {
+      if (span) {
+        if (follow) seek(span.start)
+        ensureShown(span)
+      }
+      selected = span
+      if (span) {
+        if (show) reveal(span)
+        announce(describe(span))
+      }
+      renderInspector()
+      schedule()
+    }
+
+    const inRuler = (y: number) => y < scroller.scrollTop + RULER
+
+    function eventAt(x: number, y: number) {
+      const lane = Math.floor((y - scroller.scrollTop - RULER) / LANE)
+      const phase = PHASES[lane]?.id
+      if (!phase || hiddenPhases.has(phase)) return null
+      const at = axisAt(x)
+      let best: number | null = null
+      let distance = (4 * (to - from)) / chart.clientWidth
+      for (let index = 0; index < session.timeline.length; index++) {
+        const entry = session.timeline[index]
+        const gap = Math.abs(axisOf(session, entry.at) - at)
+        if (entry.phase === phase && gap <= distance) {
+          best = index
+          distance = gap
+        }
+      }
+      return best
+    }
+
+    function spanAt(x: number, y: number) {
+      const row = rows[Math.floor((y - HEAD) / ROW)]
+      if (y < scroller.scrollTop + HEAD || !row) return null
+      const at = axisAt(x)
+      const slack = (2 * (to - from)) / chart.clientWidth
+      let near: Span | null = null
+      for (const span of row) {
+        if (span.x0 > at + slack) break
+        if (span.x1 < at - slack) continue
+        if (span.x0 <= at && at <= span.x1) return span
+        near ??= span
+      }
+      return near
+    }
+
+    type Target = { span: Span } | { marker: Marker } | { gap: Gap } | { event: number }
+
+    function targetAt(x: number, y: number): Target | null {
+      const at = axisAt(x)
+      if (inRuler(y)) {
+        const slack = (5 * (to - from)) / chart.clientWidth
+        const marker = session.markers.find((item) => Math.abs(item.x - at) <= slack)
+        if (marker) return { marker }
+      }
+      const event = eventAt(x, y)
+      if (event !== null) return { event }
+      const gap = session.gaps.find((item) => item.x <= at && at <= item.x + GAP_WIDTH)
+      if (gap) return { gap }
+      const span = spanAt(x, y)
+      return span ? { span } : null
+    }
+
+    function tipLines(target: Target) {
+      if ('marker' in target) return [target.marker.label, formatOffset(target.marker.at)]
+      if ('event' in target) {
+        const entry = session.timeline[target.event]
+        return [clip(replayDetail(entry).title, 120), `${phaseLabel.get(entry.phase)} · ${entry.event.type}`, formatOffset(entry.at)]
+      }
+      if ('gap' in target) {
+        return [
+          `Idle for ${formatDuration(target.gap.end - target.gap.start)}`,
+          'Folded to a fixed width',
+          `${formatOffset(target.gap.start)} to ${formatOffset(target.gap.end)}`,
+        ]
+      }
+      const { span } = target
+      const state = span.status === 'ok' ? '' : ` · ${STATUS[span.status]}`
+      return [
+        clip(spanLabel(span), 120),
+        `${kindLabel(span.kind)} · ${formatDuration(span.end - span.start)}${state}`,
+        `${formatOffset(span.start)} to ${formatOffset(span.end)}`,
+      ]
+    }
+
+    function showTip(x: number, y: number, lines: string[]) {
+      tip.replaceChildren(...lines.map((line, index) => element(index ? 'span' : 'strong', '', line)))
+      tip.hidden = false
+      const width = tip.offsetWidth
+      const height = tip.offsetHeight
+      y -= scroller.scrollTop
+      const left = x + 14 + width > chart.clientWidth ? Math.max(0, x - width - 14) : x + 14
+      const top = y + 14 + height > scroller.clientHeight ? Math.max(0, y - height - 8) : y + 14
+      tip.style.left = `${left}px`
+      tip.style.top = `${top}px`
+    }
+
+    function hover(x: number, y: number) {
+      const target = targetAt(x, y)
+      const span = target && 'span' in target ? target.span : null
+      if (span !== hovered) {
+        hovered = span
+        schedule()
+      }
+      chart.style.cursor = span || (target && 'event' in target) ? 'pointer' : 'grab'
+      if (target) showTip(x, y, tipLines(target))
+      else tip.hidden = true
+    }
+
+    function renderInspector() {
+      byId('inspector-empty').hidden = Boolean(selected)
+      byId('inspector-body').hidden = !selected
+      if (!selected) return
+      const span = selected
+      const path: Span[] = []
+      for (let node: Span | null = span; node; node = node.parent) path.unshift(node)
+      byId('crumbs').replaceChildren(...path.map((node) => {
+        const item = element('li')
+        if (node === span) {
+          const current = element('span', '', clip(spanLabel(node), 40))
+          current.setAttribute('aria-current', 'location')
+          item.append(current)
+        } else {
+          const button = element('button', '', clip(spanLabel(node), 40))
+          button.type = 'button'
+          button.addEventListener('click', () => select(node, true))
+          item.append(button)
+        }
+        return item
+      }))
+      byId('span-title').replaceChildren(icon(span.kind), spanLabel(span))
+      const facts: [string, string][] = [
+        ['Kind', kindLabel(span.kind)],
+        ['Started', `${formatOffset(span.start)} · ${dateFormat.format(session.origin + span.start)}`],
+        ['Duration', formatDuration(span.end - span.start)],
+        ['Self time', formatDuration(span.self)],
+      ]
+      if (span.kind !== 'session' && span.kind !== 'prompt') facts.push(['Status', STATUS[span.status]])
+      byId('span-facts').replaceChildren(...[...facts, ...span.facts].map(([label, value]) => {
+        const row = element('div')
+        row.append(element('dt', '', label), element('dd', '', value))
+        return row
+      }))
+      byId('raw-summary').textContent = `Raw events (${numberFormat.format(span.events.length)})`
+      fillRaw()
+    }
+
+    function fillRaw() {
+      if (!raw.open || !selected) return
+      const json = JSON.stringify(selected.events, null, 2)
+      rawJson.textContent = json.length > RAW_LIMIT
+        ? `${json.slice(0, RAW_LIMIT)}\n… ${numberFormat.format(json.length - RAW_LIMIT)} more characters; Copy JSON includes everything.`
+        : json
+    }
+
+    function swatch(key: string) {
+      const node = element('span', 'swatch')
+      if (key === '@session') node.classList.add('neutral-session')
+      else if (key === '@prompt') node.classList.add('neutral-prompt')
+      else node.style.background = fillColor(session.hues.get(key) ?? 0)
+      return node
+    }
+
+    function setFilter(key: string | null) {
+      filter = key
+      for (const button of document.querySelectorAll<HTMLButtonElement>('#share-body .key-toggle')) {
+        button.setAttribute('aria-pressed', String(button.dataset.key === key))
+      }
+      announce(key ? `Highlighting ${session.shares.find((share) => share.key === key)?.label ?? key}.` : 'Showing all activity.')
+      schedule()
+    }
+
+    function renderShares() {
+      const working = session.shares.filter((share) => share.key !== '@session')
+      const idle = session.shares.filter((share) => share.key === '@session')
+      byId('spectrum').replaceChildren(...working.filter((share) => share.time > 0).map((share) => {
+        const segment = swatch(share.key)
+        segment.style.flexGrow = String(share.time)
+        return segment
+      }))
+      byId('share-body').replaceChildren(...[...working, ...idle].map((share) => {
+        const row = element('tr', share.key === '@session' ? 'idle' : '')
+        const head = element('th')
+        head.scope = 'row'
+        if (share.key === '@session') {
+          head.append(swatch(share.key), share.label)
+        } else {
+          const button = element('button', 'key-toggle')
+          button.type = 'button'
+          button.dataset.key = share.key
+          button.setAttribute('aria-pressed', 'false')
+          button.append(swatch(share.key), share.label)
+          button.addEventListener('click', () => setFilter(filter === share.key ? null : share.key))
+          head.append(button)
+        }
+        const ratio = active > 0 ? share.time / active : 0
+        const of = share.key === '@session' || active <= 0 ? '—'
+          : ratio > 0 && ratio < 0.005 ? '<1%' : `${Math.round(ratio * 100)}%`
+        row.append(
+          head,
+          element('td', '', formatDuration(share.time)),
+          element('td', '', of),
+          element('td', '', numberFormat.format(share.spans)),
+          element('td', '', share.failed ? numberFormat.format(share.failed) : '—'),
+        )
+        return row
+      }))
+    }
+
+    function renderPhaseFilter() {
+      phaseFilter.replaceChildren(...PHASES.map((phase) => {
+        const count = session.timeline.filter((entry) => entry.phase === phase.id).length
+        const button = element('button', 'phase-chip', `${phase.label} ${numberFormat.format(count)}`)
+        button.type = 'button'
+        button.title = phase.hint
+        button.setAttribute('aria-pressed', 'true')
+        button.addEventListener('click', () => {
+          const show = hiddenPhases.has(phase.id)
+          if (show) hiddenPhases.delete(phase.id)
+          else hiddenPhases.add(phase.id)
+          button.setAttribute('aria-pressed', String(show))
+          renderedThrough = -2
+          renderReplay()
+          schedule()
+        })
+        return button
+      }))
+    }
+
+    function load(next: Session, source: string, scale = 0) {
+      pauseReplay()
+      closeComparison()
+      session = next
+      shared = scale
+      runRequest++
+      cancelAnimationFrame(tween)
+      arrange(session.root)
+      selected = null
+      hovered = null
+      filter = null
+      from = 0
+      to = extent()
+      renderedEvent = -2
+      renderedThrough = -2
+      scrubber.max = String(session.length)
+      scroller.scrollTop = 0
+      const summary = summarize(session, source)
+      active = summary.active
+      byId('coverage').textContent = summary.coverage
+      byId('headline').textContent = summary.headline
+      tip.hidden = true
+      hiddenPhases.clear()
+      renderPhaseFilter()
+      renderShares()
+      renderInspector()
+      movePlayhead(0)
+      if (help.open) help.close()
+      schedule()
+    }
+
+    function setBusy(value: boolean) {
+      busy = value
+      fileInput.disabled = value
+      sampleButton.disabled = value
+    }
+
+    function setStatus(message: string) {
+      status.textContent = message
+      announce(message)
+    }
+
+    function fail(message: string) {
+      setStatus(message)
+      if (!help.open) help.showModal()
+    }
+
+    function showTab(tab: HTMLButtonElement, focus = false) {
+      closeComparison()
+      for (const item of tabs) {
+        const current = item === tab
+        item.setAttribute('aria-selected', String(current))
+        item.tabIndex = current ? 0 : -1
+        byId(item.getAttribute('aria-controls')!).hidden = !current
+      }
+      if (focus) tab.focus()
+      tip.hidden = true
+      if (tab.id === 'tab-transcript') replayEvents.scrollTop = replayEvents.scrollHeight
+      schedule()
+    }
+
+    async function loadFile(file: File | undefined) {
+      if (!file || busy) return
+      if (file.size > MAX_BYTES) {
+        fail('That file is over 100 MiB. Choose a single session’s events.jsonl.')
+        return
+      }
+      pauseReplay()
+      setBusy(true)
+      setStatus(`Reading ${file.name} locally…`)
+      try {
+        const input = await file.text()
+        // Let the status message paint before parsing blocks the main thread.
+        await new Promise((done) => setTimeout(done, 0))
+        load(parseSession(input), file.name)
+        runModel.value = 'file'
+        syncContext()
+        setStatus(`Loaded ${file.name}. It stayed in this browser.`)
+      } catch (error) {
+        fail(error instanceof Error ? error.message : 'That file could not be read.')
+      } finally {
+        setBusy(false)
+      }
+    }
+
+    fileInput.addEventListener('change', () => {
+      void loadFile(fileInput.files?.[0])
+      fileInput.value = ''
+    })
+
+    // A log dropped anywhere on the page opens it.
+    const appFrame = document.querySelector<HTMLElement>('.flame-page')!
+    function closeComparison() {
+      comparison.hidden = true
+      appFrame.classList.remove('comparing')
+      schedule()
+    }
+
+    function selectedRuns() {
+      return compareSelects.map((select) => comparisonRuns[Number(select.value)]).filter((run) => run !== undefined)
+    }
+
+    function renderComparison() {
+      const runs = selectedRuns()
+      if (runs.length !== 2) return
+      const scale = comparisonScale(comparisonRuns)
+      byId('compare-scale').textContent = `Shared scale: 0:00 to ${clock(scale, 2)} · fixed across all ${comparisonRuns.length} imported runs`
+      byId('compare-warnings').replaceChildren(...comparisonWarnings(runs[0], runs[1]).map((warning) => element('li', '', warning)))
+      for (const [index, run] of runs.entries()) {
+        const slot = compareSlots[index]
+        const e = run.evidence
+        const facts = `${formatDuration(e.duration)} elapsed · Input/call ${tokenRangeLabel(e.input)} tokens · Context snapshots ${tokenRangeLabel(e.context)} · Limit ${e.limits.map(formatTokens).join(', ') || 'not recorded'} · ${e.tools} tool/agent calls · ${e.failures} failed · ${e.compactions} compactions`
+        byId(`compare-${slot}-facts`).textContent = facts
+        byId(`compare-${slot}-notes`).textContent = [
+          e.agentModels.length ? `Sub-agent models: ${e.agentModels.join(', ')}.` : '',
+          ...e.warnings,
+        ].filter(Boolean).join(' ')
+        byId(`compare-${slot}-chart`).setAttribute('aria-label', `${run.name}: ${e.models.join(', ') || 'unknown model'}. ${facts}. Use Inspect run for individual spans.`)
+      }
+      schedule()
+    }
+
+    function drawComparison() {
+      const colors = theme()
+      const duration = comparisonScale(comparisonRuns)
+      // Stable kind colors across runs, unlike the single-session time-ranked palette.
+      const hues = new Map<string, number>([['turn', 35], ['tool', 0], ['agent', 65], ['hook', 210], ['approval', 275], ['compaction', 120]])
+      for (const [index, run] of selectedRuns().entries()) {
+        const canvas = byId<HTMLCanvasElement>(`compare-${compareSlots[index]}-chart`)
+        const ctx = canvas.getContext('2d')!
+        const rowHeight = Math.min(ROW, 250 / Math.max(1, run.session.rows))
+        const height = RULER + run.session.rows * rowHeight + 4
+        canvas.style.height = `${height}px`
+        const width = prepare(canvas, ctx, height)
+        if (!width) continue
+        ctx.font = `11px ${colors.font}`
+        ctx.textBaseline = 'middle'
+        const endpoint = run.evidence.duration / duration * width
+        const step = tickStep(duration * 100 / width)
+        for (let at = 0; at <= duration; at += step) {
+          const x = at / duration * width
+          ctx.fillStyle = colors.rule
+          ctx.fillRect(x, RULER, 1, height - RULER)
+          ctx.fillStyle = colors.muted
+          if (x + 55 < width && Math.abs(x - endpoint) > 65) ctx.fillText(clock(at, step < 1000 ? 2 : 0), x + 3, RULER / 2)
+        }
+        for (const span of run.session.spans) {
+          const bar = comparisonBar(span, run.evidence.start, duration)
+          if (!bar) continue
+          const x = bar.left * width
+          const w = bar.width * width
+          const y = RULER + span.row * rowHeight
+          const hue = hues.get(span.kind)
+          ctx.fillStyle = hue === undefined ? colors.strong : fillColor(hue)
+          ctx.fillRect(x, y, w, Math.max(0.5, rowHeight - 1))
+          if (w > 60 && rowHeight >= 14) {
+            ctx.save()
+            ctx.beginPath()
+            ctx.rect(x, y, w, rowHeight)
+            ctx.clip()
+            ctx.fillStyle = hue === undefined ? colors.text : INK
+            ctx.fillText(`${span.status === 'failed' ? '! ' : ''}${spanLabel(span)}`, x + 4, y + rowHeight / 2)
+            ctx.restore()
+          }
+        }
+        ctx.fillStyle = colors.text
+        ctx.fillRect(Math.min(width - 1, endpoint), RULER, 1, height - RULER)
+        ctx.textAlign = 'right'
+        ctx.fillText(clock(run.evidence.duration, 2), Math.max(60, endpoint - 3), RULER / 2)
+        ctx.textAlign = 'left'
+      }
+    }
+
+    byId('compare-open').addEventListener('click', () => {
+      pauseReplay()
+      comparison.hidden = false
+      appFrame.classList.add('comparing')
+      byId('comparison-title').focus()
+      schedule()
+    })
+    byId('compare-close').addEventListener('click', () => {
+      closeComparison()
+      byId('compare-open').focus()
+    })
+    compareSelects.forEach((select, index) => {
+      select.addEventListener('change', renderComparison)
+      byId(`compare-${compareSlots[index]}-inspect`).addEventListener('click', () => {
+        const run = selectedRuns()[index]
+        if (!run) return
+        load(run.session, run.name)
+        setStatus(`Loaded ${run.name} from the comparison. It stayed in this browser.`)
+        closeComparison()
+        showTab(byId<HTMLButtonElement>('tab-flame'))
+        chart.focus()
+      })
+    })
+    compareFiles.addEventListener('change', async () => {
+      const files = [...(compareFiles.files ?? [])]
+      compareFiles.value = ''
+      if (!files.length) return
+      if (files.length < 2 || files.length > 6 || files.reduce((total, file) => total + file.size, 0) > MAX_BYTES) {
+        compareStatus.textContent = 'Choose 2–6 session logs, at most 100 MiB combined. The previous comparison is unchanged.'
+        return
+      }
+      compareFiles.disabled = true
+      compareExport.disabled = true
+      compareStatus.textContent = 'Reading logs locally…'
+      try {
+        const next: ComparisonRun[] = []
+        for (const file of files) {
+          const bytes = await file.arrayBuffer()
+          const parsed = parseSession(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+          if (parsed.timeline.some(({ event }) => event.type === 'session.start' && event.data?.sessionId === 'sample-session')) {
+            throw new Error('The built-in sample is illustrative. Choose recorded runs for comparison.')
+          }
+          const digest = await crypto.subtle.digest('SHA-256', bytes)
+          const hash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+          if (next.some((run) => run.hash === hash)) throw new Error('Two files contain the same log. Choose distinct runs.')
+          next.push({ name: file.name, hash, session: parsed, evidence: runEvidence(parsed) })
+        }
+        comparisonRuns = next
+        for (const [index, select] of compareSelects.entries()) {
+          select.replaceChildren(...next.map((run, runIndex) => {
+            const option = element('option', '', `${run.evidence.models.join(' → ') || 'Unknown model'} · input ${tokenRangeLabel(run.evidence.input)} · ${run.name}`)
+            option.value = String(runIndex)
+            return option
+          }))
+          select.value = String(index)
+        }
+        byId('compare-results').hidden = false
+        compareStatus.textContent = `${next.length} logs loaded locally. Input/call: recorded main-agent tokens. Missing measurements stay unknown.`
+        renderComparison()
+      } catch (error) {
+        compareStatus.textContent = `${error instanceof Error ? error.message : 'The logs could not be read.'} The previous comparison is unchanged.`
+      } finally {
+        compareFiles.disabled = false
+        compareExport.disabled = comparisonRuns.length < 2
+      }
+    })
+    compareExport.addEventListener('click', () => {
+      const blob = new Blob([comparisonMarkdown(selectedRuns())], { type: 'text/markdown;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = element('a')
+      link.href = url
+      link.download = 'session-comparison.md'
+      document.body.append(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      compareStatus.textContent = 'Evidence downloaded, not published. Review filenames and add reproduction details before sharing a gist. No raw prompts or tool content are included.'
+    })
+    let dragDepth = 0
+    const carriesFile = (event: DragEvent) => event.dataTransfer?.types.includes('Files') ?? false
+    window.addEventListener('dragenter', (event) => {
+      if (!carriesFile(event)) return
+      event.preventDefault()
+      dragDepth += 1
+      appFrame.classList.add('dragging')
+    })
+    window.addEventListener('dragover', (event) => { if (carriesFile(event)) event.preventDefault() })
+    window.addEventListener('dragleave', () => {
+      dragDepth = Math.max(0, dragDepth - 1)
+      if (!dragDepth) appFrame.classList.remove('dragging')
+    })
+    window.addEventListener('drop', (event) => {
+      event.preventDefault()
+      dragDepth = 0
+      appFrame.classList.remove('dragging')
+      if (!comparison.hidden) {
+        compareStatus.textContent = 'Use Choose recorded logs to replace the comparison with 2–6 files.'
+      } else void loadFile(event.dataTransfer?.files[0])
+    })
+
+    byId('help-button').addEventListener('click', () => help.showModal())
+    // The header's file input is inert behind the modal, so close it before opening the picker.
+    byId('choose-file').addEventListener('click', () => {
+      help.close()
+      fileInput.click()
+    })
+    sampleButton.addEventListener('click', () => {
+      load(parseSession(demoSession()), 'Illustrative sample')
+      runModel.value = 'sample'
+      syncContext()
+      setStatus('Showing the illustrative sample.')
+    })
+
+    // Each context option names the prompt limit its recorded run actually reported.
+    function syncContext() {
+      const runs = recorded.runs.filter((run) => run.model === runModel.value)
+      runContext.disabled = !runs.length
+      for (const option of runContext.options) {
+        const run = runs.find((item) => item.tier === option.value)
+        option.disabled = !run
+        option.textContent = `${tierName(option.value)}${run?.limit ? ` · ${formatTokens(run.limit)}` : runs.length ? ' · not offered' : ''}`
+      }
+      if (runs.length && runContext.selectedOptions[0]?.disabled) runContext.value = runs[0].tier
+    }
+
+    async function loadRecorded() {
+      syncContext()
+      if (runModel.value === 'sample') {
+        load(parseSession(demoSession()), 'Illustrative sample')
+        setStatus('Showing the illustrative sample.')
+        return
+      }
+      const run = recorded.runs.find((item) => item.model === runModel.value && item.tier === runContext.value)
+      if (!run) return
+      const request = ++runRequest
+      try {
+        const response = await fetch(`/session-flame/runs/${run.file}`)
+        if (!response.ok) throw new Error(`The recorded run could not be loaded (HTTP ${response.status}).`)
+        const next = parseSession(await response.text())
+        if (request !== runRequest) return
+        const limit = run.limit ? `, ${formatTokens(run.limit)} prompt limit` : ''
+        load(next, `${run.label} · ${tierName(run.tier).toLowerCase()} context${limit}`, SHARED)
+        setStatus(`Showing the recorded ${run.label} run with the ${tierName(run.tier).toLowerCase()} context tier.`)
+      } catch (error) {
+        if (request === runRequest) fail(error instanceof Error ? error.message : 'The recorded run could not be loaded.')
+      }
+    }
+    runModel.addEventListener('change', loadRecorded)
+    runContext.addEventListener('change', loadRecorded)
+
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => showTab(tab))
+      tab.addEventListener('keydown', (event) => {
+        const index = tabs.indexOf(tab)
+        const next = event.key === 'ArrowRight' ? tabs[(index + 1) % tabs.length]
+          : event.key === 'ArrowLeft' ? tabs[(index + tabs.length - 1) % tabs.length]
+            : event.key === 'Home' ? tabs[0]
+              : event.key === 'End' ? tabs[tabs.length - 1] : null
+        if (!next) return
+        event.preventDefault()
+        showTab(next, true)
+      })
+    }
+
+    byId('zoom-in').addEventListener('click', () => zoom(0.5, focusPoint()))
+    byId('zoom-out').addEventListener('click', () => zoom(2, focusPoint()))
+    byId('zoom-fit').addEventListener('click', collapse)
+    playButton.addEventListener('click', togglePlayback)
+    scrubber.addEventListener('input', () => seek(timeOf(session, Number(scrubber.value))))
+    for (const [button, direction] of [[previousButton, -1], [nextButton, 1]] as const) {
+      button.addEventListener('click', () => {
+        const index = currentEvent + direction
+        const entry = session.timeline[index]
+        if (!entry) return
+        seek(entry.at, index)
+        announce(`${replayDetail(entry).title} at ${clock(entry.at, 2)}.`)
+      })
+    }
+    inspectButton.addEventListener('click', () => {
+      const entry = session.timeline[currentEvent]
+      if (!entry) return
+      pauseReplay()
+      selected = entry.span
+      ensureShown(selected)
+      renderInspector()
+      schedule()
+      aside.scrollTop = byId('inspector').offsetTop
+    })
+    replayRaw.addEventListener('toggle', fillReplayRaw)
+    document.addEventListener('visibilitychange', () => { if (document.hidden) pauseReplay() })
+    window.addEventListener('pagehide', pauseReplay)
+    raw.addEventListener('toggle', fillRaw)
+
+    copyButton.addEventListener('click', async () => {
+      if (!selected) return
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(selected.events, null, 2))
+        copyButton.textContent = 'Copied'
+        announce(`Copied ${numberFormat.format(selected.events.length)} raw events.`)
+      } catch {
+        copyButton.textContent = 'Copy failed'
+        announce('Copy failed. Select the text instead.')
+      }
+      setTimeout(() => { copyButton.textContent = 'Copy JSON' }, 1500)
+    })
+
+    chart.addEventListener('wheel', (event) => {
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? chart.clientWidth : 1
+      const sideways = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+      event.preventDefault()
+      if (sideways || event.shiftKey) pan(((sideways ? event.deltaX : event.deltaY) * unit * (to - from)) / chart.clientWidth)
+      else zoom(Math.exp(event.deltaY * unit * 0.002), axisAt(event.offsetX))
+    }, { passive: false })
+
+    let drag: { id: number; x: number; y: number; top: number; from: number; to: number; moved: boolean; seeking: boolean } | null = null
+    chart.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return
+      const seeking = inRuler(event.offsetY)
+      cancelAnimationFrame(tween)
+      drag = { id: event.pointerId, x: event.clientX, y: event.clientY, top: scroller.scrollTop, from, to, moved: false, seeking }
+      chart.setPointerCapture(event.pointerId)
+      if (seeking) seek(timeOf(session, axisAt(event.offsetX)))
+    })
+    chart.addEventListener('pointermove', (event) => {
+      if (drag?.id === event.pointerId) {
+        if (drag.seeking) {
+          const x = Math.max(0, Math.min(chart.clientWidth, event.offsetX))
+          seek(timeOf(session, drag.from + x / chart.clientWidth * (drag.to - drag.from)))
+          tip.hidden = true
+          return
+        }
+        const dx = event.clientX - drag.x
+        const dy = event.clientY - drag.y
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true
+        if (drag.moved) {
+          // The wheel zooms, so dragging is the mouse's way to move both across and down the chart.
+          const shift = (-dx * (drag.to - drag.from)) / chart.clientWidth
+          setView(drag.from + shift, drag.to + shift)
+          scroller.scrollTop = drag.top - dy
+          widen()
+          tip.hidden = true
+          chart.style.cursor = 'grabbing'
+          return
+        }
+      }
+      if (event.pointerType === 'mouse') hover(event.offsetX, event.offsetY)
+    })
+    chart.addEventListener('pointerup', (event) => {
+      if (drag?.id !== event.pointerId) return
+      const click = !drag.moved && !drag.seeking
+      drag = null
+      if (click) {
+        const index = eventAt(event.offsetX, event.offsetY)
+        const span = index === null ? spanAt(event.offsetX, event.offsetY) : null
+        if (index !== null) seek(session.timeline[index].at, index)
+        else if (span) {
+          // Like a flame graph explorer: clicking a bar expands it; clicking a trail bar steps back out.
+          expand(span)
+          select(span, false, false)
+        } else select(null, false)
+      }
+      if (event.pointerType === 'mouse') hover(event.offsetX, event.offsetY)
+    })
+    chart.addEventListener('pointercancel', () => { drag = null })
+    chart.addEventListener('pointerleave', () => {
+      if (drag) return
+      tip.hidden = true
+      if (hovered) {
+        hovered = null
+        schedule()
+      }
+    })
+
+    chart.addEventListener('keydown', (event) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return
+      const range = to - from
+      const row = selected ? rows[rowOf.get(selected) ?? -1] ?? [] : []
+      const index = selected ? row.indexOf(selected) : -1
+      switch (event.key) {
+        case ' ':
+          togglePlayback()
+          break
+        case 'ArrowLeft':
+        case 'ArrowRight': {
+          const next = selected ? row[index + (event.key === 'ArrowLeft' ? -1 : 1)] : session.root
+          if (next) select(next, true)
+          break
+        }
+        case 'ArrowUp':
+          select(selected?.parent ?? session.root, true)
+          break
+        case 'ArrowDown': {
+          const children = selected ? selected.children.filter((child) => rowOf.has(child)).sort((a, b) => a.start - b.start) : []
+          select(children[0] ?? selected ?? session.root, true)
+          break
+        }
+        case '+':
+        case '=':
+        case 'w':
+          zoom(0.5, focusPoint())
+          break
+        case '-':
+        case '_':
+        case 's':
+          zoom(2, focusPoint())
+          break
+        case 'a':
+          pan(-range * 0.2)
+          break
+        case 'd':
+          pan(range * 0.2)
+          break
+        case '0':
+          collapse()
+          break
+        case 'Enter':
+          if (selected) expand(selected)
+          break
+        case 'Escape':
+          if (focus.parent) {
+            expand(focus.parent)
+            break
+          }
+          if (!selected) return
+          select(null, false)
+          announce('Selection cleared.')
+          break
+        default:
+          return
+      }
+      event.preventDefault()
+    })
+
+    let overviewDrag = false
+    const centerOn = (clientX: number) => {
+      const rect = overview.getBoundingClientRect()
+      const at = ((clientX - rect.left) / rect.width) * extent()
+      pan(at - (from + to) / 2)
+    }
+    overview.addEventListener('pointerdown', (event) => {
+      overviewDrag = true
+      overview.setPointerCapture(event.pointerId)
+      centerOn(event.clientX)
+    })
+    overview.addEventListener('pointermove', (event) => { if (overviewDrag) centerOn(event.clientX) })
+    overview.addEventListener('pointerup', () => { overviewDrag = false })
+    overview.addEventListener('pointercancel', () => { overviewDrag = false })
+
+    const resize = new ResizeObserver(schedule)
+    resize.observe(chart)
+    resize.observe(scroller)
+    for (const slot of compareSlots) resize.observe(byId(`compare-${slot}-chart`))
+    scroller.addEventListener('scroll', () => {
+      tip.hidden = true
+      schedule()
+    }, { passive: true })
+    new MutationObserver(schedule).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    void document.fonts?.ready.then(schedule)
+    load(session, 'Illustrative sample')
+  </script>
+
+  <style is:global>
+    html:has(.flame-body),
+    .flame-body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .site-surface .flame-page {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr);
+      width: 100%;
+      height: 100dvh;
+      margin: 0;
+      padding: 0;
+    }
+
+    .flame-page.dragging::after {
+      content: 'Drop events.jsonl to open it here';
+      position: fixed;
+      z-index: 10;
+      inset: 0.5rem;
+      display: grid;
+      place-items: center;
+      border: 2px dashed var(--theme-text);
+      background: color-mix(in srgb, var(--theme-bg) 88%, transparent);
+      pointer-events: none;
+    }
+
+    .flame-page h2,
+    .flame-page h3,
+    .flame-page h4 {
+      margin: 0;
+      letter-spacing: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .flame-page h2 {
+      font-size: 0.95rem;
+    }
+
+    .flame-page h3 {
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    .flame-page h4 {
+      margin-top: 1rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .flame-page section + section {
+      margin-top: 0;
+    }
+
+    .flame-page p {
+      margin: 0.5rem 0 0;
+    }
+
+    .flame-page code,
+    .flame-page pre {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+    }
+
+    .flame-page summary {
+      cursor: pointer;
+    }
+
+    .flame-page .app-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 0.25rem 1.5rem;
+      padding: 0.5rem 1rem 0;
+      border-bottom: 1px solid var(--theme-rule);
+    }
+
+    .flame-page .app-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 0.75rem;
+      min-width: 0;
+      padding-bottom: 0.5rem;
+    }
+
+    .flame-page .app-back {
+      color: var(--theme-muted);
+      font-size: 0.75rem;
+      text-decoration: none;
+    }
+
+    .flame-page .app-back:hover {
+      color: var(--theme-text);
+      text-decoration: underline;
+    }
+
+    .flame-page h1 {
+      font-size: 0.95rem;
+      letter-spacing: 0;
+      line-height: 1.4;
+    }
+
+    .flame-page .app-title .coverage {
+      flex-basis: 100%;
+      min-width: 0;
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.72rem;
+    }
+
+    .flame-page .app-tabs {
+      display: flex;
+      align-self: end;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .flame-page [role='tab'] {
+      flex: none;
+      min-height: 2.75rem;
+      padding: 0.5rem 0.75rem;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: none;
+      color: var(--theme-muted);
+      font: inherit;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    .flame-page [role='tab']:hover {
+      color: var(--theme-text);
+    }
+
+    .flame-page [role='tab'][aria-selected='true'] {
+      border-bottom-color: var(--theme-text);
+      color: var(--theme-text);
+      font-weight: 700;
+    }
+
+    .flame-page [role='tab']:focus-visible {
+      outline-offset: -2px;
+    }
+
+    .flame-page .app-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+
+    .flame-page .open-log,
+    .flame-page #replay-toggle,
+    .flame-page #help-button,
+    .flame-page #theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.25rem;
+      padding: 0.25rem 0.65rem;
+      border: 1px solid var(--theme-rule-strong);
+      border-radius: 0;
+      background: none;
+      color: var(--theme-text);
+      font: inherit;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    .flame-page #theme-toggle {
+      justify-content: center;
+      min-width: 8ch;
+      color: var(--theme-muted);
+      letter-spacing: 0.14em;
+    }
+
+    /* Hold the toggle's space until theme.js reveals it, so the header never reflows. */
+    .flame-page #theme-toggle[hidden] {
+      visibility: hidden;
+    }
+
+    .flame-page #replay-toggle::after {
+      margin-left: 0.4rem;
+      color: var(--theme-muted);
+      content: '▴';
+    }
+
+    .flame-page #replay-toggle[aria-expanded='false']::after {
+      content: '▾';
+    }
+
+    .flame-page .open-log:hover,
+    .flame-page #replay-toggle:hover,
+    .flame-page #help-button:hover,
+    .flame-page #theme-toggle:hover {
+      border-color: var(--theme-text);
+      color: var(--theme-text);
+    }
+
+    .flame-page .open-log:focus-within {
+      outline: 2px solid var(--theme-text);
+      outline-offset: 2px;
+    }
+
+    .flame-page .transport {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem 1rem;
+      padding: 0.4rem 1rem;
+      border-bottom: 1px solid var(--theme-rule);
+      font-size: 0.78rem;
+    }
+
+    .flame-page .transport[hidden] {
+      display: none;
+    }
+
+    .flame-page .transport .actions {
+      gap: 0.4rem;
+      margin: 0;
+    }
+
+    .flame-page .transport .actions button {
+      min-height: 2.25rem;
+      padding: 0.3rem 0.65rem;
+    }
+
+    .flame-page #replay-play {
+      min-width: 11ch;
+    }
+
+    .flame-page .replay-clock {
+      min-width: 17ch;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flame-page #replay-position {
+      flex: 1 1 14rem;
+      min-width: 0;
+      height: 2.25rem;
+      margin: 0;
+      background: none;
+      cursor: ew-resize;
+      appearance: none;
+    }
+
+    .flame-page #replay-position::-webkit-slider-runnable-track {
+      height: 4px;
+      background: linear-gradient(to right, var(--theme-text) var(--progress, 0%), var(--theme-rule-strong) 0);
+    }
+
+    .flame-page #replay-position::-moz-range-track {
+      height: 4px;
+      background: linear-gradient(to right, var(--theme-text) var(--progress, 0%), var(--theme-rule-strong) 0);
+    }
+
+    .flame-page #replay-position::-webkit-slider-thumb {
+      width: 14px;
+      height: 14px;
+      margin-top: -5px;
+      border: 2px solid var(--theme-bg);
+      border-radius: 50%;
+      background: var(--theme-text);
+      appearance: none;
+    }
+
+    .flame-page #replay-position::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--theme-bg);
+      border-radius: 50%;
+      background: var(--theme-text);
+    }
+
+    .flame-page #replay-position:focus-visible {
+      outline: 2px solid var(--theme-text);
+      outline-offset: 2px;
+    }
+
+    .flame-page .story-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--theme-muted);
+    }
+
+    .flame-page .story-steps li {
+      position: relative;
+      padding: 0.15rem 0.4rem;
+      opacity: 0.55;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flame-page .story-steps li + li {
+      margin-left: 0.9rem;
+    }
+
+    .flame-page .story-steps li + li::before {
+      position: absolute;
+      left: -0.75rem;
+      color: var(--theme-muted);
+      content: '›';
+    }
+
+    .flame-page .story-steps li[data-done] {
+      color: var(--theme-text);
+      opacity: 1;
+    }
+
+    .flame-page .story-steps li[aria-current] {
+      background: var(--theme-text);
+      color: var(--theme-bg);
+    }
+
+    .flame-page .transport .story-toggle button[aria-expanded='true'] {
+      background: var(--theme-text);
+      color: var(--theme-bg);
+    }
+
+    .flame-page .story-line {
+      display: -webkit-box;
+      flex: 1 1 24rem;
+      margin: 0;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+    }
+
+    .flame-page .context-gauge {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem 0.6rem;
+      margin: 0;
+      color: var(--theme-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flame-page .gauge-model {
+      color: var(--theme-text);
+    }
+
+    .flame-page .gauge-model:empty {
+      display: none;
+    }
+
+    .flame-page .gauge {
+      width: 6rem;
+      height: 6px;
+      border: 1px solid var(--theme-rule-strong);
+    }
+
+    .flame-page #gauge-fill {
+      display: block;
+      height: 100%;
+      background: var(--theme-text);
+    }
+
+    .flame-page .replay-more {
+      display: flex;
+      flex-basis: 100%;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem 1rem;
+    }
+
+    .flame-page .replay-more[hidden] {
+      display: none;
+    }
+
+    .flame-page .replay-option {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-height: 2.25rem;
+      color: var(--theme-muted);
+    }
+
+    .flame-page .replay-option select {
+      min-height: 2.25rem;
+      padding: 0.2rem 0.4rem;
+      border: 1px solid var(--theme-rule-strong);
+      border-radius: 0;
+      background: var(--theme-bg);
+      color: var(--theme-text);
+      font: inherit;
+    }
+
+    .flame-page #replay-skip-idle {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+      accent-color: var(--theme-text);
+    }
+
+    .flame-page .replay-state {
+      min-width: 14ch;
+      color: var(--theme-muted);
+    }
+
+    .flame-page .app-main {
+      display: grid;
+      grid-row: 3;
+      grid-template-columns: minmax(0, 1fr) clamp(18rem, 28vw, 26rem);
+      min-height: 0;
+      padding: 0;
+    }
+
+    .flame-page .app-panels {
+      display: grid;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .flame-page [role='tabpanel'] {
+      min-width: 0;
+      min-height: 0;
+      padding: 0.75rem 1rem;
+      overflow: auto;
+    }
+
+    .flame-page [role='tabpanel'][hidden] {
+      display: none;
+    }
+
+    .flame-page .panel-flame,
+    .flame-page .panel-fill {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .flame-page .panel-text > * {
+      max-width: 52rem;
+    }
+
+    .flame-page .panel-text h2 + p {
+      color: var(--theme-muted);
+    }
+
+    .flame-page .panel-text h2:not(:first-child) {
+      margin-top: 1.75rem;
+    }
+
+    .flame-page .app-aside {
+      position: relative;
+      min-height: 0;
+      overflow: auto;
+      border-left: 1px solid var(--theme-rule);
+    }
+
+    .flame-page .aside-section {
+      padding: 0.75rem 1rem 1rem;
+    }
+
+    .flame-page .aside-section + .aside-section {
+      border-top: 1px solid var(--theme-rule);
+    }
+
+    .flame-page .aside-section h2 {
+      color: var(--theme-muted);
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .flame-page .notice {
+      margin: 1rem;
+      padding: 1rem;
+      border: 1px solid var(--theme-rule);
+    }
+
+    .flame-page .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .flame-page .actions button,
+    .flame-page .actions a {
+      min-height: 2.5rem;
+      padding: 0.45rem 0.75rem;
+      border: 1px solid var(--theme-rule-strong);
+      border-radius: 0;
+      background: var(--theme-text);
+      color: var(--theme-bg);
+      font: inherit;
+      font-size: 0.85rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .flame-page .actions .quiet {
+      background: transparent;
+      color: inherit;
+    }
+
+    .flame-page .actions button:disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
+
+    .flame-page .actions button:not(:disabled):hover {
+      border-color: var(--theme-text);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .flame-page .status,
+    .flame-page .table-note,
+    .flame-page .coverage {
+      color: var(--theme-muted);
+      font-size: 0.78rem;
+    }
+
+    .flame-page .chart-tools {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+    }
+
+    .flame-page .chart-tools .actions {
+      gap: 0.5rem;
+      margin: 0;
+    }
+
+    .flame-page .chart-tools .actions button {
+      min-height: 2.25rem;
+      padding: 0.3rem 0.65rem;
+    }
+
+    .flame-page .chart-tools .coverage {
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flame-page .run-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 0.75rem;
+    }
+
+    .flame-page .run-picker label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--theme-muted);
+      font-size: 0.78rem;
+    }
+
+    .flame-page .run-picker select {
+      min-width: 0;
+      min-height: 2.25rem;
+      overflow: hidden;
+      padding: 0.2rem 0.4rem;
+      border: 1px solid var(--theme-rule-strong);
+      border-radius: 0;
+      background: var(--theme-bg);
+      color: var(--theme-text);
+      font: inherit;
+    }
+
+    .flame-page .run-picker select:disabled {
+      color: var(--theme-muted);
+    }
+
+    .flame-page .flame {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+      margin-top: 0.75rem;
+      border: 1px solid var(--theme-rule);
+    }
+
+    .flame-page .overview {
+      display: block;
+      flex: none;
+      width: 100%;
+      height: 32px;
+      border-bottom: 1px solid var(--theme-rule);
+      touch-action: pan-y;
+      cursor: pointer;
+    }
+
+    .flame-page .chart-wrap {
+      position: relative;
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .flame-page .chart-scroll {
+      flex: 1;
+      min-width: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .flame-page .chart {
+      display: block;
+      width: 100%;
+      font-family: var(--font-mono);
+      touch-action: pan-y;
+      cursor: grab;
+    }
+
+    .flame-page .chart:focus-visible {
+      outline: 2px solid var(--theme-text);
+      outline-offset: -2px;
+    }
+
+    .flame-page .chart-tip {
+      position: absolute;
+      z-index: 1;
+      display: grid;
+      gap: 0.15rem;
+      max-width: min(22rem, 90%);
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--theme-rule-strong);
+      background: var(--theme-bg);
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+      pointer-events: none;
+    }
+
+    .flame-page .chart-tip span {
+      color: var(--theme-muted);
+    }
+
+    .flame-page .chart-tip[hidden] {
+      display: none;
+    }
+
+    .flame-page .chart-help {
+      flex: none;
+      margin-top: 0.4rem;
+      color: var(--theme-muted);
+      font-size: 0.75rem;
+    }
+
+    .flame-page #chart-help {
+      margin: 0.25rem 0 0;
+      font-size: 0.75rem;
+    }
+
+    .flame-page .log-head {
+      display: flex;
+      flex: none;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0 1rem;
+    }
+
+    .flame-page .log-head p {
+      margin: 0;
+    }
+
+    .flame-page .replay-events {
+      flex: 1;
+      min-height: 0;
+      margin: 0.75rem 0 0;
+      padding: 0;
+      overflow: auto;
+      border-top: 1px solid var(--theme-rule);
+      list-style: none;
+    }
+
+    .flame-page .replay-event {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      width: 100%;
+      min-height: 2.5rem;
+      padding: 0.5rem;
+      border: 0;
+      border-bottom: 1px solid var(--theme-rule);
+      background: none;
+      color: var(--theme-text);
+      font: inherit;
+      font-size: 0.78rem;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .flame-page .replay-event .when {
+      flex: none;
+      min-width: 8ch;
+      color: var(--theme-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flame-page .phase {
+      margin: 0;
+      color: var(--theme-muted);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .flame-page .replay-event .phase {
+      flex: none;
+      min-width: 8ch;
+    }
+
+    .flame-page #replay-phase {
+      width: fit-content;
+      min-height: calc(1lh + 0.3rem);
+      margin-top: 0.75rem;
+      padding: 0.1rem 0.4rem;
+      border: 1px solid var(--theme-rule-strong);
+      color: var(--theme-text);
+    }
+
+    .flame-page #replay-phase:empty {
+      visibility: hidden;
+    }
+
+    .flame-page .phase-filter {
+      display: flex;
+      flex: none;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+    }
+
+    .flame-page .phase-chip {
+      min-height: 2rem;
+      padding: 0.2rem 0.55rem;
+      border: 1px solid var(--theme-rule-strong);
+      border-radius: 0;
+      background: none;
+      color: var(--theme-text);
+      font: inherit;
+      font-size: 0.75rem;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+    }
+
+    .flame-page .phase-chip:hover {
+      border-color: var(--theme-text);
+    }
+
+    .flame-page .phase-chip[aria-pressed='false'] {
+      border-color: var(--theme-rule);
+      color: var(--theme-muted);
+      text-decoration: line-through;
+    }
+
+    .flame-page .phase-key {
+      display: grid;
+      gap: 0.4rem;
+      margin: 0.75rem 0 0;
+    }
+
+    .flame-page .phase-key div {
+      display: grid;
+      grid-template-columns: 9ch 1fr;
+      gap: 1rem;
+      align-items: baseline;
+    }
+
+    .flame-page .phase-key dd {
+      margin: 0;
+    }
+
+    .flame-page .icon {
+      flex: none;
+      width: 1em;
+      height: 1em;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vertical-align: -0.15em;
+    }
+
+    /* In list rows, centre the icon on the first line of text. */
+    .flame-page .replay-event .icon {
+      align-self: flex-start;
+      margin-top: calc((1lh - 1em) / 2);
+    }
+
+    .flame-page #replay-event-title .icon,
+    .flame-page .span-title .icon {
+      margin-inline-end: 0.6ch;
+    }
+
+    .flame-page .icon-key {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(15ch, 1fr));
+      gap: 0.5rem 1rem;
+      margin: 0.75rem 0 0;
+    }
+
+    .flame-page .icon-key div {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    .flame-page .icon-key dt,
+    .flame-page .icon-key dd {
+      display: flex;
+      margin: 0;
+    }
+
+    .flame-page .event-description {
+      display: grid;
+      gap: 0.25rem;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .flame-page .event-excerpt {
+      color: var(--theme-muted);
+    }
+
+    .flame-page .replay-event:hover {
+      background: var(--theme-surface);
+    }
+
+    .flame-page .replay-event[aria-current='true'] {
+      background: var(--theme-highlight);
+      color: var(--theme-highlight-text);
+    }
+
+    .flame-page .replay-event[aria-current='true'] .when,
+    .flame-page .replay-event[aria-current='true'] .phase,
+    .flame-page .replay-event[aria-current='true'] .event-excerpt {
+      color: inherit;
+    }
+
+    .flame-page .replay-content {
+      max-height: 16rem;
+      margin: 0.35rem 0 0;
+      overflow: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 0.78rem;
+      line-height: 1.6;
+    }
+
+    .flame-page .export-help {
+      margin-top: 1.25rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--theme-rule);
+    }
+
+    .flame-page .export-help pre,
+    .flame-page .raw pre {
+      max-width: 100%;
+      margin: 0.75rem 0 0;
+      padding: 0.75rem;
+      overflow: auto;
+      border: 1px solid var(--theme-rule);
+      background: var(--theme-surface);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .flame-page .headline {
+      margin-bottom: 1rem;
+    }
+
+    .flame-page .crumbs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 0.5rem;
+      margin: 0.75rem 0 0;
+      padding: 0;
+      list-style: none;
+      color: var(--theme-muted);
+      font-size: 0.75rem;
+    }
+
+    .flame-page .crumbs li {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .flame-page .crumbs li + li::before {
+      content: '›';
+    }
+
+    .flame-page .crumbs button {
+      min-height: 1.5rem;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-align: start;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+
+    .flame-page .span-title {
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .flame-page .facts {
+      display: grid;
+      gap: 0.35rem;
+      margin: 0.75rem 0 0;
+      font-size: 0.78rem;
+    }
+
+    .flame-page .facts div {
+      display: grid;
+      grid-template-columns: 7rem minmax(0, 1fr);
+      gap: 0.75rem;
+    }
+
+    .flame-page .facts dt {
+      color: var(--theme-muted);
+    }
+
+    .flame-page .facts dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flame-page .raw {
+      margin-top: 0.75rem;
+      font-size: 0.82rem;
+    }
+
+    .flame-page .raw .actions {
+      margin-top: 0.75rem;
+    }
+
+    .flame-page .raw pre {
+      max-height: 20rem;
+      font-size: 0.72rem;
+    }
+
+    .flame-page .spectrum {
+      display: flex;
+      gap: 1px;
+      height: 0.9rem;
+      border: 1px solid var(--theme-rule-strong);
+      background: var(--theme-rule-strong);
+    }
+
+    .flame-page .spectrum .swatch {
+      width: auto;
+      height: auto;
+      min-width: 0;
+      flex-basis: 0;
+      box-shadow: none;
+    }
+
+    .flame-page .table-wrap {
+      overflow-x: auto;
+    }
+
+    .flame-page table {
+      width: 100%;
+      margin-top: 0.5rem;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    .flame-page th,
+    .flame-page td {
+      padding: 0.45rem;
+      border-bottom: 1px solid var(--theme-rule);
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flame-page th:first-child {
+      text-align: left;
+      font-weight: 400;
+    }
+
+    .flame-page thead th {
+      color: var(--theme-muted);
+      font-weight: 500;
+    }
+
+    .flame-page tr.idle {
+      color: var(--theme-muted);
+    }
+
+    .flame-page tr.idle th {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .flame-page .key-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 1.75rem;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .flame-page .key-toggle[aria-pressed='true'] {
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .flame-page .swatch {
+      flex: none;
+      width: 0.75rem;
+      height: 0.75rem;
+      box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+    }
+
+    .flame-page .neutral-session {
+      background: var(--theme-surface);
+      box-shadow: inset 0 0 0 1px var(--theme-rule-strong);
+    }
+
+    .flame-page .neutral-prompt {
+      background: var(--theme-highlight);
+    }
+
+    .flame-page .log-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0 1rem;
+    }
+
+    .flame-page .log-head p {
+      margin: 0;
+    }
+
+    .flame-page .help-dialog {
+      width: min(44rem, calc(100vw - 2rem));
+      max-height: calc(100dvh - 2rem);
+      padding: 1rem 1.25rem 1.5rem;
+      overflow: auto;
+      border: 1px solid var(--theme-rule-strong);
+      border-radius: 0;
+      background: var(--theme-bg);
+      color: var(--theme-text);
+    }
+
+    .flame-page .help-dialog::backdrop {
+      background: rgb(0 0 0 / 0.6);
+    }
+
+    .flame-page .help-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .flame-page .help-head .actions {
+      margin: 0;
+    }
+
+    .flame-page.comparing {
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .flame-page.comparing .transport,
+    .flame-page.comparing .app-main {
+      display: none;
+    }
+
+    .flame-page.comparing #coverage,
+    .flame-page.comparing #replay-toggle {
+      visibility: hidden;
+    }
+
+    .flame-page .comparison {
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      padding: 1rem;
+    }
+
+    .flame-page .comparison[hidden],
+    .flame-page #compare-results[hidden] {
+      display: none;
+    }
+
+    .flame-page .comparison h2 {
+      font-size: 1rem;
+    }
+
+    .flame-page .comparison > p,
+    .flame-page .comparison-guide {
+      max-width: 75ch;
+      font-size: 0.85rem;
+    }
+
+    .flame-page .comparison-import,
+    .flame-page .comparison-choice {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-block: 1rem 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .flame-page .comparison-import .actions,
+    .flame-page .comparison-choice .actions {
+      margin: 0;
+    }
+
+    .flame-page .comparison-choice {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .flame-page .comparison input,
+    .flame-page .comparison select {
+      min-width: 0;
+      max-width: 100%;
+      min-height: 2.5rem;
+      font: inherit;
+      color: var(--theme-text);
+    }
+
+    .flame-page .comparison select {
+      box-sizing: border-box;
+      width: 100%;
+      overflow: hidden;
+      padding: 0.35rem;
+      border: 1px solid var(--theme-rule-strong);
+      border-radius: 0;
+      background: var(--theme-bg);
+    }
+
+    .flame-page .comparison-scale {
+      margin-top: 1.5rem;
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flame-page .comparison-warnings {
+      max-width: 90ch;
+      padding-left: 1.25rem;
+      font-size: 0.78rem;
+      color: var(--theme-muted);
+    }
+
+    .flame-page .comparison-run {
+      margin-top: 1.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--theme-rule);
+    }
+
+    .flame-page .comparison-facts {
+      font-size: 0.8rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flame-page .comparison-chart {
+      display: block;
+      width: 100%;
+      margin-block: 0.75rem;
+    }
+
+    .flame-page .credit {
+      margin-top: 1.75rem;
+      color: var(--theme-muted);
+      font-size: 0.78rem;
+    }
+
+    .flame-page .visually-hidden {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 56rem) {
+      .flame-page .app-main {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
+      }
+
+      .flame-page .app-aside {
+        border-top: 1px solid var(--theme-rule);
+        border-left: 0;
+      }
+    }
+
+    @media (max-width: 40rem) {
+      .flame-page .app-main {
+        grid-template-rows: minmax(0, 3fr) minmax(0, 1fr);
+      }
+
+      .flame-page .comparison-choice {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .flame-page .comparison-choice label {
+        grid-column: 1 / -1;
+      }
+
+      .flame-page .run-picker {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        width: 100%;
+      }
+
+      .flame-page .run-picker select {
+        width: 100%;
+      }
+
+      .flame-page .run-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .flame-page .app-bar {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .flame-page .app-tabs {
+        grid-column: 1 / -1;
+        order: 3;
+      }
+
+      .flame-page .app-actions {
+        padding-bottom: 0;
+      }
+
+      .flame-page [role='tab'] {
+        flex: 1;
+        padding-inline: 0.4rem;
+      }
+
+      .flame-page .replay-clock,
+      .flame-page .replay-state {
+        min-width: 0;
+      }
+
+      .flame-page .story-line {
+        flex: 1 1 0;
+        order: 1;
+      }
+
+      .flame-page .story-toggle {
+        order: 2;
+      }
+
+      .flame-page .context-gauge {
+        flex-basis: 100%;
+        order: 3;
+      }
+
+      .flame-page .gauge {
+        display: none;
+      }
+
+      .flame-page .replay-more {
+        order: 4;
+      }
+
+      .flame-page #replay-position,
+      .flame-page .replay-state {
+        order: 1;
+      }
+
+      .flame-page #replay-position {
+        flex-basis: 10rem;
+        height: 1.75rem;
+      }
+
+      .flame-page .facts div {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.1rem;
+      }
+    }
+  </style>
+</BaseLayout>

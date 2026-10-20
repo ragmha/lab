@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.astro/
+.wrangler/
+.checks/
+.agent/
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+.DS_Store
+.copilot-export-fixture-*/
+**/.work/
+**/__pycache__/
+**/.pytest_cache/

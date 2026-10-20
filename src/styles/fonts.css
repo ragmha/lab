@@ -1,0 +1,41 @@
+/* JetBrains Mono, SIL OFL 1.1. Bundled source:
+   github.com/JetBrains/JetBrainsMono/tree/19371302b95d218af43299bce79ddbddd0bc364d
+   License: public/fonts/jetbrains-mono/OFL.txt */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono/JetBrainsMono-SemiBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono/JetBrainsMono-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono/JetBrainsMono-Italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 400;
+  font-display: optional;
+}
+
+:root {
+  /* Match JetBrains Mono's character width before its font files arrive. */
+  font-size-adjust: ch-width 0.6;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", SFMono-Regular,
+    "IBM Plex Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}

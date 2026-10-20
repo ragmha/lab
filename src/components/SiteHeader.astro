@@ -1,0 +1,145 @@
+---
+import ThemeToggle from './ThemeToggle.astro'
+import '../styles/layout.css'
+---
+
+<header class="site-header">
+  <a class="site-name" href="/">
+    Raghib’s Lab
+    <svg class="name-taillight" viewBox="0 0 120 12" preserveAspectRatio="none"
+      aria-hidden="true" focusable="false">
+      <path class="light-bar" d="M2 6H118" />
+    </svg>
+  </a>
+  <div class="header-controls">
+    <a href="https://raghib.io/">raghib.io</a>
+    <ThemeToggle />
+  </div>
+</header>
+
+<style>
+  .site-header {
+    --header-bg: var(--theme-bg);
+    --header-text: var(--theme-text);
+    --header-muted: var(--theme-muted);
+    --header-rule: var(--theme-rule);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    max-width: var(--layout-width);
+    margin: 0 auto;
+    padding: var(--layout-header-top) var(--layout-gutter) 0;
+    background: color-mix(in srgb, var(--header-bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: none;
+    color: var(--header-text);
+    font-family: var(--font-mono);
+    line-height: 1.75;
+  }
+
+  .site-name {
+    position: relative;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: none;
+    font-size: 0.78rem;
+    border-bottom: none;
+    text-decoration: none;
+    background: transparent;
+    color: inherit;
+  }
+
+  .name-taillight {
+    position: absolute;
+    left: 0;
+    bottom: -0.65rem;
+    width: 100%;
+    height: 0.65rem;
+    overflow: visible;
+    pointer-events: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: square;
+    opacity: 0;
+    filter: drop-shadow(0 1px 3px color-mix(in srgb, currentColor 35%, transparent));
+    transition: opacity 140ms ease-out;
+  }
+
+  .light-bar {
+    transform-box: fill-box;
+    transform-origin: right;
+    transform: scaleX(0);
+  }
+
+  .site-name:is(:hover, :focus-visible) .name-taillight {
+    opacity: 1;
+  }
+
+  .site-name:is(:hover, :focus-visible) .light-bar {
+    animation: light-sweep 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes light-sweep {
+    to { transform: scaleX(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .name-taillight {
+      transition: none;
+    }
+
+    .site-name:is(:hover, :focus-visible) .light-bar {
+      animation: none;
+      transform: none;
+    }
+
+  }
+
+  .header-controls {
+    display: flex;
+    width: var(--layout-nav-width);
+    min-height: calc(1.225rem + 0.5rem + 2px);
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+  }
+
+  .site-header :global(#theme-toggle) {
+    font: inherit;
+    letter-spacing: 0.14em;
+    background: none;
+    border: 1px solid var(--header-rule);
+    border-radius: 0;
+    color: var(--header-muted);
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+  }
+
+  .site-header :global(#theme-toggle:hover) {
+    background: var(--header-text);
+    color: var(--header-bg);
+    border-color: transparent;
+  }
+
+  @media (max-width: 600px) {
+    .header-controls {
+      width: auto;
+    }
+  }
+
+  @media print {
+    .site-header {
+      display: none;
+    }
+  }
+</style>

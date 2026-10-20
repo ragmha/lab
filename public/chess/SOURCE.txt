@@ -1,0 +1,27 @@
+Stockfish.js 19.0.1 - lite, single-threaded WebAssembly
+
+These two files are unmodified upstream distribution files:
+  stockfish-19-lite-single.js
+  stockfish-19-lite-single.wasm
+
+Copyright holders include the Stockfish developers and Nathan Rugg.
+Licensed under the GNU General Public License version 3; see COPYING.txt.
+
+Matching release and binaries:
+https://github.com/nmrugg/stockfish.js/releases/tag/v19.0.1
+
+Corresponding source, build scripts, and network-fetch instructions:
+https://github.com/nmrugg/stockfish.js/tree/v19.0.1
+
+Source archive:
+https://github.com/nmrugg/stockfish.js/archive/refs/tags/v19.0.1.tar.gz
+
+Build instructions:
+https://github.com/nmrugg/stockfish.js/blob/v19.0.1/README.md#how-do-i-compile-the-engine
+
+The upstream build uses Emscripten 6.0.9. In that source checkout,
+the build-single-lite npm script builds this engine flavor.
+
+SHA-256:
+ccb130d7ff29408531c47d859a49f91d59d4f482d05a53eb1a3231a4f624c91a  stockfish-19-lite-single.js
+ee4f115bdb2d32cadf96cada104a05b5ec257d7ad6f57582190b49bc71f096de  stockfish-19-lite-single.wasm

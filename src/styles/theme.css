@@ -1,0 +1,46 @@
+:root {
+  --theme-bg: #000;
+  --theme-surface: #181818;
+  --theme-text: #fff;
+  --theme-muted: #b9b9b9;
+  --theme-faint: #8f8f8f;
+  --theme-rule: #292929;
+  --theme-rule-strong: #424242;
+  --theme-highlight: #dcdcdc;
+  --theme-highlight-text: #000;
+  --theme-code-bg: #181818;
+  --theme-red: #ff6b6b;
+  --theme-green: #6be0a0;
+  --theme-blue: #6b9bff;
+  --theme-diagram-halo: #000;
+  color-scheme: dark;
+  background: var(--theme-bg);
+}
+
+:root[data-theme='light'] {
+  --theme-bg: #fff;
+  --theme-surface: #f3f3f3;
+  --theme-text: #0d0d0d;
+  --theme-muted: #5d5d5d;
+  --theme-faint: #737373;
+  --theme-rule: #e8e8e8;
+  --theme-rule-strong: #d8d8d8;
+  --theme-highlight: #282828;
+  --theme-highlight-text: #fff;
+  --theme-code-bg: #f3f3f3;
+  --theme-red: #c9363b;
+  --theme-green: #218653;
+  --theme-blue: #3e63dd;
+  --theme-diagram-halo: #8a8a80;
+  color-scheme: light;
+}
+
+:root ::selection {
+  background: var(--theme-highlight);
+  color: var(--theme-highlight-text);
+}
+
+:root :focus-visible {
+  outline: 2px solid var(--theme-highlight);
+  outline-offset: 3px;
+}

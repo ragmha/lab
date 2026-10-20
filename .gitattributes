@@ -1,0 +1,4 @@
+# Preserve distributed asset bytes and upstream license formatting on all OSes.
+public/** -text
+public/chess/COPYING.txt whitespace=cr-at-eol
+public/fonts/jetbrains-mono/OFL.txt whitespace=-trailing-space

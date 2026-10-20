@@ -1,0 +1,1538 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro'
+import data from '../data/token-diet.json'
+import roundTwoData from '../data/token-diet-2.json'
+import { decode, encode } from 'gpt-tokenizer/encoding/o200k_base'
+import { correlation, cost, instructions, kinds, median, medianRun, total } from '../lib/token-diet'
+import type { Call, Kind, Run, Tokens } from '../lib/token-diet'
+
+const runs = data.runs as Run[]
+const rates = data.rates as Tokens
+const number = new Intl.NumberFormat('en-US')
+const percent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 })
+const wholePercent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 0 })
+const perThousand = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 })
+const thousands = (value: number) => `${Math.round(value / 1000)}k`
+const aiu = (nano: number) => (nano / 1e9).toFixed(2)
+const signed = (value: number) => `${value < 0 ? '−' : '+'}${number.format(Math.abs(value))}`
+
+const names: Record<Kind, string> = {
+  cacheRead: 'Cache read',
+  cacheWrite: 'Cache write',
+  fresh: 'Fresh input',
+  output: 'Output',
+}
+
+const setupOptions = [
+  { id: 'a', name: 'Baseline' },
+  { id: 'b', name: 'Principles' },
+  { id: 'c', name: 'caveman' },
+  { id: 'd', name: 'rtk' },
+  { id: 'e', name: 'All three' },
+  { id: 'f', name: 'Token Optimizer' },
+]
+const setups = setupOptions
+  .filter((setup) => runs.some((run) => run.variant === setup.id))
+  .map((setup) => {
+    const set = runs.filter((run) => run.variant === setup.id)
+    const sizes = set.map((run) => total(run.totals))
+    const charges = set.map((run) => run.nanoAiu)
+    return {
+      ...setup,
+      set,
+      shown: medianRun(set),
+      succeeded: set.filter((run) => run.success).length,
+      tokens: median(sizes),
+      low: Math.min(...sizes),
+      high: Math.max(...sizes),
+      calls: median(set.map((run) => run.calls.length)),
+      aiu: median(charges),
+      aiuLow: Math.min(...charges),
+      aiuHigh: Math.max(...charges),
+      prompt: median(set.map((run) => total(run.calls[0]) - run.calls[0].output)),
+      firstAiu: median(set.map((run) => cost(run.calls[0], rates))),
+      prose: median(set.map((run) => run.proseChars)),
+      proseShare: median(set.map((run) => run.proseChars / (run.proseChars + run.argChars))),
+      biggestResult: Math.max(...set.flatMap((run) => run.calls.flatMap((call) => call.tools.map((tool) => tool.outTokens)))),
+    }
+  })
+const setup = (id: string) => {
+  const found = setups.find((item) => item.id === id)
+  if (!found) throw new Error(`token-diet.json is missing required setup "${id}"`)
+  return found
+}
+const baseline = setup('a')
+const principles = setup('b')
+const caveman = setup('c')
+const rtk = setup('d')
+const all = setup('e')
+const optimizer = setups.find((item) => item.id === 'f')
+const versions = data.versions as Record<string, string>
+const after = setups.slice(1)
+const versus = (setup: (typeof setups)[number]) => setup.tokens / baseline.tokens - 1
+const [closest, furthest] = [after.reduce((a, b) => (versus(a) < versus(b) ? a : b)), after.reduce((a, b) => (versus(a) > versus(b) ? a : b))]
+const change = (setup: (typeof setups)[number]) => `${versus(setup) > 0 ? '+' : '−'}${percent.format(Math.abs(versus(setup)))}`
+
+const pooled = Object.fromEntries(kinds.map((kind) => [kind, runs.reduce((sum, run) => sum + run.totals[kind], 0)])) as Tokens
+const tokenShare = (kind: Kind) => percent.format(pooled[kind] / total(pooled))
+const costShare = (kind: Kind) => percent.format((pooled[kind] * rates[kind]) / cost(pooled, rates))
+const callsVsTokens = correlation(runs.map((run) => run.calls.length), runs.map((run) => total(run.totals)))
+const lastCall = median(runs.map((run) => total(run.calls[run.calls.length - 1])))
+const sharedPrefix = runs[0].calls[0].cacheRead
+const testRuns = runs.reduce((sum, run) => sum + run.testRuns, 0)
+const unpipedTestRuns = runs.reduce((sum, run) => sum + run.testRunsUnpiped, 0)
+const rtkSaved = median(rtk.set.map((run) => run.rtk?.saved ?? 0))
+const extraSkills = caveman.set[0].skills - baseline.set[0].skills
+const narrowestSpread = Math.min(...setups.map((setup) => setup.high - setup.low))
+const widestGap = Math.max(...setups.map((setup) => setup.tokens)) - Math.min(...setups.map((setup) => setup.tokens))
+const largest = runs.reduce((max, run) => (total(run.totals) > total(max.totals) ? run : max))
+const failed = runs.filter((run) => !run.success)
+const beatBaseline = after.filter((setup) => setup.tokens < baseline.tokens)
+const mixed = after.find((setup) => setup.tokens < baseline.tokens !== setup.aiu < baseline.aiu)
+const side = (value: number, of: number) => (value < of ? 'below' : 'above')
+const why = (run: Run) =>
+  !run.committed ? 'made no commit'
+    : !run.testsPass ? 'left tests failing'
+      : 'fixed the bugs but used a commit scope the repository’s guide does not allow'
+const nameOf = (run: Run) => setups.find((setup) => setup.id === run.variant)?.name ?? run.variant
+
+// Waterfall: each setup's median run, one row per model call. `axis` sets the replay speed.
+const axis = Math.ceil(Math.max(...setups.map((setup) => total(setup.shown.totals))) / 100_000) * 100_000
+const callAxis = Math.ceil(Math.max(...setups.flatMap((setup) => setup.shown.calls.map(total))) / 10_000) * 10_000
+const pct = (value: number, of: number) => `${((value / of) * 100).toFixed(3)}%`
+const what = (call: Call) =>
+  call.tools.map((tool) => (tool.name === 'bash' ? tool.label : `${tool.name} ${tool.label}`)).join(' · ') || 'final reply'
+const stops = (values: number[]) => {
+  const sum = values.reduce((a, b) => a + b, 0)
+  let running = 0
+  return values.map((value, i) => `--s${i + 1}:${((running += value) / sum).toFixed(4)}`).join(';')
+}
+const pick = ({ cacheRead, cacheWrite, fresh, output }: Tokens): Tokens => ({ cacheRead, cacheWrite, fresh, output })
+const rateList = kinds.map((kind) => `${names[kind].toLowerCase()} ${perThousand.format(rates[kind] / 1e6)}`).join(', ')
+const raceJson = JSON.stringify({
+  axis,
+  rates,
+  lanes: Object.fromEntries(setups.map((setup) => [setup.id, setup.shown.calls.map(pick)])),
+}).replace(/</g, '\\u003c')
+
+// Tokenizer: the text the agent reads before its first tool call, split by o200k_base.
+const split = (name: string, text: string) => {
+  const ids = encode(text)
+  return { name, text, ids, pieces: ids.map((id) => decode([id])) }
+}
+const prompt = split('Task prompt', data.prompt)
+const readings = [
+  { label: 'Baseline', parts: [prompt] },
+  { label: 'Principles', parts: [split('Instructions file', instructions(data.principles)), prompt] },
+].map((reading) => ({
+  ...reading,
+  tokens: reading.parts.reduce((sum, part) => sum + part.ids.length, 0),
+  characters: reading.parts.reduce((sum, part) => sum + part.text.length, 0),
+}))
+
+// Every run: one dot per run on a shared axis.
+const stripMax = Math.ceil(total(largest.totals) / 100_000) * 100_000
+const stripTicks = [0, 1, 2, 3].map((i) => (stripMax / 3) * i)
+
+const roundTwoRuns = roundTwoData.runs as Run[]
+const roundTwoOptions = [
+  { id: 'a', name: 'Baseline', method: 'The CLI as installed.' },
+  { id: 'b', name: 'Principles', method: 'Six rules in the user instructions file.' },
+  { id: 'c', name: 'caveman', method: 'A session-start hook that switches the agent to terse replies, plus its skills.' },
+  { id: 'd', name: 'rtk', method: 'An instruction and hook that route commands through rtk to filter their output.' },
+  { id: 'e', name: 'All three', method: 'Principles, caveman, and rtk together.' },
+  { id: 'f', name: 'Token Optimizer', method: 'The Copilot adapter installed into an isolated home.' },
+]
+const roundTwoSetups = roundTwoOptions
+  .filter((setup) => roundTwoRuns.some((run) => run.variant === setup.id))
+  .map((setup) => {
+    const set = roundTwoRuns.filter((run) => run.variant === setup.id)
+    const sizes = set.map((run) => total(run.totals))
+    return {
+      ...setup,
+      set,
+      shown: medianRun(set),
+      succeeded: set.filter((run) => run.success).length,
+      tokens: median(sizes),
+      low: Math.min(...sizes),
+      high: Math.max(...sizes),
+      calls: median(set.map((run) => run.calls.length)),
+      aiu: median(set.map((run) => run.nanoAiu)),
+    }
+  })
+const roundTwoBaseline = roundTwoSetups[0]
+const roundTwoBestTokens = roundTwoSetups.reduce((best, setup) => setup.tokens < best.tokens ? setup : best)
+const roundTwoBestAiu = roundTwoSetups.reduce((best, setup) => setup.aiu < best.aiu ? setup : best)
+const roundTwoDelta = (setup: (typeof roundTwoSetups)[number]) => {
+  const delta = setup.tokens / roundTwoBaseline.tokens - 1
+  return delta === 0 ? '0%' : `${delta > 0 ? '+' : '−'}${percent.format(Math.abs(delta))}`
+}
+const roundTwoFailed = roundTwoRuns.filter((run) => !run.success)
+const roundTwoSpread = roundTwoSetups.map((setup) => setup.high - setup.low)
+const roundTwoCallAxis = Math.ceil(
+  Math.max(...roundTwoSetups.flatMap((setup) => setup.shown.calls.map(total))) / 10_000,
+) * 10_000
+const roundTwoStripMax = Math.ceil(
+  Math.max(...roundTwoRuns.map((run) => total(run.totals))) / 100_000,
+) * 100_000
+const roundTwoStripTicks = [0, 1, 2, 3].map((i) => (roundTwoStripMax / 3) * i)
+const roundTwoRates = roundTwoData.rates as Tokens
+const roundTwoRateList = kinds
+  .map((kind) => `${names[kind].toLowerCase()} ${perThousand.format(roundTwoRates[kind] / 1e6)}`)
+  .join(', ')
+const roundTwoHasOptimizer = roundTwoSetups.some((setup) => setup.id === 'f')
+const roundTwoVersions = roundTwoData.versions as Record<string, string>
+
+const description =
+  `Two bug-fix tasks, ${number.format(runs.length + roundTwoRuns.length)} coding-agent runs. Compare token use and Copilot AIU across simple instructions, hooks, output filters, and a longer regression hunt.`
+---
+
+<SiteLayout title="Coding Agent Token Diet: Before and After" description={description}>
+  <Fragment slot="heading">Does Your Coding Agent Need a Token Diet?</Fragment>
+  <div class="diet">
+    <dl class="lede">
+      <dt>Claim</dt>
+      <dd>
+        Do simple principles, caveman, rtk{optimizer ? ', or Token Optimizer' : ''} make a coding agent use fewer tokens?
+      </dd>
+      <dt>Result</dt>
+      <dd>
+        <strong>One task, five runs per setup.</strong> Median token use ranged from {change(closest)}
+        ({closest.name}) to {change(furthest)} ({furthest.name}), versus the plain agent (baseline).
+      </dd>
+      <dt>Why</dt>
+      <dd>{tokenShare('cacheRead')} of tokens were conversation history re-read on each call.</dd>
+    </dl>
+
+    <div class="tabs">
+    <input type="radio" name="section" id="tab-calls" checked />
+    <label for="tab-calls">Waterfall</label>
+    <section class="race" aria-labelledby="race-title">
+      <h2 id="race-title">Before and after, call by call</h2>
+      <div class="controls">
+        <fieldset>
+          <legend class="visually-hidden">Compare the baseline with</legend>
+          <span class="muted" aria-hidden="true">Baseline vs</span>
+          {after.map((setup) => (
+            <label>
+              <input type="radio" name="after" id={`after-${setup.id}`} value={setup.id} checked={setup.id === 'e'} />
+              {setup.name}
+            </label>
+          ))}
+        </fieldset>
+        <button type="button" class="replay">Replay</button>
+      </div>
+
+      <figure>
+        <div class="panels">
+          {setups.map((setup) => {
+            const run = setup.shown
+            const size = total(run.totals)
+            const value = (meter: string, text: string) => (
+              <span data-meter={meter} style={`--chars:${text.length}`}>{text}</span>
+            )
+            return (
+              <div class="panel" data-lane={setup.id}>
+                <p class="pill">
+                  {setup.name}
+                  <span aria-hidden="true">{value('tokens', number.format(size))} tokens</span>
+                  {setup !== baseline && <span class:list={['change', versus(setup) > 0 ? 'worse' : 'better']}>{change(setup)}<span class="visually-hidden"> vs baseline</span></span>}
+                  <span class="visually-hidden">
+                    , run {run.id}: {number.format(size)} tokens, {run.calls.length} model calls, {aiu(run.nanoAiu)} AIU
+                  </span>
+                </p>
+                <ol class="waterfall" style={`--divisions:${callAxis / 10_000};--rows:${run.calls.length}`}>
+                  {run.calls.map((call, i) => (
+                    <li>
+                      <span aria-hidden="true">{i + 1}</span>
+                      <span class="what" title={what(call)}>{what(call)}</span>
+                      <span class="track" aria-hidden="true">
+                        <span class="bar" style={`--w:${pct(total(call), callAxis)}`}>
+                          {kinds.map((kind) => <span class={kind} style={`flex-grow:${call[kind]}`} />)}
+                        </span>
+                      </span>
+                      <span>{thousands(total(call))}<span class="visually-hidden"> tokens</span></span>
+                    </li>
+                  ))}
+                </ol>
+                <div class="summary" aria-hidden="true">
+                  <div class="rings">
+                    <span class="ring ring-tokens" style={stops(kinds.map((kind) => run.totals[kind]))} />
+                    <span class="ring ring-cost" style={stops(kinds.map((kind) => run.totals[kind] * rates[kind]))} />
+                    <span class="ring-total">{value('center', thousands(size))}tokens</span>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr><th /><th>Tokens</th><th>AIU</th></tr>
+                    </thead>
+                    <tbody>
+                      {kinds.map((kind) => (
+                        <tr>
+                          <th><span class:list={['swatch', kind]} />{names[kind]}</th>
+                          <td>{value(kind, number.format(run.totals[kind]))}</td>
+                          <td>{value(`${kind}-aiu`, aiu(run.totals[kind] * rates[kind]))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th>Total</th>
+                        <td>{value('total', number.format(size))}</td>
+                        <td>{value('AIU', aiu(run.nanoAiu))}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <figcaption>
+          One row per model call; gridlines every 10k tokens. Grey is the conversation so far, re-read on every call.
+        </figcaption>
+      </figure>
+      <script is:inline type="application/json" id="race-data" set:html={raceJson} />
+    </section>
+
+    <input type="radio" name="section" id="tab-tokens" />
+    <label for="tab-tokens">Tokens</label>
+    <section class="tokenizer" aria-labelledby="tokens-title">
+      <h2 id="tokens-title">What the agent reads first, in tokens</h2>
+      <div class="intro-row">
+        <p>
+          The task prompt every run starts with, and the six instructions the principles setup adds, split into tokens:
+        </p>
+        <fieldset class="views">
+          <legend class="visually-hidden">Show</legend>
+          <label><input type="radio" name="token-view" id="token-text" checked /> Text</label>
+          <label><input type="radio" name="token-view" id="token-ids" /> Token IDs</label>
+        </fieldset>
+      </div>
+      <div class="readings">
+        {readings.map((reading) => (
+          <div class="reading">
+            <p class="kicker">
+              {reading.label} <span class="count">{number.format(reading.tokens)} tokens</span>
+              <span class="muted">· {number.format(reading.characters)} characters</span>
+            </p>
+            {reading.parts.map((part, i) => i && part === prompt ? (
+              <p class="part">+ {part.name} <span class="muted">· {part.ids.length} tokens, same as baseline</span></p>
+            ) : (
+              <>
+                <p class="part">{part.name} <span class="muted">· {part.ids.length} tokens</span></p>
+                <p class="token-text">{part.pieces.map((piece) => <span>{piece}</span>)}</p>
+                <p class="token-ids">[{part.ids.join(', ')}]</p>
+              </>
+            ))}
+          </div>
+        ))}
+        <p class="note">
+          Split with OpenAI’s o200k_base, an illustration: Claude’s tokenizer isn’t public. Measured, the principles
+          added a median {number.format(principles.prompt - baseline.prompt)} first-call tokens (the file plus the CLI’s
+          wrapper). The runs didn’t record the system prompt, {number.format(data.toolDefinitionsTokens)} tokens of tool
+          definitions, the skill list, or the setup hooks and tools.
+        </p>
+      </div>
+    </section>
+
+    <input type="radio" name="section" id="tab-runs" />
+    <label for="tab-runs">Every run</label>
+    <section aria-labelledby="runs-title">
+      <h2 id="runs-title">Every run</h2>
+      <figure class="strip">
+        <div class="strip-rows" aria-hidden="true">
+          {setups.map((setup) => (
+            <div class="strip-row">
+              <span>{setup.name}</span>
+              <div class="strip-track">
+                <span class="median" style={`--x:${pct(setup.tokens, stripMax)}`} />
+                {setup.set.map((run) => (
+                  <span class:list={['dot', { failed: !run.success }]} style={`--x:${pct(total(run.totals), stripMax)}`} />
+                ))}
+              </div>
+            </div>
+          ))}
+          <div class="strip-row">
+            <span />
+            <div class="axis">
+              {stripTicks.map((tick) => <span style={`--x:${pct(tick, stripMax)}`}>{tick ? thousands(tick) : '0'}</span>)}
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          Total tokens per run. Each dot is a run;{failed.length ? ' hollow dots are failed runs;' : ''} the line marks the median.
+        </figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table>
+          <caption>
+            Medians over five runs{failed.length ? ', failed runs included' : ''}. First-call prompt: all the agent sends before acting —
+            system prompt, {number.format(data.toolDefinitionsTokens)} tokens of tool definitions, instructions, skills, task.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Setup</th>
+              <th scope="col">Succeeded</th>
+              <th scope="col">Median tokens</th>
+              <th scope="col">Range</th>
+              <th scope="col">Calls</th>
+              <th scope="col">AIU</th>
+              <th scope="col">First-call prompt</th>
+            </tr>
+          </thead>
+          <tbody>
+            {setups.map((setup) => (
+              <tr>
+                <th scope="row">{setup.name}</th>
+                <td>{setup.succeeded}/{setup.set.length}</td>
+                <td>{number.format(setup.tokens)}</td>
+                <td>{thousands(setup.low)}–{thousands(setup.high)}</td>
+                <td>{setup.calls}</td>
+                <td>{aiu(setup.aiu)}</td>
+                <td>
+                  {number.format(setup.prompt)}
+                  {setup !== baseline && <span class="muted"> ({signed(setup.prompt - baseline.prompt)})</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <input type="radio" name="section" id="tab-findings" />
+    <label for="tab-findings">Findings</label>
+    <section aria-labelledby="findings-title">
+      <h2 id="findings-title">What the runs show</h2>
+      <div class="tabs side">
+        <input type="radio" name="finding" id="finding-1" checked />
+        <label for="finding-1">{beatBaseline.length ? `${beatBaseline.length} of ${after.length} setups beat the baseline` : 'No setup beat the baseline'}</label>
+        <p>
+        The baseline’s median run used {number.format(baseline.tokens)}
+        tokens. The medians for {after.map((setup) => setup.name.toLowerCase()).join(', ')} were
+        {' '}{after.map((setup) => number.format(setup.tokens)).join(', ')}.
+        {failed.length
+          ? `${failed.length === 1 ? 'One run' : `${failed.length} runs`} of ${runs.length} failed: ${failed.map((run) => `${run.id} (${nameOf(run)}) ${why(run)}`).join('; ')}.`
+          : `All ${runs.length} runs succeeded.`}
+        </p>
+        <input type="radio" name="finding" id="finding-2" />
+        <label for="finding-2">Five runs are exploratory</label>
+        <p>
+        The narrowest within-setup range was {number.format(narrowestSpread)} tokens, while the widest gap between two
+        setups’ medians was {number.format(widestGap)}. With one task and five runs per setup, treat these results as
+        exploratory rather than conclusive. The single largest run,
+        {' '}{largest.id} ({nameOf(largest)}), used {number.format(total(largest.totals))} tokens over
+        {' '}{largest.calls.length} calls.
+        </p>
+        <input type="radio" name="finding" id="finding-3" />
+        <label for="finding-3">Calls drove tokens</label>
+        <p>
+        Across all {runs.length} runs, total tokens tracked the number of model calls
+        (Pearson r = {callsVsTokens.toFixed(2)}). Every call re-reads the whole conversation so far, so calls grow
+        as a run goes on: the last call of a run processed a median {number.format(lastCall)} tokens.
+        </p>
+        <input type="radio" name="finding" id="finding-4" />
+        <label for="finding-4">Tokens aren’t the bill</label>
+        <p>
+        Cache reads were {tokenShare('cacheRead')} of all tokens but
+        {' '}{costShare('cacheRead')} of the AIU. Cache writes were {tokenShare('cacheWrite')} of tokens and
+        {' '}{costShare('cacheWrite')} of AIU; output was {tokenShare('output')} of tokens and {costShare('output')}
+        of AIU.
+        {mixed
+          ? `So the two can disagree: ${mixed.name}’s median was ${side(mixed.tokens, baseline.tokens)} the baseline’s in tokens (${number.format(mixed.tokens)} against ${number.format(baseline.tokens)}) but ${side(mixed.aiu, baseline.aiu)} it in AIU (${aiu(mixed.aiu)} against ${aiu(baseline.aiu)}).`
+          : 'On this task, every setup’s tokens and AIU moved in the same direction against the baseline.'}
+        </p>
+        <input type="radio" name="finding" id="finding-5" />
+        <label for="finding-5">Principles added little</label>
+        <p>
+        The six rules added
+        {' '}{number.format(principles.prompt - baseline.prompt)} tokens to the prompt. Their runs took a median of
+        {' '}{principles.calls} calls against the baseline’s {baseline.calls}.
+        </p>
+        <input type="radio" name="finding" id="finding-6" />
+        <label for="finding-6">caveman added context</label>
+        <p>
+        Installing it added
+        {' '}{number.format(caveman.prompt - baseline.prompt)} tokens to the first prompt — a
+        {' '}{number.format(caveman.set[0].hookChars)}-character session-start instruction and {extraSkills} more
+        skills in the skill list. Writing them to the cache made its first call cost {aiu(caveman.firstAiu)} AIU
+        against the baseline’s {aiu(baseline.firstAiu)}, and every later call re-reads them. Median prose per run went from
+        {' '}{number.format(baseline.prose)} to {number.format(caveman.prose)} characters. Prose is the small part
+        anyway: {wholePercent.format(1 - baseline.proseShare)} of what the baseline agent wrote was tool input, such
+        as commands and edits.
+        </p>
+        <input type="radio" name="finding" id="finding-7" />
+        <label for="finding-7">The agent already did rtk’s job</label>
+        <p>
+        A plain run of the failing suite prints
+        {' '}{number.format(data.fixture.outputLines)} lines. The agent ran the suite {testRuns} times across the
+        {' '}{runs.length} runs; {testRuns - unpipedTestRuns} test invocations piped output through a filter such as
+        {' '}<code>tail</code> or <code>grep</code>. The largest single tool result was smaller with rtk
+        ({number.format(rtk.biggestResult)} tokens, against
+        {' '}{number.format(baseline.biggestResult)} at baseline), and rtk reported a median
+        {' '}{number.format(rtkSaved)} tokens saved per run — its own estimate, and less than a single late call
+        processes. Its instruction and hook added {number.format(rtk.prompt - baseline.prompt)} tokens to the prompt.
+        </p>
+        <input type="radio" name="finding" id="finding-8" />
+        <label for="finding-8">Combining the three setups</label>
+        <p>
+        All three together added {number.format(all.prompt - baseline.prompt)} tokens to the prompt,
+        made the first call cost {aiu(all.firstAiu)} AIU and had median total cost {aiu(all.aiu)} AIU.
+        </p>
+        {optimizer && (
+          <>
+            <input type="radio" name="finding" id="finding-9" />
+            <label for="finding-9">Token Optimizer on this task</label>
+            <p>
+            Token Optimizer {versions.tokenOptimizer} installed session-start continuity restore,
+            capability-gated bash compression, post-tool nudges and stop-time rollup in an isolated Copilot home.
+            Its median used {number.format(optimizer.tokens)} tokens ({change(optimizer)} versus baseline) and
+            {aiu(optimizer.aiu)} AIU, with {optimizer.succeeded} of {optimizer.set.length} runs succeeding.
+            The adapter’s hooks added a median {number.format(median(optimizer.set.map((run) => run.hookChars)))}
+            characters of context across a run. These results cover this one task and do not establish broader savings.
+            </p>
+          </>
+        )}
+      </div>
+    </section>
+
+    <input type="radio" name="section" id="tab-takeaways" />
+    <label for="tab-takeaways">Takeaways</label>
+    <section aria-labelledby="takeaways-title">
+      <h2 id="takeaways-title">What I’d take from it</h2>
+      <p class="muted">Opinion, from one task and one model.</p>
+      <ul>
+        <li>
+          <strong>Count calls before words.</strong> Each call re-reads everything so far, so the number of calls set
+          the token count here far more than how much the agent wrote.
+        </li>
+        <li>
+          <strong>Price what a tool adds to every prompt.</strong> Instructions, hooks and skill lists ride along on
+          every call. A tool has to save more than that before it saves anything.
+        </li>
+        <li>
+          <strong>Check what your agent already does.</strong> This one trimmed its own command output, so an output
+          filter had little left to take. Output filters should matter more where an agent reads long, raw logs.
+        </li>
+        <li>
+          <strong>Measure with enough runs.</strong> Single sessions vary too much to judge a setup. Run your own
+          tasks many times and compare the spread, not one before and one after.
+        </li>
+      </ul>
+    </section>
+
+    <input type="radio" name="section" id="tab-method" />
+    <label for="tab-method">Method</label>
+    <section aria-labelledby="method-title">
+      <h2 id="method-title">How it was run</h2>
+      <div class="tabs side method">
+        <input type="radio" name="method" id="method-task" checked />
+        <label for="method-task">Task</label>
+        <div>
+            A small Python invoicing library with {data.fixture.tests} tests, {data.fixture.failing} of them failing
+            with {number.format(data.fixture.outputLines)} lines of test output. Three seeded bugs: money rounded half
+            to even instead of half up; a zero tax-rate override fell back to the standard rate; and in tax-exclusive
+            regions, tax was charged before a line’s share of the coupon. The prompt, the same for every run:
+            <blockquote><p>{data.prompt}</p></blockquote>
+        </div>
+        <input type="radio" name="method" id="method-agent" />
+        <label for="method-agent">Agent</label>
+        <div>
+            GitHub Copilot CLI {data.versions.copilot}, non-interactive (<code>copilot -p</code>), model
+            {' '}<code>{data.model}</code> at {data.effort} reasoning effort, memory off.
+        </div>
+        <input type="radio" name="method" id="method-setups" />
+        <label for="method-setups">Setups</label>
+        <div>
+            <ul>
+              <li><strong>Baseline:</strong> the CLI as installed.</li>
+              <li>
+                <strong>Principles:</strong> six rules in the user instructions file:
+                <ol>
+                  {data.principles.map((rule) => (
+                    <li>{rule.split('`').map((part, i) => (i % 2 ? <code>{part}</code> : part))}</li>
+                  ))}
+                </ol>
+              </li>
+              <li>
+                <strong>caveman</strong> (<a href="https://github.com/JuliusBrussee/caveman">source</a>, commit
+                {' '}{data.versions.caveman}): installed with its own installer for Copilot, which adds a
+                session-start hook that switches the agent to terse replies, and {extraSkills} skills.
+              </li>
+              <li>
+                <strong>rtk</strong> (<a href="https://github.com/rtk-ai/rtk">source</a>, {data.versions.rtk}):
+                {' '}<code>rtk init -g --copilot --auto-patch --no-trust-filters</code>, which adds an instruction to run
+                commands through rtk and a hook that rewrites them, so rtk filters their output.
+              </li>
+              <li><strong>All three:</strong> everything above in one setup.</li>
+              {optimizer && (
+                <li>
+                  <strong>Token Optimizer</strong> (<a href="https://github.com/alexgreensh/token-optimizer">source</a>,
+                  {' '}<a href="https://github.com/alexgreensh/token-optimizer/blob/v5.13.48/LICENSE">noncommercial license</a>,
+                  {' '}{versions.tokenOptimizer}): installed into an isolated Copilot home. Its Copilot adapter
+                  adds session-start continuity restore, capability-gated bash compression, post-tool tally/nudges,
+                  and stop-time rollup.
+                </li>
+              )}
+            </ul>
+        </div>
+        <input type="radio" name="method" id="method-isolation" />
+        <label for="method-isolation">Isolation</label>
+        <div>
+            Every run got a fresh copy of the repository and a fresh home directory holding only its setup, with no
+            other environment from my machine. Five runs per setup, each capped at 100 AIU. All setups used the same
+            Copilot CLI version.
+        </div>
+        <input type="radio" name="method" id="method-success" />
+        <label for="method-success">Success</label>
+        <div>
+            The fixes are committed, every commit subject follows the repository’s contributing guide, and the
+            original tests plus a hidden acceptance test pass on the committed code. No run edited the tests.
+        </div>
+        <input type="radio" name="method" id="method-measures" />
+        <label for="method-measures">Measures</label>
+        <div>
+            Tokens per model call from the CLI’s session log. AIU is Copilot’s usage unit: the log records a rate for
+            each kind of token, the same in every run (AIU per 1k tokens: {rateList}), and tokens times those rates reproduce each run’s recorded
+            total exactly. The first run’s opening {number.format(sharedPrefix)} prompt tokens were already cached.
+            Python {data.versions.python}, pytest
+            {' '}{data.versions.pytest}.
+        </div>
+        <input type="radio" name="method" id="method-limits" />
+        <label for="method-limits">Limits</label>
+        <div>
+            One task, one agent, one model, five runs per setup. {failed.length ? 'Medians include failed runs. ' : ''}rtk’s savings
+            figure is its own estimate. Other token-saving tools weren’t tested.
+        </div>
+      </div>
+      <p>
+        <a href="https://github.com/ragmha/lab/tree/main/scripts/token-diet">The kit</a> rebuilds the
+        repository, re-runs every setup and regenerates this page’s data.
+      </p>
+    </section>
+
+    <input type="radio" name="section" id="tab-round-two" />
+    <label for="tab-round-two">Round 2</label>
+    <section aria-labelledby="round-two-title">
+      <h2 id="round-two-title">Round 2: Regression hunt</h2>
+      <p>
+        Round 1 gave the tools little to compress. This second task buries the same three invoice bugs in a longer
+        history, produces verbose test output, and asks for a written incident note. It is designed to give command
+        filtering and terse replies more opportunity to help; compare it separately from Round 1.
+      </p>
+
+      <h3>Round-two waterfall</h3>
+      <figure class="race round-two-race">
+        <div class="panels">
+          {roundTwoSetups.map((setup) => {
+            const run = setup.shown
+            return (
+              <div class="panel">
+                <p class="pill">
+                  {setup.name}
+                  <span aria-hidden="true">{number.format(total(run.totals))} tokens</span>
+                  <span class="visually-hidden">
+                    , median-token run {run.id}: {number.format(total(run.totals))} tokens, {run.calls.length} model calls,
+                    {aiu(run.nanoAiu)} AIU
+                  </span>
+                </p>
+                <ol class="waterfall" style={`--divisions:${roundTwoCallAxis / 10_000};--rows:${run.calls.length}`}>
+                  {run.calls.map((call, i) => (
+                    <li>
+                      <span aria-hidden="true">{i + 1}</span>
+                      <span class="what" title={what(call)}>{what(call)}</span>
+                      <span class="track" aria-hidden="true">
+                        <span class="bar" style={`--w:${pct(total(call), roundTwoCallAxis)}`}>
+                          {kinds.map((kind) => <span class={kind} style={`flex-grow:${call[kind]}`} />)}
+                        </span>
+                      </span>
+                      <span>{thousands(total(call))}<span class="visually-hidden"> tokens</span></span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )
+          })}
+        </div>
+        <figcaption>
+          One row per call in each setup’s median-token run; gridlines every 10k tokens. Grey is the conversation
+          re-read on every call.
+        </figcaption>
+      </figure>
+
+      <h3>Every round-two run</h3>
+      <figure class="strip">
+        <div class="strip-rows" aria-hidden="true">
+          {roundTwoSetups.map((setup) => (
+            <div class="strip-row">
+              <span>{setup.name}</span>
+              <div class="strip-track">
+                <span class="median" style={`--x:${pct(setup.tokens, roundTwoStripMax)}`} />
+                {setup.set.map((run) => (
+                  <span class:list={['dot', { failed: !run.success }]} style={`--x:${pct(total(run.totals), roundTwoStripMax)}`} />
+                ))}
+              </div>
+            </div>
+          ))}
+          <div class="strip-row">
+            <span />
+            <div class="axis">
+              {roundTwoStripTicks.map((tick) => (
+                <span style={`--x:${pct(tick, roundTwoStripMax)}`}>{tick ? thousands(tick) : '0'}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          Total tokens per run. Each dot is a run; hollow dots are failed runs; the line marks the median.
+        </figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table>
+          <caption>
+            Round 2 medians over {roundTwoSetups[0].set.length} runs per setup. A first-call prompt includes the
+            system prompt, {number.format(roundTwoData.toolDefinitionsTokens)} tool-definition tokens, instructions,
+            skills, and task.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Setup</th>
+              <th scope="col">Succeeded</th>
+              <th scope="col">Median tokens</th>
+              <th scope="col">Range</th>
+              <th scope="col">Calls</th>
+              <th scope="col">AIU</th>
+              <th scope="col">vs baseline</th>
+            </tr>
+          </thead>
+          <tbody>
+            {roundTwoSetups.map((setup) => (
+              <tr>
+                <th scope="row">{setup.name}</th>
+                <td>{setup.succeeded}/{setup.set.length}</td>
+                <td>{number.format(setup.tokens)}</td>
+                <td>{thousands(setup.low)}–{thousands(setup.high)}</td>
+                <td>{setup.calls}</td>
+                <td>{aiu(setup.aiu)}</td>
+                <td>{setup === roundTwoBaseline ? '—' : roundTwoDelta(setup)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h3>What Round 2 found</h3>
+      <ul>
+        <li>
+          <strong>Tokens:</strong> {roundTwoBestTokens.name} had the lowest median at
+          {' '}{number.format(roundTwoBestTokens.tokens)} tokens ({roundTwoDelta(roundTwoBestTokens)} versus the
+          {' '}baseline’s {number.format(roundTwoBaseline.tokens)}).
+        </li>
+        <li>
+          <strong>Usage:</strong> {roundTwoBestAiu.name} had the lowest median charge at {aiu(roundTwoBestAiu.aiu)}
+          {' '}AIU, against {aiu(roundTwoBaseline.aiu)} for baseline. Token count and usage charge are different measures.
+        </li>
+        <li>
+          <strong>Outcomes:</strong> {roundTwoRuns.length - roundTwoFailed.length} of {roundTwoRuns.length} runs succeeded.
+          {roundTwoFailed.length
+            ? ` Failed runs: ${roundTwoFailed.map((run) => `${run.id} (${nameOf(run)})`).join(', ')}.`
+            : ' Every run passed the verifier.'}
+        </li>
+        <li>
+          <strong>Variation:</strong> within-setup ranges spanned
+          {' '}{number.format(Math.min(...roundTwoSpread))} to {number.format(Math.max(...roundTwoSpread))} tokens.
+          Five runs on one task are exploratory, not evidence of general savings.
+        </li>
+      </ul>
+
+      <h3>Round-two task and method</h3>
+      <p>
+        The fixture starts from the known-good 0.9.0 release, then adds 38 commits; three later commits each
+        reintroduce one of the bugs. The full test suite has {number.format(roundTwoData.fixture.tests)} tests,
+        including {number.format(roundTwoData.fixture.failing)} failures before the fix and
+        {' '}{number.format(roundTwoData.fixture.outputLines)} lines of pytest output.
+      </p>
+      <blockquote><p>{roundTwoData.prompt}</p></blockquote>
+      <p>
+        Copilot CLI {roundTwoVersions.copilot}, {roundTwoData.model} at {roundTwoData.effort} reasoning effort;
+        Python {roundTwoVersions.python}, pytest {roundTwoVersions.pytest}. Each run used a fresh repository copy
+        and an isolated setup home. The same five-run median, token, AIU, range, and success measures are used here,
+        but this dataset has its own baseline and is not pooled with Round 1.
+      </p>
+      <ul>
+        {roundTwoSetups.map((setup) => (
+          <li><strong>{setup.name}:</strong> {setup.method}</li>
+        ))}
+      </ul>
+      <p>
+        Round-two token rates per 1k: {roundTwoRateList}. The recorded token counts and charges are reported separately.
+        {roundTwoHasOptimizer
+          ? ` Token Optimizer ${roundTwoVersions.tokenOptimizer} is included in this round.`
+          : ' Token Optimizer was added after these runs and was not measured in Round 2.'}
+      </p>
+    </section>
+    </div>
+  </div>
+
+  <script>
+    import { cost, kinds, reveal, total } from '../lib/token-diet'
+    import type { Tokens } from '../lib/token-diet'
+
+    const race = document.querySelector<HTMLElement>('.race')
+    const source = document.getElementById('race-data')
+    const still = matchMedia('(prefers-reduced-motion: reduce)')
+
+    if (race && source && !still.matches) {
+      const { axis, rates, lanes } = JSON.parse(source.textContent ?? '') as {
+        axis: number
+        rates: Tokens
+        lanes: Record<string, Tokens[]>
+      }
+      const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
+      const aiu = (nano: number) => (nano / 1e9).toFixed(2)
+      const views = Object.entries(lanes).map(([id, calls]) => {
+        const lane = race.querySelector<HTMLElement>(`.panel[data-lane="${id}"]`)!
+        let size = 0
+        const rows = [...lane.querySelectorAll<HTMLElement>('.waterfall li')].map((row, i) => {
+          const start = size
+          size += total(calls[i])
+          return { row, start, size: total(calls[i]) }
+        })
+        return { calls, size, lane, rows, rings: [...lane.querySelectorAll<HTMLElement>('.ring')] }
+      })
+      const replay = race.querySelector<HTMLButtonElement>('.replay')!
+      const fill = (ring: HTMLElement, values: number[]) => {
+        const sum = values.reduce((a, b) => a + b, 0)
+        let running = 0
+        values.forEach((value, i) => ring.style.setProperty(`--s${i + 1}`, String(sum ? (running += value) / sum : 0)))
+      }
+      const draw = (at: number) => {
+        for (const view of views) {
+          const shown = reveal(view.calls, at)
+          const done = Math.round(Math.min(at, view.size))
+          const meter = (name: string, value: string) => {
+            view.lane.querySelector(`[data-meter="${name}"]`)!.textContent = value
+          }
+          for (const row of view.rows) {
+            row.row.style.setProperty('--fill', String(Math.min(1, Math.max(0, (at - row.start) / row.size))))
+          }
+          meter('tokens', number.format(done))
+          meter('center', `${Math.round(done / 1000)}k`)
+          meter('total', number.format(done))
+          meter('AIU', aiu(cost(shown.tokens, rates)))
+          for (const kind of kinds) {
+            meter(kind, number.format(Math.round(shown.tokens[kind])))
+            meter(`${kind}-aiu`, aiu(shown.tokens[kind] * rates[kind]))
+          }
+          fill(view.rings[0], kinds.map((kind) => shown.tokens[kind]))
+          fill(view.rings[1], kinds.map((kind) => shown.tokens[kind] * rates[kind]))
+        }
+      }
+      let frame = 0
+      const play = () => {
+        cancelAnimationFrame(frame)
+        const end = Math.max(...views.filter((view) => view.lane.getClientRects().length).map((view) => view.size))
+        const started = performance.now()
+        const step = (now: number) => {
+          const at = Math.min(((now - started) / 4000) * axis, end)
+          draw(at)
+          if (at < end) frame = requestAnimationFrame(step)
+        }
+        frame = requestAnimationFrame(step)
+      }
+
+      draw(0)
+      replay.classList.add('ready')
+      replay.addEventListener('click', play)
+      race.addEventListener('change', (event) => {
+        if ((event.target as HTMLInputElement).name === 'after') play()
+      })
+      document.getElementById('tab-calls')?.addEventListener('change', play)
+      const observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return
+        observer.disconnect()
+        play()
+      }, { threshold: 0.5 })
+      observer.observe(race.querySelector('.panels')!)
+    }
+  </script>
+</SiteLayout>
+
+<style>
+  .diet {
+    --c-cacheRead: var(--theme-faint);
+    --c-cacheWrite: var(--theme-blue);
+    --c-fresh: var(--theme-green);
+    --c-output: var(--theme-red);
+    margin-top: 1rem;
+  }
+
+  .diet p + p,
+  .diet section > p,
+  .diet section > ul {
+    margin-top: 1rem;
+  }
+
+  .diet h2 {
+    margin: 2.5rem 0 0;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .muted,
+  figcaption,
+  caption,
+  .kicker,
+  fieldset legend {
+    color: var(--theme-muted);
+  }
+
+  .diet code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+  }
+
+  .diet .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Race */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-top: 0.75rem;
+  }
+
+  fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 0.85rem;
+  }
+
+  fieldset legend {
+    width: 100%;
+    margin-bottom: 0.25rem;
+    padding: 0;
+    font-size: 0.8rem;
+  }
+
+  fieldset label {
+    display: inline-flex;
+    white-space: nowrap;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2rem;
+    cursor: pointer;
+  }
+
+  fieldset input {
+    margin: 0;
+    accent-color: var(--theme-text);
+  }
+
+  .replay {
+    visibility: hidden;
+    min-height: 2.25rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--theme-rule-strong);
+    border-radius: 0;
+    background: var(--theme-text);
+    color: var(--theme-bg);
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .replay.ready {
+    visibility: visible;
+  }
+
+  .race:has(#after-b:not(:checked)) [data-lane='b'],
+  .race:has(#after-c:not(:checked)) [data-lane='c'],
+  .race:has(#after-d:not(:checked)) [data-lane='d'],
+  .race:has(#after-e:not(:checked)) [data-lane='e'],
+  .race:has(#after-f:not(:checked)) [data-lane='f'] {
+    display: none;
+  }
+
+  figure {
+    margin: 1rem 0 0;
+  }
+
+  figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem 1.5rem;
+  }
+
+  .kicker {
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .pill {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.6rem;
+    margin: 0 0 0.5rem;
+    padding: 0.2rem 1rem;
+    border: 1px solid var(--theme-rule-strong);
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .lede {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0 1rem;
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .lede dt {
+    color: var(--theme-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    line-height: 1.65;
+    text-transform: uppercase;
+  }
+
+  .lede dd {
+    margin: 0;
+  }
+
+  .change {
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .change.worse {
+    color: var(--theme-red);
+  }
+
+  .change.better {
+    color: var(--theme-green);
+  }
+
+  .pill > span[aria-hidden] {
+    color: var(--theme-muted);
+    font-size: 0.8rem;
+    font-weight: 400;
+  }
+
+  .pill [data-meter] {
+    color: var(--theme-text);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  [data-meter] {
+    display: inline-block;
+    min-width: calc(var(--chars) * 1ch);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .waterfall {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.68rem;
+  }
+
+  .waterfall li {
+    display: grid;
+    grid-template-columns: 1rem minmax(0, 1fr) minmax(0, 1.2fr) 2rem;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .waterfall li {
+    margin: 0;
+    height: min(1rem, 8rem / var(--rows));
+    opacity: calc(0.3 + var(--fill, 1) * 20);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .round-two-race .waterfall li {
+    height: auto;
+    min-height: 1.25rem;
+  }
+
+  .waterfall li > :first-child {
+    color: var(--theme-muted);
+  }
+
+  .waterfall li > :last-child {
+    text-align: right;
+  }
+
+  .what {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .track {
+    position: relative;
+    align-self: stretch;
+    background-image: linear-gradient(to right, var(--theme-rule) 1px, transparent 1px);
+    background-size: calc(100% / var(--divisions)) 100%;
+  }
+
+  .bar {
+    position: absolute;
+    top: 0.2rem;
+    bottom: 0.2rem;
+    left: 0;
+    display: flex;
+    width: var(--w);
+    transform: scaleX(var(--fill, 1));
+    transform-origin: left;
+  }
+
+  .bar > span {
+    flex-basis: 0;
+    min-width: 0;
+  }
+
+
+  .cacheRead { background: var(--c-cacheRead); }
+  .cacheWrite { background: var(--c-cacheWrite); }
+  .fresh { background: var(--c-fresh); }
+  .output { background: var(--c-output); }
+
+
+  .axis {
+    position: relative;
+    height: 1rem;
+    margin-top: 0.35rem;
+    color: var(--theme-muted);
+    font-size: 0.7rem;
+    line-height: 1;
+  }
+
+  .axis span {
+    position: absolute;
+    left: var(--x);
+    transform: translateX(-50%);
+  }
+
+  .axis span:first-child { transform: none; }
+  .axis span:last-child { transform: translateX(-100%); }
+
+  .summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.4rem 1.25rem;
+    margin-top: 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .rings {
+    display: grid;
+    place-items: center;
+    width: 5.5rem;
+    height: 5.5rem;
+  }
+
+  .ring {
+    grid-area: 1 / 1;
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--c-cacheRead) 0 calc(var(--s1) * 100%),
+      var(--c-cacheWrite) 0 calc(var(--s2) * 100%),
+      var(--c-fresh) 0 calc(var(--s3) * 100%),
+      var(--c-output) 0 calc(var(--s4) * 100%),
+      var(--theme-rule) 0
+    );
+    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 0.6rem), #000 calc(100% - 0.6rem + 0.5px));
+    mask: radial-gradient(closest-side, transparent calc(100% - 0.6rem), #000 calc(100% - 0.6rem + 0.5px));
+  }
+
+  .ring-tokens {
+    width: 100%;
+    height: 100%;
+  }
+
+  .ring-cost {
+    width: 4.1rem;
+    height: 4.1rem;
+  }
+
+  .ring-total {
+    grid-area: 1 / 1;
+    display: grid;
+    justify-items: center;
+    color: var(--theme-muted);
+    font-size: 0.6rem;
+    line-height: 1.3;
+  }
+
+  .ring-total [data-meter] {
+    color: var(--theme-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .summary table {
+    font-size: 0.72rem;
+    line-height: 1.2;
+  }
+
+  .summary th,
+  .summary td {
+    padding: 0.05rem 0 0.05rem 0.5rem;
+    border: 0;
+    font-weight: 400;
+  }
+
+  .summary th:first-child {
+    padding-left: 0;
+  }
+
+  .summary tfoot > tr > * {
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--theme-rule);
+    font-weight: 600;
+  }
+
+  .swatch {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-right: 0.45rem;
+    vertical-align: -0.05rem;
+  }
+
+  /* Tokenizer */
+  .intro-row {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .intro-row > p {
+    margin: 0;
+  }
+
+  .views {
+    flex-wrap: nowrap;
+  }
+
+  .kicker .count {
+    color: var(--theme-text);
+    font-weight: 600;
+  }
+
+  .readings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .part {
+    margin: 0.75rem 0 0.35rem;
+    font-size: 0.75rem;
+  }
+
+  .token-text,
+  .token-ids {
+    margin: 0;
+    padding: 0.4rem 0.6rem;
+    background: var(--theme-surface);
+    font-size: 0.72rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .token-text {
+    white-space: pre-wrap;
+  }
+
+  .token-text span:nth-child(4n + 1) { background: color-mix(in srgb, var(--theme-blue) 30%, var(--theme-surface)); }
+  .token-text span:nth-child(4n + 2) { background: color-mix(in srgb, var(--theme-green) 30%, var(--theme-surface)); }
+  .token-text span:nth-child(4n + 3) { background: color-mix(in srgb, var(--theme-red) 30%, var(--theme-surface)); }
+  .token-text span:nth-child(4n) { background: color-mix(in srgb, var(--theme-faint) 35%, var(--theme-surface)); }
+
+  .tokenizer:has(#token-text:checked) .token-ids,
+  .tokenizer:has(#token-ids:checked) .token-text {
+    display: none;
+  }
+
+  .readings > :nth-child(2) {
+    grid-row: span 2;
+  }
+
+  .note {
+    margin: 0;
+    font-size: 0.75rem;
+  }
+
+  @media (max-width: 44rem) {
+    .panels,
+    .readings {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+
+  /* Every run */
+  .strip-row {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 1.3rem;
+    font-size: 0.8rem;
+  }
+
+  .strip-track {
+    position: relative;
+    height: 1.3rem;
+    background: linear-gradient(var(--theme-rule), var(--theme-rule)) center / 100% 1px no-repeat;
+  }
+
+  .dot,
+  .median {
+    position: absolute;
+    top: 50%;
+    left: var(--x);
+  }
+
+  .dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    margin: -0.3rem 0 0 -0.3rem;
+    border-radius: 50%;
+    background: var(--theme-muted);
+    box-shadow: 0 0 0 1px var(--theme-bg);
+  }
+
+  .dot.failed {
+    border: 1px solid var(--theme-muted);
+    background: var(--theme-bg);
+  }
+
+  .median {
+    height: 1.1rem;
+    margin-top: -0.55rem;
+    border-left: 2px solid var(--theme-text);
+    transform: translateX(-1px);
+  }
+
+  /* Table */
+  .table-wrap {
+    margin-top: 0.75rem;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  caption {
+    padding-bottom: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  th,
+  td {
+    padding: 0.3rem 0.45rem;
+    border-bottom: 1px solid var(--theme-rule);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th:first-child {
+    text-align: left;
+  }
+
+  thead th {
+    color: var(--theme-muted);
+    font-weight: 500;
+  }
+
+  tbody th {
+    font-weight: 600;
+  }
+
+  /* Takeaways and method */
+  .diet ul,
+  .diet ol {
+    padding-left: 1.25rem;
+  }
+
+  .diet section > ul li + li {
+    margin-top: 0.6rem;
+  }
+
+  .method ul,
+  .method ol {
+    margin: 0.4rem 0 0;
+  }
+
+  .method li + li {
+    margin-top: 0.35rem;
+  }
+
+  blockquote {
+    margin: 0.6rem 0 0;
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--theme-rule-strong);
+    color: var(--theme-muted);
+  }
+
+  /* Tabs: radio, label, panel siblings */
+  .tabs {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.25rem;
+    border-bottom: 0;
+  }
+
+  .tabs > input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .tabs > label {
+    padding: 0.4rem 0;
+    border-bottom: 2px solid transparent;
+    color: var(--theme-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .tabs > input:checked + label {
+    border-bottom-color: var(--theme-text);
+    color: var(--theme-text);
+    font-weight: 600;
+  }
+
+  .tabs > input:focus-visible + label {
+    outline: 2px solid var(--theme-text);
+    outline-offset: 2px;
+  }
+
+  .tabs > label + * {
+    display: none;
+    order: 1;
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .tabs > input:checked + label + * {
+    display: block;
+  }
+
+  .diet > .tabs {
+    margin-top: 0;
+  }
+
+  .diet > .tabs > section {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--theme-rule);
+  }
+
+  .diet > .tabs > section > h2 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .diet > .tabs > section > :is(h2 + *, .race) {
+    margin-top: 0;
+  }
+
+  .tabs.side {
+    display: grid;
+    grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr);
+    grid-auto-rows: min-content;
+    gap: 0 2rem;
+    margin-top: 0;
+  }
+
+  .tabs.side > label {
+    grid-column: 1;
+    padding: 0.35rem 0 0.35rem 0.75rem;
+    border-bottom: 0;
+    border-left: 2px solid var(--theme-rule);
+    font-size: 0.8rem;
+  }
+
+  .tabs.side > input:checked + label {
+    border-left-color: var(--theme-text);
+  }
+
+  .tabs.side > label + * {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 600px) {
+    .strip-row {
+      grid-template-columns: 5rem minmax(0, 1fr);
+    }
+
+    .tabs.side {
+      display: block;
+    }
+
+    .tabs.side > label {
+      display: block;
+    }
+
+    .tabs.side > label + * {
+      padding: 0.25rem 0 0.75rem 0.75rem;
+      border-left: 2px solid var(--theme-text);
+    }
+
+    .intro-row {
+      display: block;
+    }
+  }
+</style>

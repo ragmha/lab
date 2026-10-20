@@ -1,0 +1,136 @@
+@import './fonts.css';
+@import './theme.css';
+
+body.site-surface {
+  --text: var(--theme-text);
+  --body: var(--theme-text);
+  --muted: var(--theme-muted);
+  --line: var(--theme-rule);
+  --accent: var(--theme-text);
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  line-height: 1.6;
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.site-surface .site-page {
+  width: 100%;
+  min-height: 100svh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Outrank the shared main:not(.home) spacing without affecting other pages. */
+.site-surface .site-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--layout-nav-width);
+  align-content: start;
+  gap: var(--layout-gap);
+  width: 100%;
+  max-width: var(--layout-width);
+  margin: 0 auto;
+  padding: var(--layout-top) var(--layout-gutter) var(--layout-bottom);
+}
+
+.site-content {
+  min-width: 0;
+  padding-top: var(--layout-content-offset);
+}
+
+.site-content h1 {
+  margin: 0 0 0.25rem;
+  color: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: normal;
+}
+
+.site-content p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.home-about {
+  margin-top: 1rem;
+  scroll-margin-top: 2rem;
+}
+
+.home-about p {
+  margin-bottom: 1rem;
+}
+
+.home-about p a {
+  text-underline-offset: 3px;
+}
+
+.home-writing {
+  margin-top: 2.5rem;
+}
+
+.home-writing h2 {
+  margin: 0;
+  font-size: 0.9rem;
+  letter-spacing: normal;
+}
+
+.home-writing .post-list {
+  margin-top: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.home-writing .post-list li {
+  margin: 0;
+}
+
+.home-writing .post-list a {
+  display: block;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+}
+
+.home-writing .post-list a:hover .post-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.home-writing .post-list span {
+  display: block;
+}
+
+.home-writing .post-date {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.home-writing .post-title {
+  margin-block: 0.35rem;
+  font-weight: 600;
+}
+
+.home-writing .post-desc {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 600px) {
+  .site-surface .site-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 28rem) {
+  .site-surface .site-shell {
+    padding-block-start: 1.5rem;
+  }
+
+  .home-writing .post-list a {
+    padding-block: 0.85rem;
+  }
+}

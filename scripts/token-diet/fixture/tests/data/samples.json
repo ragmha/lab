@@ -1,0 +1,3262 @@
+[
+  {
+    "invoice": {
+      "number": "INV-0001",
+      "region": "SK",
+      "items": [
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 1,
+          "unit_price": "15.27",
+          "category": "food"
+        },
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 1,
+          "unit_price": "9.11",
+          "category": "digital"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "24.38",
+      "discount": "0",
+      "tax": "4.14",
+      "total": "24.38"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0002",
+      "region": "CA-NB",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 4,
+          "unit_price": "12.84",
+          "category": "standard"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 2,
+          "unit_price": "16.72",
+          "category": "standard"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE20",
+        "kind": "percent",
+        "value": "20"
+      }
+    },
+    "expected": {
+      "subtotal": "84.80",
+      "discount": "16.96",
+      "tax": "10.18",
+      "total": "78.02"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0003",
+      "region": "CY",
+      "items": [
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 1,
+          "unit_price": "9.35",
+          "category": "digital"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 4,
+          "unit_price": "29.00",
+          "category": "exempt"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE20",
+        "kind": "percent",
+        "value": "20"
+      }
+    },
+    "expected": {
+      "subtotal": "125.35",
+      "discount": "25.07",
+      "tax": "1.19",
+      "total": "100.28"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0004",
+      "region": "DE",
+      "items": [
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 3,
+          "unit_price": "16.01",
+          "category": "food"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 2,
+          "unit_price": "56.35",
+          "category": "standard"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 2,
+          "unit_price": "12.89",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "186.51",
+      "discount": "0",
+      "tax": "22.82",
+      "total": "186.51"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0005",
+      "region": "US-ND",
+      "items": [
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 2,
+          "unit_price": "32.37",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "64.74",
+      "discount": "0",
+      "tax": "3.24",
+      "total": "67.98"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0006",
+      "region": "US-MT",
+      "items": [
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 3,
+          "unit_price": "9.37",
+          "category": "reduced"
+        },
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 2,
+          "unit_price": "4.21",
+          "category": "food"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 2,
+          "unit_price": "6.14",
+          "category": "food"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 3,
+          "unit_price": "33.15",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "148.26",
+      "discount": "0",
+      "tax": "0.00",
+      "total": "148.26"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0007",
+      "region": "US-AL",
+      "items": [
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 4,
+          "unit_price": "11.19",
+          "category": "standard"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 3,
+          "unit_price": "35.10",
+          "category": "books"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 4,
+          "unit_price": "17.71",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 1,
+          "unit_price": "136.74",
+          "category": "digital"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "357.64",
+      "discount": "0",
+      "tax": "14.31",
+      "total": "371.95"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0008",
+      "region": "CA-NS",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 4,
+          "unit_price": "5.02",
+          "category": "food"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 4,
+          "unit_price": "150.93",
+          "category": "digital"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 1,
+          "unit_price": "21.00",
+          "category": "exempt"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "644.80",
+      "discount": "0",
+      "tax": "84.52",
+      "total": "729.32"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0009",
+      "region": "US-LA",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 4,
+          "unit_price": "11.88",
+          "category": "standard"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE25",
+        "kind": "percent",
+        "value": "25"
+      }
+    },
+    "expected": {
+      "subtotal": "47.52",
+      "discount": "11.88",
+      "tax": "1.78",
+      "total": "37.42"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0010",
+      "region": "US-AR",
+      "items": [
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 2,
+          "unit_price": "6.89",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "13.78",
+      "discount": "0",
+      "tax": "0.02",
+      "total": "13.80"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0011",
+      "region": "US-ME",
+      "items": [
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 2,
+          "unit_price": "33.81",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "67.62",
+      "discount": "0",
+      "tax": "3.72",
+      "total": "71.34"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0012",
+      "region": "US-DE",
+      "items": [
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 4,
+          "unit_price": "27.00",
+          "category": "exempt"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 3,
+          "unit_price": "7.76",
+          "category": "food"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 4,
+          "unit_price": "17.51",
+          "category": "standard"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 3,
+          "unit_price": "56.35",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "370.37",
+      "discount": "0",
+      "tax": "0.00",
+      "total": "370.37"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0013",
+      "region": "US-AZ",
+      "items": [
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 2,
+          "unit_price": "30.71",
+          "category": "standard"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 1,
+          "unit_price": "46.06",
+          "category": "standard"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 2,
+          "unit_price": "22.09",
+          "category": "standard"
+        },
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 3,
+          "unit_price": "8.26",
+          "category": "reduced"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE12.5",
+        "kind": "percent",
+        "value": "12.5"
+      }
+    },
+    "expected": {
+      "subtotal": "176.44",
+      "discount": "22.06",
+      "tax": "8.65",
+      "total": "163.03"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0014",
+      "region": "US-OK",
+      "items": [
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 1,
+          "unit_price": "58.31",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 4,
+          "unit_price": "140.61",
+          "category": "digital"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 4,
+          "unit_price": "15.74",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "683.71",
+      "discount": "0",
+      "tax": "30.77",
+      "total": "714.48"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0015",
+      "region": "US-MA",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 2,
+          "unit_price": "12.96",
+          "category": "standard"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 3,
+          "unit_price": "30.02",
+          "category": "standard"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 1,
+          "unit_price": "23.48",
+          "category": "standard"
+        },
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 1,
+          "unit_price": "7.40",
+          "category": "reduced"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "146.86",
+      "discount": "0",
+      "tax": "9.18",
+      "total": "156.04"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0016",
+      "region": "US-MT",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 1,
+          "unit_price": "5.06",
+          "category": "food"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE15",
+        "kind": "percent",
+        "value": "15"
+      }
+    },
+    "expected": {
+      "subtotal": "5.06",
+      "discount": "0.76",
+      "tax": "0.00",
+      "total": "4.30"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0017",
+      "region": "EE",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 1,
+          "unit_price": "4.68",
+          "category": "food"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 4,
+          "unit_price": "33.93",
+          "category": "books"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 4,
+          "unit_price": "27.25",
+          "category": "exempt"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "249.40",
+      "discount": "0",
+      "tax": "12.11",
+      "total": "249.40"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0018",
+      "region": "CA-ON",
+      "items": [
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 3,
+          "unit_price": "20.10",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 2,
+          "unit_price": "141.90",
+          "category": "digital"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "344.10",
+      "discount": "0",
+      "tax": "44.73",
+      "total": "388.83"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0019",
+      "region": "HU",
+      "items": [
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 3,
+          "unit_price": "13891.50",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 3,
+          "unit_price": "38377.50",
+          "category": "digital"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 3,
+          "unit_price": "5928.55",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "174592.65",
+      "discount": "0",
+      "tax": "34183.86",
+      "total": "174592.65"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0020",
+      "region": "US-AZ",
+      "items": [
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 3,
+          "unit_price": "16.79",
+          "category": "books"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 2,
+          "unit_price": "30.00",
+          "category": "exempt"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "110.37",
+      "discount": "0",
+      "tax": "2.82",
+      "total": "113.19"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0021",
+      "region": "GR",
+      "items": [
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 2,
+          "unit_price": "23.50",
+          "category": "exempt"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 4,
+          "unit_price": "20.79",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "130.16",
+      "discount": "0",
+      "tax": "9.57",
+      "total": "130.16"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0022",
+      "region": "BG",
+      "items": [
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 4,
+          "unit_price": "8.34",
+          "category": "reduced"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS10",
+        "kind": "fixed",
+        "value": "10"
+      }
+    },
+    "expected": {
+      "subtotal": "33.36",
+      "discount": "10.00",
+      "tax": "1.93",
+      "total": "23.36"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0023",
+      "region": "US-IN",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 2,
+          "unit_price": "3.66",
+          "category": "food"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 2,
+          "unit_price": "21.89",
+          "category": "standard"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 2,
+          "unit_price": "34.85",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "120.80",
+      "discount": "0",
+      "tax": "7.94",
+      "total": "128.74"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0024",
+      "region": "US-OK",
+      "items": [
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 1,
+          "unit_price": "6.89",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "6.89",
+      "discount": "0",
+      "tax": "0.00",
+      "total": "6.89"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0025",
+      "region": "CY",
+      "items": [
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 4,
+          "unit_price": "7.83",
+          "category": "reduced"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 3,
+          "unit_price": "154.80",
+          "category": "digital"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 4,
+          "unit_price": "29.33",
+          "category": "standard"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 4,
+          "unit_price": "7.36",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "642.48",
+      "discount": "0",
+      "tax": "96.87",
+      "total": "642.48"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0026",
+      "region": "CA-ON",
+      "items": [
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 2,
+          "unit_price": "39.69",
+          "category": "standard"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 4,
+          "unit_price": "29.25",
+          "category": "exempt"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "196.38",
+      "discount": "0",
+      "tax": "10.32",
+      "total": "206.70"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0027",
+      "region": "DK",
+      "items": [
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 2,
+          "unit_price": "9.19",
+          "category": "digital"
+        },
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 1,
+          "unit_price": "3.44",
+          "category": "food"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 2,
+          "unit_price": "42.14",
+          "category": "standard"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 2,
+          "unit_price": "16.04",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "138.18",
+      "discount": "0",
+      "tax": "27.64",
+      "total": "138.18"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0028",
+      "region": "IE",
+      "items": [
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 3,
+          "unit_price": "9.29",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "27.87",
+      "discount": "0",
+      "tax": "5.21",
+      "total": "27.87"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0029",
+      "region": "US-NV",
+      "items": [
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 1,
+          "unit_price": "8.79",
+          "category": "standard"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 4,
+          "unit_price": "15.29",
+          "category": "books"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 4,
+          "unit_price": "21.53",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "156.07",
+      "discount": "0",
+      "tax": "4.79",
+      "total": "160.86"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0030",
+      "region": "US-MI",
+      "items": [
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 1,
+          "unit_price": "16.94",
+          "category": "books"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 2,
+          "unit_price": "52.92",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "122.78",
+      "discount": "0",
+      "tax": "7.37",
+      "total": "130.15"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0031",
+      "region": "EE",
+      "items": [
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 1,
+          "unit_price": "58.31",
+          "category": "standard"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 1,
+          "unit_price": "7.76",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "66.07",
+      "discount": "0",
+      "tax": "12.79",
+      "total": "66.07"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0032",
+      "region": "US-MO",
+      "items": [
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 2,
+          "unit_price": "7.14",
+          "category": "reduced"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 3,
+          "unit_price": "23.00",
+          "category": "exempt"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 1,
+          "unit_price": "16.32",
+          "category": "standard"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 4,
+          "unit_price": "16.79",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "166.76",
+      "discount": "0",
+      "tax": "4.13",
+      "total": "170.89"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0033",
+      "region": "CA-NL",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 2,
+          "unit_price": "4.76",
+          "category": "food"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 4,
+          "unit_price": "37.83",
+          "category": "books"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 4,
+          "unit_price": "16.79",
+          "category": "books"
+        },
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 2,
+          "unit_price": "9.63",
+          "category": "reduced"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "247.26",
+      "discount": "0",
+      "tax": "35.66",
+      "total": "282.92"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0034",
+      "region": "MT",
+      "items": [
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 4,
+          "unit_price": "22.00",
+          "category": "exempt"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 4,
+          "unit_price": "5.87",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "111.48",
+      "discount": "0",
+      "tax": "0.00",
+      "total": "111.48"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0035",
+      "region": "CA-NS",
+      "items": [
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 3,
+          "unit_price": "17.11",
+          "category": "food"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 2,
+          "unit_price": "17.31",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "85.95",
+      "discount": "0",
+      "tax": "4.85",
+      "total": "90.80"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0036",
+      "region": "US-SC",
+      "items": [
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 2,
+          "unit_price": "53.41",
+          "category": "standard"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 4,
+          "unit_price": "8.59",
+          "category": "standard"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 2,
+          "unit_price": "27.75",
+          "category": "exempt"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "196.68",
+      "discount": "0",
+      "tax": "8.47",
+      "total": "205.15"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0037",
+      "region": "IT",
+      "items": [
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 4,
+          "unit_price": "144.48",
+          "category": "digital"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 4,
+          "unit_price": "18.58",
+          "category": "food"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE25",
+        "kind": "percent",
+        "value": "25"
+      }
+    },
+    "expected": {
+      "subtotal": "652.24",
+      "discount": "163.06",
+      "tax": "80.31",
+      "total": "489.18"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0038",
+      "region": "US-CA",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 4,
+          "unit_price": "4.89",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "19.56",
+      "discount": "0",
+      "tax": "0.00",
+      "total": "19.56"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0039",
+      "region": "BE",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 1,
+          "unit_price": "4.76",
+          "category": "food"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 2,
+          "unit_price": "13.04",
+          "category": "books"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 1,
+          "unit_price": "33.54",
+          "category": "books"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 3,
+          "unit_price": "9.59",
+          "category": "standard"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS10",
+        "kind": "fixed",
+        "value": "10"
+      }
+    },
+    "expected": {
+      "subtotal": "93.15",
+      "discount": "10.00",
+      "tax": "7.71",
+      "total": "83.15"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0040",
+      "region": "CZ",
+      "items": [
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 4,
+          "unit_price": "511.75",
+          "category": "exempt"
+        },
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 1,
+          "unit_price": "183.77",
+          "category": "digital"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 1,
+          "unit_price": "222.88",
+          "category": "standard"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 4,
+          "unit_price": "385.11",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "3994.09",
+      "discount": "0",
+      "tax": "235.62",
+      "total": "3994.09"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0041",
+      "region": "NL",
+      "items": [
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 3,
+          "unit_price": "6.79",
+          "category": "digital"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS2",
+        "kind": "fixed",
+        "value": "2"
+      }
+    },
+    "expected": {
+      "subtotal": "20.37",
+      "discount": "2.00",
+      "tax": "3.19",
+      "total": "18.37"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0042",
+      "region": "MT",
+      "items": [
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 3,
+          "unit_price": "5.40",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "16.20",
+      "discount": "0",
+      "tax": "0.00",
+      "total": "16.20"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0043",
+      "region": "US-HI",
+      "items": [
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 2,
+          "unit_price": "44.07",
+          "category": "books"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 2,
+          "unit_price": "42.63",
+          "category": "standard"
+        },
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 1,
+          "unit_price": "11.52",
+          "category": "standard"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS10",
+        "kind": "fixed",
+        "value": "10"
+      }
+    },
+    "expected": {
+      "subtotal": "184.92",
+      "discount": "10.00",
+      "tax": "7.00",
+      "total": "181.92"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0044",
+      "region": "US-MS",
+      "items": [
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 2,
+          "unit_price": "11.19",
+          "category": "standard"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 3,
+          "unit_price": "6.55",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "42.03",
+      "discount": "0",
+      "tax": "2.55",
+      "total": "44.58"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0045",
+      "region": "LV",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 2,
+          "unit_price": "9.72",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "19.44",
+      "discount": "0",
+      "tax": "3.37",
+      "total": "19.44"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0046",
+      "region": "LU",
+      "items": [
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 4,
+          "unit_price": "22.09",
+          "category": "standard"
+        },
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 3,
+          "unit_price": "8.95",
+          "category": "digital"
+        },
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 2,
+          "unit_price": "8.00",
+          "category": "reduced"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 2,
+          "unit_price": "18.58",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "168.37",
+      "discount": "0",
+      "tax": "19.01",
+      "total": "168.37"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0047",
+      "region": "US-WI",
+      "items": [
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 2,
+          "unit_price": "15.27",
+          "category": "food"
+        },
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 1,
+          "unit_price": "3.40",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "33.94",
+      "discount": "0",
+      "tax": "0.00",
+      "total": "33.94"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0048",
+      "region": "LV",
+      "items": [
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 3,
+          "unit_price": "50.96",
+          "category": "standard"
+        },
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 2,
+          "unit_price": "14.16",
+          "category": "standard"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 1,
+          "unit_price": "19.50",
+          "category": "standard"
+        },
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 2,
+          "unit_price": "8.71",
+          "category": "digital"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE12.5",
+        "kind": "percent",
+        "value": "12.5"
+      }
+    },
+    "expected": {
+      "subtotal": "218.12",
+      "discount": "27.27",
+      "tax": "33.12",
+      "total": "190.85"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0049",
+      "region": "US-CA",
+      "items": [
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 3,
+          "unit_price": "12.29",
+          "category": "books"
+        },
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 3,
+          "unit_price": "3.95",
+          "category": "food"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 1,
+          "unit_price": "31.40",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "80.12",
+      "discount": "0",
+      "tax": "4.95",
+      "total": "85.07"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0050",
+      "region": "CA-ON",
+      "items": [
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 1,
+          "unit_price": "9.49",
+          "category": "standard"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 3,
+          "unit_price": "12.74",
+          "category": "books"
+        },
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 2,
+          "unit_price": "6.79",
+          "category": "digital"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 1,
+          "unit_price": "36.23",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "97.52",
+      "discount": "0",
+      "tax": "9.62",
+      "total": "107.14"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0051",
+      "region": "RO",
+      "items": [
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 2,
+          "unit_price": "9.35",
+          "category": "digital"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 4,
+          "unit_price": "40.71",
+          "category": "standard"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 4,
+          "unit_price": "19.90",
+          "category": "standard"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS5",
+        "kind": "fixed",
+        "value": "5"
+      }
+    },
+    "expected": {
+      "subtotal": "261.14",
+      "discount": "5.00",
+      "tax": "44.45",
+      "total": "256.14"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0052",
+      "region": "CA-BC",
+      "items": [
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 1,
+          "unit_price": "145.77",
+          "category": "digital"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 2,
+          "unit_price": "29.25",
+          "category": "exempt"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 1,
+          "unit_price": "12.74",
+          "category": "books"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 2,
+          "unit_price": "40.18",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "297.37",
+      "discount": "0",
+      "tax": "27.77",
+      "total": "325.14"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0053",
+      "region": "CA-SK",
+      "items": [
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 1,
+          "unit_price": "30.00",
+          "category": "exempt"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 2,
+          "unit_price": "8.10",
+          "category": "food"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 3,
+          "unit_price": "16.64",
+          "category": "books"
+        },
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 4,
+          "unit_price": "9.60",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "134.52",
+      "discount": "0",
+      "tax": "9.72",
+      "total": "144.24"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0054",
+      "region": "US-MI",
+      "items": [
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 1,
+          "unit_price": "9.03",
+          "category": "digital"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "9.03",
+      "discount": "0",
+      "tax": "0.54",
+      "total": "9.57"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0055",
+      "region": "US-LA",
+      "items": [
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 2,
+          "unit_price": "8.17",
+          "category": "reduced"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 4,
+          "unit_price": "18.71",
+          "category": "standard"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 4,
+          "unit_price": "11.09",
+          "category": "standard"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS10",
+        "kind": "fixed",
+        "value": "10"
+      }
+    },
+    "expected": {
+      "subtotal": "135.54",
+      "discount": "10.00",
+      "tax": "6.28",
+      "total": "131.82"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0056",
+      "region": "CA-BC",
+      "items": [
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 3,
+          "unit_price": "17.71",
+          "category": "standard"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 3,
+          "unit_price": "37.44",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "165.45",
+      "discount": "0",
+      "tax": "11.99",
+      "total": "177.44"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0057",
+      "region": "DE",
+      "items": [
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 4,
+          "unit_price": "5.60",
+          "category": "food"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS5",
+        "kind": "fixed",
+        "value": "5"
+      }
+    },
+    "expected": {
+      "subtotal": "22.40",
+      "discount": "5.00",
+      "tax": "1.14",
+      "total": "17.40"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0058",
+      "region": "US-UT",
+      "items": [
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 4,
+          "unit_price": "10.89",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 1,
+          "unit_price": "140.61",
+          "category": "digital"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 2,
+          "unit_price": "17.24",
+          "category": "books"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 1,
+          "unit_price": "24.75",
+          "category": "exempt"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "243.40",
+      "discount": "0",
+      "tax": "13.34",
+      "total": "256.74"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0059",
+      "region": "BE",
+      "items": [
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 3,
+          "unit_price": "7.29",
+          "category": "food"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 2,
+          "unit_price": "20.70",
+          "category": "standard"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 1,
+          "unit_price": "13.94",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "77.21",
+      "discount": "0",
+      "tax": "9.21",
+      "total": "77.21"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0060",
+      "region": "DK",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 3,
+          "unit_price": "5.10",
+          "category": "food"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 3,
+          "unit_price": "42.63",
+          "category": "standard"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 4,
+          "unit_price": "36.66",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "289.83",
+      "discount": "0",
+      "tax": "57.97",
+      "total": "289.83"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0061",
+      "region": "US-MD",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 4,
+          "unit_price": "12.96",
+          "category": "standard"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 2,
+          "unit_price": "48.51",
+          "category": "standard"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 3,
+          "unit_price": "26.50",
+          "category": "exempt"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 3,
+          "unit_price": "7.02",
+          "category": "food"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE12.5",
+        "kind": "percent",
+        "value": "12.5"
+      }
+    },
+    "expected": {
+      "subtotal": "249.42",
+      "discount": "31.18",
+      "tax": "7.82",
+      "total": "226.06"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0062",
+      "region": "US-AL",
+      "items": [
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 3,
+          "unit_price": "19.50",
+          "category": "standard"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 1,
+          "unit_price": "35.54",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 4,
+          "unit_price": "135.45",
+          "category": "digital"
+        },
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 1,
+          "unit_price": "14.04",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "649.88",
+      "discount": "0",
+      "tax": "26.00",
+      "total": "675.88"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0063",
+      "region": "US-IA",
+      "items": [
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 1,
+          "unit_price": "21.50",
+          "category": "exempt"
+        },
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 2,
+          "unit_price": "11.76",
+          "category": "standard"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 3,
+          "unit_price": "9.49",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "73.49",
+      "discount": "0",
+      "tax": "3.12",
+      "total": "76.61"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0064",
+      "region": "SI",
+      "items": [
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 1,
+          "unit_price": "9.20",
+          "category": "reduced"
+        },
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 4,
+          "unit_price": "5.10",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "29.60",
+      "discount": "0",
+      "tax": "2.57",
+      "total": "29.60"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0065",
+      "region": "US-ND",
+      "items": [
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 4,
+          "unit_price": "107.07",
+          "category": "digital"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 2,
+          "unit_price": "21.49",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "471.26",
+      "discount": "0",
+      "tax": "23.56",
+      "total": "494.82"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0066",
+      "region": "PL",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 4,
+          "unit_price": "13.20",
+          "category": "standard"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 3,
+          "unit_price": "15.14",
+          "category": "books"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 3,
+          "unit_price": "48.51",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 4,
+          "unit_price": "123.84",
+          "category": "digital"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "739.11",
+      "discount": "0",
+      "tax": "131.88",
+      "total": "739.11"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0067",
+      "region": "RO",
+      "items": [
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 2,
+          "unit_price": "13.49",
+          "category": "books"
+        },
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 2,
+          "unit_price": "6.71",
+          "category": "digital"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 4,
+          "unit_price": "20.61",
+          "category": "food"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 2,
+          "unit_price": "22.89",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "168.62",
+      "discount": "0",
+      "tax": "21.12",
+      "total": "168.62"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0068",
+      "region": "US-AK",
+      "items": [
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 1,
+          "unit_price": "17.48",
+          "category": "food"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 3,
+          "unit_price": "44.59",
+          "category": "standard"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 1,
+          "unit_price": "17.24",
+          "category": "books"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 2,
+          "unit_price": "34.50",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "237.49",
+      "discount": "0",
+      "tax": "0.00",
+      "total": "237.49"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0069",
+      "region": "US-NH",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 4,
+          "unit_price": "12.72",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 2,
+          "unit_price": "136.74",
+          "category": "digital"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "324.36",
+      "discount": "0",
+      "tax": "0.00",
+      "total": "324.36"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0070",
+      "region": "US-AL",
+      "items": [
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 3,
+          "unit_price": "6.55",
+          "category": "food"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS5",
+        "kind": "fixed",
+        "value": "5"
+      }
+    },
+    "expected": {
+      "subtotal": "19.65",
+      "discount": "5.00",
+      "tax": "0.44",
+      "total": "15.09"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0071",
+      "region": "CA-PE",
+      "items": [
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 4,
+          "unit_price": "37.26",
+          "category": "standard"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 1,
+          "unit_price": "18.22",
+          "category": "food"
+        },
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 1,
+          "unit_price": "7.57",
+          "category": "reduced"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "174.83",
+      "discount": "0",
+      "tax": "23.49",
+      "total": "198.32"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0072",
+      "region": "US-LA",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 4,
+          "unit_price": "13.08",
+          "category": "standard"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 1,
+          "unit_price": "18.91",
+          "category": "standard"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 2,
+          "unit_price": "17.30",
+          "category": "food"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 1,
+          "unit_price": "13.34",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "119.17",
+      "discount": "0",
+      "tax": "4.23",
+      "total": "123.40"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0073",
+      "region": "US-WY",
+      "items": [
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 2,
+          "unit_price": "17.51",
+          "category": "standard"
+        },
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 1,
+          "unit_price": "17.39",
+          "category": "books"
+        },
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 2,
+          "unit_price": "11.88",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 3,
+          "unit_price": "154.80",
+          "category": "digital"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "540.57",
+      "discount": "0",
+      "tax": "21.62",
+      "total": "562.19"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0074",
+      "region": "US-ID",
+      "items": [
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 3,
+          "unit_price": "16.72",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "50.16",
+      "discount": "0",
+      "tax": "3.01",
+      "total": "53.17"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0075",
+      "region": "US-NM",
+      "items": [
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 1,
+          "unit_price": "17.30",
+          "category": "food"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 3,
+          "unit_price": "7.99",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "41.27",
+      "discount": "0",
+      "tax": "1.17",
+      "total": "42.44"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0076",
+      "region": "NO",
+      "items": [
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 2,
+          "unit_price": "9.03",
+          "category": "digital"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 2,
+          "unit_price": "39.68",
+          "category": "standard"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 4,
+          "unit_price": "5.47",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "119.30",
+      "discount": "0",
+      "tax": "22.34",
+      "total": "119.30"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0077",
+      "region": "SE",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 4,
+          "unit_price": "11.04",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "44.16",
+      "discount": "0",
+      "tax": "8.83",
+      "total": "44.16"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0078",
+      "region": "US-SC",
+      "items": [
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 3,
+          "unit_price": "21.29",
+          "category": "standard"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 4,
+          "unit_price": "9.39",
+          "category": "standard"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 3,
+          "unit_price": "28.29",
+          "category": "standard"
+        },
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 3,
+          "unit_price": "8.47",
+          "category": "digital"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "211.71",
+      "discount": "0",
+      "tax": "12.70",
+      "total": "224.41"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0079",
+      "region": "HR",
+      "items": [
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 1,
+          "unit_price": "8.43",
+          "category": "reduced"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS10",
+        "kind": "fixed",
+        "value": "10"
+      }
+    },
+    "expected": {
+      "subtotal": "8.43",
+      "discount": "8.43",
+      "tax": "0.00",
+      "total": "0.00"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0080",
+      "region": "GR",
+      "items": [
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 3,
+          "unit_price": "6.48",
+          "category": "food"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 4,
+          "unit_price": "29.67",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "138.12",
+      "discount": "0",
+      "tax": "25.21",
+      "total": "138.12"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0081",
+      "region": "IT",
+      "items": [
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 4,
+          "unit_price": "16.38",
+          "category": "food"
+        },
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 2,
+          "unit_price": "6.63",
+          "category": "digital"
+        },
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 2,
+          "unit_price": "9.72",
+          "category": "standard"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 1,
+          "unit_price": "41.34",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "139.56",
+      "discount": "0",
+      "tax": "10.01",
+      "total": "139.56"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0082",
+      "region": "GB",
+      "items": [
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 2,
+          "unit_price": "5.74",
+          "category": "food"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 2,
+          "unit_price": "130.29",
+          "category": "digital"
+        },
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 4,
+          "unit_price": "3.87",
+          "category": "food"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 3,
+          "unit_price": "16.32",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "336.50",
+      "discount": "0",
+      "tax": "51.59",
+      "total": "336.50"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0083",
+      "region": "US-CT",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 1,
+          "unit_price": "3.66",
+          "category": "food"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 3,
+          "unit_price": "5.74",
+          "category": "food"
+        },
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 3,
+          "unit_price": "41.65",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "145.83",
+      "discount": "0",
+      "tax": "7.93",
+      "total": "153.76"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0084",
+      "region": "CY",
+      "items": [
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 4,
+          "unit_price": "18.22",
+          "category": "food"
+        },
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 1,
+          "unit_price": "3.61",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "76.49",
+      "discount": "0",
+      "tax": "3.64",
+      "total": "76.49"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0085",
+      "region": "HR",
+      "items": [
+        {
+          "sku": "novel",
+          "description": "Paperback novel",
+          "quantity": 3,
+          "unit_price": "14.99",
+          "category": "books"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 1,
+          "unit_price": "7.43",
+          "category": "food"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 4,
+          "unit_price": "41.40",
+          "category": "standard"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS15",
+        "kind": "fixed",
+        "value": "15"
+      }
+    },
+    "expected": {
+      "subtotal": "218.00",
+      "discount": "15.00",
+      "tax": "33.16",
+      "total": "203.00"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0086",
+      "region": "CA-BC",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 2,
+          "unit_price": "11.52",
+          "category": "standard"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 3,
+          "unit_price": "5.67",
+          "category": "food"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 3,
+          "unit_price": "20.50",
+          "category": "standard"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 1,
+          "unit_price": "25.25",
+          "category": "exempt"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS10",
+        "kind": "fixed",
+        "value": "10"
+      }
+    },
+    "expected": {
+      "subtotal": "126.80",
+      "discount": "10.00",
+      "tax": "9.34",
+      "total": "126.14"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0087",
+      "region": "NO",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 1,
+          "unit_price": "14.40",
+          "category": "standard"
+        },
+        {
+          "sku": "course",
+          "description": "Online course",
+          "quantity": 2,
+          "unit_price": "104.49",
+          "category": "digital"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 4,
+          "unit_price": "33.54",
+          "category": "books"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "357.54",
+      "discount": "0",
+      "tax": "71.51",
+      "total": "357.54"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0088",
+      "region": "US-KY",
+      "items": [
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 4,
+          "unit_price": "7.57",
+          "category": "reduced"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 1,
+          "unit_price": "9.09",
+          "category": "standard"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 2,
+          "unit_price": "18.22",
+          "category": "food"
+        },
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 2,
+          "unit_price": "7.97",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "91.75",
+      "discount": "0",
+      "tax": "2.36",
+      "total": "94.11"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0089",
+      "region": "SI",
+      "items": [
+        {
+          "sku": "bread",
+          "description": "Sourdough loaf",
+          "quantity": 2,
+          "unit_price": "4.76",
+          "category": "food"
+        },
+        {
+          "sku": "vitamins",
+          "description": "Vitamin D",
+          "quantity": 2,
+          "unit_price": "9.03",
+          "category": "reduced"
+        },
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 4,
+          "unit_price": "37.05",
+          "category": "books"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 1,
+          "unit_price": "16.72",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "192.50",
+      "discount": "0",
+      "tax": "12.47",
+      "total": "192.50"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0090",
+      "region": "US-NC",
+      "items": [
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 3,
+          "unit_price": "41.16",
+          "category": "standard"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 1,
+          "unit_price": "21.90",
+          "category": "food"
+        },
+        {
+          "sku": "tee",
+          "description": "Cotton T-shirt",
+          "quantity": 1,
+          "unit_price": "18.51",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "163.89",
+      "discount": "0",
+      "tax": "6.74",
+      "total": "170.63"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0091",
+      "region": "US-WI",
+      "items": [
+        {
+          "sku": "kettle",
+          "description": "Electric kettle",
+          "quantity": 2,
+          "unit_price": "53.41",
+          "category": "standard"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 1,
+          "unit_price": "39.33",
+          "category": "standard"
+        },
+        {
+          "sku": "gift-card",
+          "description": "Gift card",
+          "quantity": 3,
+          "unit_price": "24.50",
+          "category": "exempt"
+        },
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 3,
+          "unit_price": "17.85",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "273.20",
+      "discount": "0",
+      "tax": "7.31",
+      "total": "280.51"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0092",
+      "region": "MT",
+      "items": [
+        {
+          "sku": "tea",
+          "description": "Green tea",
+          "quantity": 2,
+          "unit_price": "6.14",
+          "category": "food"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 2,
+          "unit_price": "32.78",
+          "category": "standard"
+        }
+      ],
+      "coupon": {
+        "code": "MINUS5",
+        "kind": "fixed",
+        "value": "5"
+      }
+    },
+    "expected": {
+      "subtotal": "77.84",
+      "discount": "5.00",
+      "tax": "9.36",
+      "total": "72.84"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0093",
+      "region": "SK",
+      "items": [
+        {
+          "sku": "coffee",
+          "description": "Coffee beans 1kg",
+          "quantity": 2,
+          "unit_price": "17.66",
+          "category": "food"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "35.32",
+      "discount": "0",
+      "tax": "5.64",
+      "total": "35.32"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0094",
+      "region": "JP",
+      "items": [
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 1,
+          "unit_price": "1306",
+          "category": "digital"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE10",
+        "kind": "percent",
+        "value": "10"
+      }
+    },
+    "expected": {
+      "subtotal": "1306",
+      "discount": "131",
+      "tax": "107",
+      "total": "1175"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0095",
+      "region": "US-IN",
+      "items": [
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 1,
+          "unit_price": "10.44",
+          "category": "standard"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 2,
+          "unit_price": "9.19",
+          "category": "standard"
+        },
+        {
+          "sku": "lamp",
+          "description": "Desk lamp",
+          "quantity": 3,
+          "unit_price": "28.98",
+          "category": "standard"
+        }
+      ]
+    },
+    "expected": {
+      "subtotal": "115.76",
+      "discount": "0",
+      "tax": "8.10",
+      "total": "123.86"
+    }
+  },
+  {
+    "invoice": {
+      "number": "INV-0096",
+      "region": "FR",
+      "items": [
+        {
+          "sku": "atlas",
+          "description": "World atlas",
+          "quantity": 3,
+          "unit_price": "33.54",
+          "category": "books"
+        },
+        {
+          "sku": "cable",
+          "description": "USB-C cable",
+          "quantity": 1,
+          "unit_price": "9.29",
+          "category": "standard"
+        },
+        {
+          "sku": "ebook",
+          "description": "E-book licence",
+          "quantity": 3,
+          "unit_price": "8.23",
+          "category": "digital"
+        },
+        {
+          "sku": "mug",
+          "description": "Ceramic mug",
+          "quantity": 1,
+          "unit_price": "10.68",
+          "category": "standard"
+        }
+      ],
+      "coupon": {
+        "code": "SAVE20",
+        "kind": "percent",
+        "value": "20"
+      }
+    },
+    "expected": {
+      "subtotal": "145.28",
+      "discount": "29.06",
+      "tax": "10.15",
+      "total": "116.22"
+    }
+  }
+]

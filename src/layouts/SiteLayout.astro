@@ -1,0 +1,50 @@
+---
+import BaseLayout from './BaseLayout.astro'
+import SiteHeader from '../components/SiteHeader.astro'
+import '../styles/site.css'
+
+interface Props {
+  title?: string
+  description: string
+}
+
+const { title, description } = Astro.props
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  bodyClass="site-surface"
+  pageClass="site-page"
+  defaultTheme="dark"
+>
+  <SiteHeader />
+
+  <main class="site-shell">
+    <section class="site-content" aria-labelledby="page-title">
+      <h1 id="page-title"><slot name="heading" /></h1>
+      <slot />
+    </section>
+
+    <nav aria-label="Lab navigation">
+      <a href="/">Experiments</a>
+      <a href="https://raghib.io/">Writing</a>
+      <a href="https://github.com/ragmha/lab">Source</a>
+    </nav>
+  </main>
+</BaseLayout>
+
+<style>
+  nav {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 0.85rem;
+    padding-top: var(--layout-content-offset);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 600px) {
+    nav { flex-direction: row; flex-wrap: wrap; }
+  }
+</style>

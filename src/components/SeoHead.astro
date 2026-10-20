@@ -1,0 +1,38 @@
+---
+interface Props {
+  title?: string
+  description?: string
+}
+
+const {
+  title = 'Experiments',
+  description = 'Browser-only experiments by Raghib Hasan.',
+} = Astro.props
+const name = 'Raghib’s Lab'
+const pageTitle = `${title} — ${name}`
+const canonical = new URL(Astro.url.pathname, Astro.site)
+const website = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  '@id': new URL('/#website', Astro.site).href,
+  url: Astro.site?.href,
+  name,
+  author: { '@type': 'Person', name: 'Raghib Hasan', url: 'https://raghib.io/' },
+}).replace(/</g, '\\u003c')
+---
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width" />
+<title>{pageTitle}</title>
+<meta name="description" content={description} />
+<meta name="author" content="Raghib Hasan" />
+<link rel="canonical" href={canonical.href} />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content={name} />
+<meta property="og:title" content={pageTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical.href} />
+<meta name="twitter:card" content="summary" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<script is:inline type="application/ld+json" set:html={website} />
+<meta name="generator" content={Astro.generator} />

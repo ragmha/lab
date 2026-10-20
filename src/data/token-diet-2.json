@@ -1,0 +1,6038 @@
+{
+  "model": "claude-sonnet-5.5",
+  "effort": "medium",
+  "versions": {
+    "copilot": "1.0.99-3",
+    "rtk": "1.0.1",
+    "caveman": "d262ab3",
+    "python": "3.12.10",
+    "pytest": "8.4.2"
+  },
+  "prompt": "Finance says invoice totals were right in 0.9.0 but some are wrong now, and CI is red on main. Find the commit that introduced each problem, fix the root causes, make sure the whole test suite passes, and commit the fixes following this repository's commit message convention. Then reply with an incident note for finance: for each problem, the commit that introduced it, what went wrong, and how you verified the fix.",
+  "principles": [
+    "Be brief. No preamble, no recap of what you did.",
+    "Search before you read: find the relevant code with grep or glob, then view only the lines you need.",
+    "Never re-read a file you have not changed.",
+    "Keep command output small: run `python -m pytest -q --tb=short`, and pipe long output through `tail -n 40` or `grep`.",
+    "Make independent tool calls in parallel.",
+    "Stop as soon as the task is done and verified."
+  ],
+  "fixture": {
+    "tests": 1119,
+    "failing": 89,
+    "outputLines": 1724
+  },
+  "rates": {
+    "fresh": 200000,
+    "cacheRead": 10000,
+    "cacheWrite": 250000,
+    "output": 1000000
+  },
+  "toolDefinitionsTokens": 7877,
+  "runs": [
+    {
+      "id": "a1",
+      "variant": "a",
+      "rep": 1,
+      "ranAt": "2026-10-16T19:31:03.135Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up again in the shared quantize helper",
+        "fix(tax): keep explicit zero rate overrides",
+        "fix(invoice): tax exclusive lines after the coupon share"
+      ],
+      "wallMs": 57320,
+      "nanoAiu": 19519230000,
+      "totals": {
+        "fresh": 1114,
+        "cacheRead": 414493,
+        "cacheWrite": 45990,
+        "output": 3654
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 1696,
+      "argChars": 4040,
+      "testRuns": 8,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 6875,
+          "output": 122,
+          "ms": 1696,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && ls && cat CONTRIBUTING* 2…",
+              "outTokens": 899
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20515,
+          "cacheWrite": 1220,
+          "output": 113,
+          "ms": 1531,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 30,200p CONTRIBUTING.md; python -m pytest -q 2>&1 | tail -30; git tag",
+              "outTokens": 1677
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 21735,
+          "cacheWrite": 2427,
+          "output": 170,
+          "ms": 2318,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | grep -v test_sample_totals; python -m …",
+              "outTokens": 2906
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24162,
+          "cacheWrite": 4358,
+          "output": 155,
+          "ms": 2223,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/money.py; git --no-pager log --oneline -- invoicer/money.py invoic…",
+              "outTokens": 6657
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28520,
+          "cacheWrite": 8003,
+          "output": 368,
+          "ms": 4675,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && sed -i 's/retur…",
+              "outTokens": 701
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20515,
+          "cacheWrite": 17165,
+          "output": 523,
+          "ms": 3482,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37680,
+          "cacheWrite": 666,
+          "output": 120,
+          "ms": 1351,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | tail -15; git --no-pager log --oneline -S\"or self.st…",
+              "outTokens": 413
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38346,
+          "cacheWrite": 720,
+          "output": 171,
+          "ms": 1596,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | grep -v samples; python -m pytest -q -…",
+              "outTokens": 2146
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39066,
+          "cacheWrite": 3115,
+          "output": 196,
+          "ms": 2124,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline -S\"tax = line_tax(line_gross, rate, inclusive=Fals…",
+              "outTokens": 56
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42181,
+          "cacheWrite": 228,
+          "output": 118,
+          "ms": 1357,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show d658235 -- invoicer/invoice.py | grep -n \"^[-+].*line_tax\\|…",
+              "outTokens": 105
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42409,
+          "cacheWrite": 263,
+          "output": 256,
+          "ms": 1859,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/invoice.py' s=open(p).read() a=\"\"\" if region.inclusi…",
+              "outTokens": 87
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42672,
+          "cacheWrite": 380,
+          "output": 690,
+          "ms": 5467,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git add invoicer/money.py && git commit -q -m \"fix(money): round half up again …",
+              "outTokens": 74
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 43052,
+          "cacheWrite": 570,
+          "output": 652,
+          "ms": 5328,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "a2",
+      "variant": "a",
+      "rep": 2,
+      "ranAt": "2026-10-16T19:39:57.031Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): honor explicit zero rate overrides",
+        "fix(invoice): tax exclusive lines after their coupon share"
+      ],
+      "wallMs": 66568,
+      "nanoAiu": 17415960000,
+      "totals": {
+        "fresh": 1372,
+        "cacheRead": 475606,
+        "cacheWrite": 32526,
+        "output": 4254
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 2093,
+      "argChars": 4209,
+      "testRuns": 7,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 6878,
+          "output": 149,
+          "ms": 1767,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": false,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 0
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20518,
+          "cacheWrite": 202,
+          "output": 99,
+          "ms": 1217,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30; git status --short; ls",
+              "outTokens": 616
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20720,
+          "cacheWrite": 850,
+          "output": 150,
+          "ms": 1446,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager tag | tail -3; git --no-pager log --oneline | wc -l; cat CONTRIB…",
+              "outTokens": 1240
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 21570,
+          "cacheWrite": 1674,
+          "output": 204,
+          "ms": 1683,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^(FAILED|[0-9]+ )\"; sed -n 50,200p CONTRIBU…",
+              "outTokens": 2799
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 23244,
+          "cacheWrite": 4306,
+          "output": 218,
+          "ms": 2659,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 25,45p CONTRIBUTING.md; ls invoicer invoicer/*/; cat invoicer/money.py; …",
+              "outTokens": 1708
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20518,
+          "cacheWrite": 9437,
+          "output": 147,
+          "ms": 6021,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer/money.py | head -60; cat invoicer/disco…",
+              "outTokens": 2435
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 29955,
+          "cacheWrite": 3396,
+          "output": 531,
+          "ms": 4840,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py python - <<'E' p='…",
+              "outTokens": 240
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33351,
+          "cacheWrite": 607,
+          "output": 375,
+          "ms": 3703,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33958,
+          "cacheWrite": 457,
+          "output": 95,
+          "ms": 1144,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git diff --stat; python -m pytest -q 2>&1 | tail -8",
+              "outTokens": 255
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34415,
+          "cacheWrite": 461,
+          "output": 150,
+          "ms": 2053,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^FAILED\" | sed 's/ - .*//' | head -50; pyth…",
+              "outTokens": 1018
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34876,
+          "cacheWrite": 1683,
+          "output": 187,
+          "ms": 1822,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "grep -n \"allocate\\|discount\" invoicer/invoice.py | head -30; git --no-pager log…",
+              "outTokens": 222
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36559,
+          "cacheWrite": 481,
+          "output": 142,
+          "ms": 2886,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 125,176p invoicer/invoice.py; git --no-pager log --format='%h %s' -L125,…",
+              "outTokens": 694
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37040,
+          "cacheWrite": 1078,
+          "output": 208,
+          "ms": 2196,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --format='%h %s' -S'line_tax(line_gross, rate, inclusive=Fal…",
+              "outTokens": 71
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38118,
+          "cacheWrite": 271,
+          "output": 261,
+          "ms": 1819,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/invoice.py' s=open(p).read() a=\"\"\" if region.inclusi…",
+              "outTokens": 62
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38389,
+          "cacheWrite": 346,
+          "output": 457,
+          "ms": 4181,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git add invoicer/money.py && git commit -q -m \"fix(money): round half up instea…",
+              "outTokens": 70
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38735,
+          "cacheWrite": 399,
+          "output": 881,
+          "ms": 6960,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "a3",
+      "variant": "a",
+      "rep": 3,
+      "ranAt": "2026-10-16T19:35:14.503Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half away from zero again",
+        "fix(tax): keep explicit zero rate overrides",
+        "fix(invoice): apply the coupon share before sales tax"
+      ],
+      "wallMs": 93581,
+      "nanoAiu": 17661340000,
+      "totals": {
+        "fresh": 1372,
+        "cacheRead": 468769,
+        "cacheWrite": 32933,
+        "output": 4466
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 1995,
+      "argChars": 4421,
+      "testRuns": 8,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 6872,
+          "output": 124,
+          "ms": 1654,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 899
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20512,
+          "cacheWrite": 1222,
+          "output": 130,
+          "ms": 2095,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 30,200p CONTRIBUTING.md | grep -n -i -B2 -A15 commit; python -m pytest -…",
+              "outTokens": 1164
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 21734,
+          "cacheWrite": 1779,
+          "output": 164,
+          "ms": 2140,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 74,100p CONTRIBUTING.md; python -m pytest -q 2>&1 | grep FAILED | grep -…",
+              "outTokens": 2513
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 23513,
+          "cacheWrite": 3621,
+          "output": 159,
+          "ms": 2114,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/money.py; grep -n -i \"zero\\|food\" invoicer/rates.py | head -30; ls…",
+              "outTokens": 1268
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 27134,
+          "cacheWrite": 1822,
+          "output": 298,
+          "ms": 3119,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 --stat --format=%s | head; git --no-pager log --one…",
+              "outTokens": 1061
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20512,
+          "cacheWrite": 10036,
+          "output": 262,
+          "ms": 3989,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 35e7746 -- invoicer/rates.py | grep -n \"overrides\\|standard…",
+              "outTokens": 474
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30548,
+          "cacheWrite": 791,
+          "output": 349,
+          "ms": 4823,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && sed -i 's/retur…",
+              "outTokens": 41
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31339,
+          "cacheWrite": 244,
+          "output": 558,
+          "ms": 3802,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31583,
+          "cacheWrite": 650,
+          "output": 95,
+          "ms": 1390,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git diff --stat; python -m pytest -q 2>&1 | tail -15",
+              "outTokens": 438
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32233,
+          "cacheWrite": 732,
+          "output": 159,
+          "ms": 3361,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | grep -v \"samples.py\"; python -m pytest…",
+              "outTokens": 1184
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32965,
+          "cacheWrite": 1819,
+          "output": 108,
+          "ms": 1816,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/invoice.py | sed -n 1,400p | grep -n \"\" | sed -n 90,330p",
+              "outTokens": 1186
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34784,
+          "cacheWrite": 1606,
+          "output": 216,
+          "ms": 2683,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline -S\"line_tax(line_gross, rate, inclusive=False)\" --…",
+              "outTokens": 219
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36390,
+          "cacheWrite": 469,
+          "output": 328,
+          "ms": 2204,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 27
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | tail -8",
+              "outTokens": 87
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36859,
+          "cacheWrite": 539,
+          "output": 265,
+          "ms": 3020,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager diff v0.9.0 HEAD -- invoicer/discounts.py | grep '^[-+]' | grep …",
+              "outTokens": 87
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37398,
+          "cacheWrite": 227,
+          "output": 553,
+          "ms": 4579,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T=\"Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\" && git…",
+              "outTokens": 70
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37625,
+          "cacheWrite": 504,
+          "output": 698,
+          "ms": 5551,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "a4",
+      "variant": "a",
+      "rep": 4,
+      "ranAt": "2026-10-16T19:41:56.821Z",
+      "success": false,
+      "committed": true,
+      "subjectOk": false,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round amounts half up again",
+        "fix(tax): honour zero-rate category overrides",
+        "fix(invoice): subtract the coupon share before tax in non-inclusive regions"
+      ],
+      "wallMs": 66832,
+      "nanoAiu": 15621140000,
+      "totals": {
+        "fresh": 1286,
+        "cacheRead": 414394,
+        "cacheWrite": 29248,
+        "output": 3908
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 1905,
+      "argChars": 4536,
+      "testRuns": 7,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 6870,
+          "output": 122,
+          "ms": 1979,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 899
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20510,
+          "cacheWrite": 1220,
+          "output": 134,
+          "ms": 1584,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 30,200p CONTRIBUTING.md | grep -n -i -B2 -A15 commit | head -50; python …",
+              "outTokens": 1164
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 21730,
+          "cacheWrite": 1783,
+          "output": 184,
+          "ms": 2299,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | sed 's/\\[.*//' | sort | uniq -c; sed -…",
+              "outTokens": 1278
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 23513,
+          "cacheWrite": 1968,
+          "output": 152,
+          "ms": 2089,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/money.py; git --no-pager show 80a6029 --stat | head; python -m pyt…",
+              "outTokens": 1947
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 25481,
+          "cacheWrite": 2653,
+          "output": 248,
+          "ms": 3733,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer | head -80; grep -n -B3 -A12 \"def rate_…",
+              "outTokens": 1026
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20510,
+          "cacheWrite": 9142,
+          "output": 147,
+          "ms": 1586,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "grep -n -B3 -A12 \"def rate_for\" invoicer/*.py; ls invoicer",
+              "outTokens": 413
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 29652,
+          "cacheWrite": 653,
+          "output": 140,
+          "ms": 1448,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline -L47,47:invoicer/rates.py | grep -E \"^[0-9a-f]{7} …",
+              "outTokens": 118
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30305,
+          "cacheWrite": 280,
+          "output": 153,
+          "ms": 1509,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 35e7746 -- invoicer/rates.py | grep -n -B3 -A3 \"overrides\" …",
+              "outTokens": 459
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30585,
+          "cacheWrite": 734,
+          "output": 238,
+          "ms": 2266,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/rates.py';s=open(p).read() s=s.replace(\"se…",
+              "outTokens": 142
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31319,
+          "cacheWrite": 428,
+          "output": 586,
+          "ms": 4056,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/money.py';s=open(p).read() s=s.replace(\"from decimal…",
+              "outTokens": 209
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31747,
+          "cacheWrite": 752,
+          "output": 189,
+          "ms": 1670,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | sed 's/\\[.*//' | sort | uniq -c; pytho…",
+              "outTokens": 749
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32499,
+          "cacheWrite": 1195,
+          "output": 194,
+          "ms": 2668,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline -L168,171:invoicer/invoice.py | grep -E \"^[0-9a-f]…",
+              "outTokens": 461
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33694,
+          "cacheWrite": 759,
+          "output": 218,
+          "ms": 1800,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/invoice.py';s=open(p).read() s=s.replace(\"tax = line…",
+              "outTokens": 62
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34453,
+          "cacheWrite": 303,
+          "output": 602,
+          "ms": 4858,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T='Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>' git ad…",
+              "outTokens": 74
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34756,
+          "cacheWrite": 508,
+          "output": 601,
+          "ms": 4732,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "a5",
+      "variant": "a",
+      "rep": 5,
+      "ranAt": "2026-10-16T19:43:34.386Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(invoice): tax lines on the amount after the coupon",
+        "fix(tax): keep explicit zero rates for categories"
+      ],
+      "wallMs": 46463,
+      "nanoAiu": 17996090000,
+      "totals": {
+        "fresh": 856,
+        "cacheRead": 308464,
+        "cacheWrite": 45945,
+        "output": 3254
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 1728,
+      "argChars": 3112,
+      "testRuns": 4,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 6876,
+          "output": 94,
+          "ms": 1439,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --stat | head -60; ls; git tag",
+              "outTokens": 1000
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20516,
+          "cacheWrite": 1518,
+          "output": 136,
+          "ms": 1543,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat CONTRIBUTING.md | head -40; python -m pytest -q 2>&1 | tail -30; git --no-p…",
+              "outTokens": 6806
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 22034,
+          "cacheWrite": 7542,
+          "output": 162,
+          "ms": 1758,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager diff v0.9.0 HEAD -- invoicer/invoice.py invoicer/discounts.py in…",
+              "outTokens": 5397
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 29576,
+          "cacheWrite": 7626,
+          "output": 327,
+          "ms": 4784,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline v0.9.0..HEAD -- invoicer/rates.py invoicer/data | …",
+              "outTokens": 1383
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20516,
+          "cacheWrite": 18564,
+          "output": 474,
+          "ms": 6960,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --format='%h %s' -S'ROUND_HALF_EVEN' -- invoicer/money.py; g…",
+              "outTokens": 315
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39080,
+          "cacheWrite": 637,
+          "output": 448,
+          "ms": 3635,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/money.py';s=open(p).read() s=s.replace(\"RO…",
+              "outTokens": 87
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39717,
+          "cacheWrite": 455,
+          "output": 265,
+          "ms": 4758,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager diff --stat | cat; grep -n -i -A12 'commit' CONTRIBUTING.md | he…",
+              "outTokens": 452
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 40172,
+          "cacheWrite": 682,
+          "output": 143,
+          "ms": 2043,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 70,100p CONTRIBUTING.md; git --no-pager log --format='%h %an %s' -1 80a6…",
+              "outTokens": 1044
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 40854,
+          "cacheWrite": 1505,
+          "output": 584,
+          "ms": 5278,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T=\"Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\" git ad…",
+              "outTokens": 88
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42359,
+          "cacheWrite": 540,
+          "output": 621,
+          "ms": 5735,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "b1",
+      "variant": "b",
+      "rep": 1,
+      "ranAt": "2026-10-16T19:31:04.006Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): honour zero rate overrides from the region csv",
+        "fix(invoice): tax add-on regions on the discounted line amount"
+      ],
+      "wallMs": 61961,
+      "nanoAiu": 17561580000,
+      "totals": {
+        "fresh": 1286,
+        "cacheRead": 455113,
+        "cacheWrite": 34881,
+        "output": 4033
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 2204,
+      "argChars": 3949,
+      "testRuns": 9,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7043,
+          "output": 122,
+          "ms": 1555,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 1364
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20683,
+          "cacheWrite": 1995,
+          "output": 185,
+          "ms": 3030,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | grep FAILED | grep -v test_sample_totals;…",
+              "outTokens": 2451
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 22678,
+          "cacheWrite": 3656,
+          "output": 179,
+          "ms": 2296,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,200p CONTRIBUTING.md | grep -n -i -B2 -A15 commit; cat invoicer/money…",
+              "outTokens": 2600
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 26334,
+          "cacheWrite": 3603,
+          "output": 281,
+          "ms": 3224,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer/money.py | grep -E '^[-+]' | head -30; …",
+              "outTokens": 276
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20683,
+          "cacheWrite": 9835,
+          "output": 360,
+          "ms": 2988,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 28
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 28
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30518,
+          "cacheWrite": 425,
+          "output": 115,
+          "ms": 1181,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | grep -E \"FAILED|passed\" | cut -c1-110 | h…",
+              "outTokens": 788
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30943,
+          "cacheWrite": 1307,
+          "output": 232,
+          "ms": 2180,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short tests/test_cli.py tests/test_invoice.py tests/te…",
+              "outTokens": 1230
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32250,
+          "cacheWrite": 1690,
+          "output": 113,
+          "ms": 1245,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/rates.py | head -120; ls invoicer/data; git --no-pager show 35e774…",
+              "outTokens": 1037
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33940,
+          "cacheWrite": 1483,
+          "output": 333,
+          "ms": 3204,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 28
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | tail -8 | cut -c1-200",
+              "outTokens": 209
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35423,
+          "cacheWrite": 645,
+          "output": 111,
+          "ms": 1287,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/invoice.py | sed -n 1,400p | grep -n -E \"discount|tax|round\" | hea…",
+              "outTokens": 555
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36068,
+          "cacheWrite": 832,
+          "output": 104,
+          "ms": 1198,
+          "tools": [
+            {
+              "name": "view",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 573
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36900,
+          "cacheWrite": 890,
+          "output": 415,
+          "ms": 2813,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 28
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | tail -4 | cut -c1-200; git --no-pager log…",
+              "outTokens": 110
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37790,
+          "cacheWrite": 608,
+          "output": 231,
+          "ms": 2237,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show d658235 -- invoicer/invoice.py | grep -E '^[-+]' | grep -E …",
+              "outTokens": 204
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38398,
+          "cacheWrite": 467,
+          "output": 427,
+          "ms": 3752,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git add invoicer/money.py && git commit -q -m \"fix(money): round half up instea…",
+              "outTokens": 76
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38865,
+          "cacheWrite": 402,
+          "output": 825,
+          "ms": 5868,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "b2",
+      "variant": "b",
+      "rep": 2,
+      "ranAt": "2026-10-16T19:39:57.538Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up again in the shared quantize helper",
+        "fix(tax): keep explicit zero rates for category overrides",
+        "fix(invoice): tax exclusive lines on the discounted amount"
+      ],
+      "wallMs": 52474,
+      "nanoAiu": 15125480000,
+      "totals": {
+        "fresh": 1198,
+        "cacheRead": 398338,
+        "cacheWrite": 27702,
+        "output": 3977
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 1795,
+      "argChars": 4575,
+      "testRuns": 8,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7043,
+          "output": 150,
+          "ms": 1753,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 1614
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20683,
+          "cacheWrite": 2415,
+          "output": 207,
+          "ms": 1865,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat CONTRIBUTING.md | head -40; python -m pytest -q --tb=short 2>&1 | grep FAIL…",
+              "outTokens": 1935
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 23098,
+          "cacheWrite": 2784,
+          "output": 294,
+          "ms": 2447,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && python -m pytes…",
+              "outTokens": 464
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20683,
+          "cacheWrite": 6042,
+          "output": 147,
+          "ms": 1611,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer | head -150; sed -n 70,100p CONTRIBUTIN…",
+              "outTokens": 1332
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 26725,
+          "cacheWrite": 1894,
+          "output": 317,
+          "ms": 3174,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/money.py' s=open(p).read().replace('ROUND_HALF_EVEN'…",
+              "outTokens": 215
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28619,
+          "cacheWrite": 560,
+          "output": 200,
+          "ms": 1734,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short tests/test_rates.py tests/test_cli.py 2>&1 | gre…",
+              "outTokens": 1290
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 29179,
+          "cacheWrite": 1870,
+          "output": 345,
+          "ms": 2844,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/rates.py' s=open(p).read().replace(\"return self.over…",
+              "outTokens": 141
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31049,
+          "cacheWrite": 487,
+          "output": 179,
+          "ms": 1609,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/discounts.py; git --no-pager log --oneline -- invoicer/discounts.p…",
+              "outTokens": 1242
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31536,
+          "cacheWrite": 1829,
+          "output": 140,
+          "ms": 1469,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/invoice.py | sed -n 1,200p | grep -n \"gross\\|discount\\|tax\" | head…",
+              "outTokens": 545
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33365,
+          "cacheWrite": 855,
+          "output": 147,
+          "ms": 1544,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 160,175p invoicer/invoice.py; git --no-pager log -L166,172:invoicer/invo…",
+              "outTokens": 297
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34220,
+          "cacheWrite": 558,
+          "output": 169,
+          "ms": 1707,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show d658235 -- invoicer/invoice.py | grep -n \"^[-+].*line_tax\" …",
+              "outTokens": 170
+            }
+          ]
+        },
+        {
+          "fresh": 84,
+          "cacheRead": 34778,
+          "cacheWrite": 403,
+          "output": 277,
+          "ms": 2093,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/invoice.py' s=open(p).read() s=s.replace(\"\"\" if regi…",
+              "outTokens": 87
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35181,
+          "cacheWrite": 401,
+          "output": 718,
+          "ms": 6183,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T=' Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>' git c…",
+              "outTokens": 77
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35582,
+          "cacheWrite": 561,
+          "output": 687,
+          "ms": 5710,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "b3",
+      "variant": "b",
+      "rep": 3,
+      "ranAt": "2026-10-16T19:35:15.744Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half away from zero again",
+        "fix(tax): keep explicit zero rate overrides",
+        "fix(invoice): tax each line after its coupon share"
+      ],
+      "wallMs": 91341,
+      "nanoAiu": 15625760000,
+      "totals": {
+        "fresh": 1284,
+        "cacheRead": 438846,
+        "cacheWrite": 28774,
+        "output": 3787
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 2003,
+      "argChars": 4107,
+      "testRuns": 6,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7040,
+          "output": 122,
+          "ms": 1677,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 1614
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20680,
+          "cacheWrite": 2387,
+          "output": 149,
+          "ms": 2440,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat CONTRIBUTING.md | head -40; git --no-pager tag; python -m pytest -q --tb=li…",
+              "outTokens": 2606
+            }
+          ]
+        },
+        {
+          "fresh": 84,
+          "cacheRead": 23067,
+          "cacheWrite": 3617,
+          "output": 240,
+          "ms": 3001,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --format='%h %s' -S ROUND_HALF_EVEN -- invoicer/money.py; ca…",
+              "outTokens": 1085
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20680,
+          "cacheWrite": 7640,
+          "output": 279,
+          "ms": 3803,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer/money.py | grep '^[-+]' | head -30; git…",
+              "outTokens": 738
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28320,
+          "cacheWrite": 1173,
+          "output": 399,
+          "ms": 4860,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && sed -i 's/retur…",
+              "outTokens": 770
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 29493,
+          "cacheWrite": 1313,
+          "output": 262,
+          "ms": 2505,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i '' 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && sed -i '' 's…",
+              "outTokens": 398
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30806,
+          "cacheWrite": 768,
+          "output": 195,
+          "ms": 3427,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=line 2>&1 | grep FAILED | grep -v test_samples | head;…",
+              "outTokens": 683
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31574,
+          "cacheWrite": 1096,
+          "output": 127,
+          "ms": 2050,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 125,177p invoicer/invoice.py; git --no-pager log --format='%h %s' v0.9.0…",
+              "outTokens": 677
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32670,
+          "cacheWrite": 1041,
+          "output": 217,
+          "ms": 2374,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log -L168,172:invoicer/invoice.py --format='%h %s' -s | head -20…",
+              "outTokens": 92
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33711,
+          "cacheWrite": 302,
+          "output": 115,
+          "ms": 1350,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show d658235 -- invoicer/invoice.py | grep '^[-+]' | grep -n 'ta…",
+              "outTokens": 159
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34013,
+          "cacheWrite": 326,
+          "output": 210,
+          "ms": 1878,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i '' 's/tax = line_tax(line_gross, rate, inclusive=False)/tax = line_tax(l…",
+              "outTokens": 62
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34339,
+          "cacheWrite": 295,
+          "output": 208,
+          "ms": 3781,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "grep -n -i -A12 \"commit\" CONTRIBUTING.md | head -40; git --no-pager log --forma…",
+              "outTokens": 425
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34634,
+          "cacheWrite": 653,
+          "output": 147,
+          "ms": 1562,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 72,90p CONTRIBUTING.md; git --no-pager log --format='%h %s' -n 40 | grep…",
+              "outTokens": 405
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35287,
+          "cacheWrite": 645,
+          "output": 389,
+          "ms": 3253,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T='Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>' && git…",
+              "outTokens": 70
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35932,
+          "cacheWrite": 478,
+          "output": 728,
+          "ms": 5954,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "b4",
+      "variant": "b",
+      "rep": 4,
+      "ranAt": "2026-10-16T19:41:57.836Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): honor zero rate overrides instead of the standard rate",
+        "fix(invoice): tax exclusive lines on the amount after the coupon"
+      ],
+      "wallMs": 63811,
+      "nanoAiu": 11663440000,
+      "totals": {
+        "fresh": 770,
+        "cacheRead": 229494,
+        "cacheWrite": 26286,
+        "output": 2643
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 1756,
+      "argChars": 2353,
+      "testRuns": 8,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7041,
+          "output": 97,
+          "ms": 2005,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30; git status --short; ls; pyt…",
+              "outTokens": 1364
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20681,
+          "cacheWrite": 1970,
+          "output": 156,
+          "ms": 2219,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=line 2>&1 | grep -v \"test_sample_totals\" | tail -15; p…",
+              "outTokens": 1084
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 22651,
+          "cacheWrite": 1613,
+          "output": 133,
+          "ms": 1926,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,80p CONTRIBUTING.md; cat invoicer/money.py; git log --oneline v0.9.0.…",
+              "outTokens": 1851
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24264,
+          "cacheWrite": 2558,
+          "output": 230,
+          "ms": 2706,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py; python -m pytest …",
+              "outTokens": 2753
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20681,
+          "cacheWrite": 9556,
+          "output": 318,
+          "ms": 3980,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/money.py';s=open(p).read().replace('ROUND_…",
+              "outTokens": 576
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30237,
+          "cacheWrite": 950,
+          "output": 121,
+          "ms": 2134,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show d658235 -- invoicer/invoice.py | head -150; git show 55006b2 -- invoic…",
+              "outTokens": 1173
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31187,
+          "cacheWrite": 1610,
+          "output": 322,
+          "ms": 3649,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/invoice.py';s=open(p).read().replace('tax = line_tax…",
+              "outTokens": 238
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32797,
+          "cacheWrite": 559,
+          "output": 501,
+          "ms": 4481,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git add invoicer/money.py && git commit -qm \"fix(money): round half up instead …",
+              "outTokens": 93
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33356,
+          "cacheWrite": 429,
+          "output": 765,
+          "ms": 6318,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "b5",
+      "variant": "b",
+      "rep": 5,
+      "ranAt": "2026-10-16T19:43:34.731Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): honour zero rate overrides for categories",
+        "fix(invoice): tax exclusive lines after the coupon share"
+      ],
+      "wallMs": 41646,
+      "nanoAiu": 15782070000,
+      "totals": {
+        "fresh": 1028,
+        "cacheRead": 342522,
+        "cacheWrite": 35553,
+        "output": 3263
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 1815,
+      "argChars": 3433,
+      "testRuns": 6,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7041,
+          "output": 97,
+          "ms": 1980,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30; git status --short; ls; pyt…",
+              "outTokens": 1364
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20681,
+          "cacheWrite": 1970,
+          "output": 163,
+          "ms": 1604,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | grep FAILED | grep -v test_sample_totals;…",
+              "outTokens": 2237
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 22651,
+          "cacheWrite": 3367,
+          "output": 104,
+          "ms": 1271,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,100p CONTRIBUTING.md; cat invoicer/money.py; git --no-pager diff v0.9…",
+              "outTokens": 2000
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 26018,
+          "cacheWrite": 2729,
+          "output": 134,
+          "ms": 1479,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log -p --format='=== %h %s' -S ROUND_HALF_EVEN -- invoicer/money…",
+              "outTokens": 2670
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28747,
+          "cacheWrite": 3555,
+          "output": 300,
+          "ms": 3301,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py sed -i 's/return s…",
+              "outTokens": 280
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20681,
+          "cacheWrite": 12207,
+          "output": 477,
+          "ms": 3435,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32888,
+          "cacheWrite": 667,
+          "output": 102,
+          "ms": 1251,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | grep -E \"FAILED|passed|failed\" | sed 's/\\…",
+              "outTokens": 120
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33555,
+          "cacheWrite": 285,
+          "output": 95,
+          "ms": 1107,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/invoice.py | sed -n 1,200p; git --no-pager log --format='%h %s' --…",
+              "outTokens": 1751
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33840,
+          "cacheWrite": 2443,
+          "output": 157,
+          "ms": 2373,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log -p --format='=== %h %s' -S'line_tax(line_gross, rate, inclus…",
+              "outTokens": 75
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36283,
+          "cacheWrite": 224,
+          "output": 329,
+          "ms": 2200,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 27
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | tail -5; git --no-pager log --format='%h …",
+              "outTokens": 82
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36507,
+          "cacheWrite": 524,
+          "output": 613,
+          "ms": 4902,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git add invoicer/money.py && git commit -qm \"fix(money): round half up instead …",
+              "outTokens": 75
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37031,
+          "cacheWrite": 541,
+          "output": 692,
+          "ms": 5868,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "c1",
+      "variant": "c",
+      "rep": 1,
+      "ranAt": "2026-10-16T19:31:03.083Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up again",
+        "fix(tax): keep zero rate overrides",
+        "fix(invoice): deduct discount share before exclusive tax"
+      ],
+      "wallMs": 62299,
+      "nanoAiu": 19286300000,
+      "totals": {
+        "fresh": 1114,
+        "cacheRead": 425275,
+        "cacheWrite": 42635,
+        "output": 4152
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 1835,
+      "argChars": 3727,
+      "testRuns": 9,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 10673,
+          "output": 149,
+          "ms": 2041,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 899
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24313,
+          "cacheWrite": 1247,
+          "output": 162,
+          "ms": 1736,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 30,200p CONTRIBUTING.md | grep -n -i -B2 -A15 commit | head -50; git tag…",
+              "outTokens": 1164
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 25560,
+          "cacheWrite": 1811,
+          "output": 204,
+          "ms": 1796,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | sed 's/\\[.*//' | sort | uniq -c; ls in…",
+              "outTokens": 776
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 27371,
+          "cacheWrite": 1318,
+          "output": 200,
+          "ms": 2226,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/money.py; git --no-pager diff v0.9.0 HEAD -- invoicer/rates.py | h…",
+              "outTokens": 6768
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28689,
+          "cacheWrite": 8170,
+          "output": 368,
+          "ms": 3156,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/return self.overrides.get(category) or self.standard/return self.over…",
+              "outTokens": 82
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24313,
+          "cacheWrite": 12931,
+          "output": 386,
+          "ms": 3725,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 27
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer/money.py | head -60",
+              "outTokens": 676
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37244,
+          "cacheWrite": 1267,
+          "output": 180,
+          "ms": 2357,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager diff --stat; python -m pytest -q 2>&1 | tail -8",
+              "outTokens": 240
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38511,
+          "cacheWrite": 474,
+          "output": 250,
+          "ms": 3275,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i '' 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && python -m py…",
+              "outTokens": 209
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38985,
+          "cacheWrite": 473,
+          "output": 252,
+          "ms": 2460,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | sed 's/\\[.*//' | sort | uniq -c; pytho…",
+              "outTokens": 1073
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39458,
+          "cacheWrite": 1667,
+          "output": 147,
+          "ms": 2104,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 55006b2 -- invoicer/discounts.py; git --no-pager show d6582…",
+              "outTokens": 1173
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 41125,
+          "cacheWrite": 1669,
+          "output": 436,
+          "ms": 3627,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 27
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | tail -5; ruff check . 2>&1 | tail -3",
+              "outTokens": 74
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42794,
+          "cacheWrite": 478,
+          "output": 597,
+          "ms": 4893,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T='Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>' git ad…",
+              "outTokens": 66
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 43272,
+          "cacheWrite": 457,
+          "output": 821,
+          "ms": 6310,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "variant": "c",
+      "rep": 2,
+      "ranAt": "2026-10-16T19:39:58.309Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(invoice): tax exclusive lines on the discounted amount",
+        "fix(tax): keep explicit zero rate overrides"
+      ],
+      "wallMs": 76981,
+      "nanoAiu": 22481500000,
+      "totals": {
+        "fresh": 1544,
+        "cacheRead": 631620,
+        "cacheWrite": 44058,
+        "output": 4842
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 1973,
+      "argChars": 4967,
+      "testRuns": 13,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 10670,
+          "output": 147,
+          "ms": 2226,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 616
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24310,
+          "cacheWrite": 900,
+          "output": 143,
+          "ms": 1909,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git tag | tail -5; python -m pytest -q 2>&1 | tail -30; cat CONTRIBUTING.md | h…",
+              "outTokens": 1175
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 25210,
+          "cacheWrite": 1793,
+          "output": 190,
+          "ms": 1744,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,100p CONTRIBUTING.md; python -m pytest -q 2>&1 | grep FAILED | grep -…",
+              "outTokens": 2385
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 27003,
+          "cacheWrite": 3622,
+          "output": 156,
+          "ms": 1496,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/money.py invoicer/discounts.py; git --no-pager log --oneline -- in…",
+              "outTokens": 2264
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30625,
+          "cacheWrite": 3150,
+          "output": 170,
+          "ms": 1829,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer/money.py | head -60; git --no-pager sho…",
+              "outTokens": 1166
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33775,
+          "cacheWrite": 1666,
+          "output": 285,
+          "ms": 2402,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && python -m pytes…",
+              "outTokens": 58
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24310,
+          "cacheWrite": 11438,
+          "output": 311,
+          "ms": 2975,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 29
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 29
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35748,
+          "cacheWrite": 437,
+          "output": 151,
+          "ms": 1598,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | sed 's/ - .*//' | head -20; python -m …",
+              "outTokens": 448
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36185,
+          "cacheWrite": 863,
+          "output": 159,
+          "ms": 1992,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q -x tests/test_invoice.py 2>&1 | grep -B30 Error | head -50;…",
+              "outTokens": 2032
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37048,
+          "cacheWrite": 2873,
+          "output": 216,
+          "ms": 2518,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": false,
+              "label": "git --no-pager log -L '/if region.inclusive:/,+4:invoicer/invoice.py' --oneline…",
+              "outTokens": 0
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39921,
+          "cacheWrite": 217,
+          "output": 127,
+          "ms": 1347,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show d658235 -- invoicer/invoice.py | head -90",
+              "outTokens": 833
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 40138,
+          "cacheWrite": 1239,
+          "output": 395,
+          "ms": 2650,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 29
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | sed 's/ - .*//' | head; python -m pyte…",
+              "outTokens": 239
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 41377,
+          "cacheWrite": 805,
+          "output": 158,
+          "ms": 1389,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q -x tests/test_invoice.py tests/test_cli.py 2>&1 | grep -E \"…",
+              "outTokens": 675
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42182,
+          "cacheWrite": 1061,
+          "output": 268,
+          "ms": 2600,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q tests/test_cli.py tests/test_rates.py 2>&1 | grep -E \"^E\" |…",
+              "outTokens": 1586
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 43243,
+          "cacheWrite": 2125,
+          "output": 211,
+          "ms": 3155,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline -S\"overrides.get(category) or\" -- invoicer/rates.py",
+              "outTokens": 36
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 45368,
+          "cacheWrite": 175,
+          "output": 332,
+          "ms": 2221,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 29
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | sed 's/ - .*//' | head -5; python -m p…",
+              "outTokens": 28
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 45543,
+          "cacheWrite": 451,
+          "output": 667,
+          "ms": 5918,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "(ruff check . 2>&1 | tail -3); c(){ f=$1; shift; git add $f && git commit -q -m…",
+              "outTokens": 87
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 45994,
+          "cacheWrite": 573,
+          "output": 756,
+          "ms": 6765,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "variant": "c",
+      "rep": 3,
+      "ranAt": "2026-10-16T19:35:14.963Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(tax): honor zero-rate category overrides",
+        "fix(money): round half away from zero again",
+        "fix(invoice): apply coupon before exclusive tax"
+      ],
+      "wallMs": 67082,
+      "nanoAiu": 14429760000,
+      "totals": {
+        "fresh": 856,
+        "cacheRead": 297381,
+        "cacheWrite": 31631,
+        "output": 3377
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 1992,
+      "argChars": 3038,
+      "testRuns": 4,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 10672,
+          "output": 94,
+          "ms": 1709,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --stat | head -60; ls; git tag",
+              "outTokens": 1000
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24312,
+          "cacheWrite": 1518,
+          "output": 135,
+          "ms": 2117,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat CONTRIBUTING.md; git --no-pager log --oneline v0.9.0..HEAD | wc -l; python …",
+              "outTokens": 1954
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 25830,
+          "cacheWrite": 2789,
+          "output": 172,
+          "ms": 2581,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep FAILED | sed 's/\\[.*//' | sort | uniq -c; git -…",
+              "outTokens": 2193
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28619,
+          "cacheWrite": 3056,
+          "output": 295,
+          "ms": 3966,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q tests/test_money.py tests/test_rates.py tests/test_discount…",
+              "outTokens": 1551
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24312,
+          "cacheWrite": 9548,
+          "output": 138,
+          "ms": 1477,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer | head -80; git --no-pager show 6f0a921…",
+              "outTokens": 1622
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33860,
+          "cacheWrite": 2291,
+          "output": 412,
+          "ms": 5113,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline -S\"self.overrides.get(category) or\" -- invoicer/ra…",
+              "outTokens": 77
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36151,
+          "cacheWrite": 242,
+          "output": 138,
+          "ms": 1486,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 35e7746 -- invoicer/rates.py | grep -n \"overrides\" ; git --…",
+              "outTokens": 239
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36393,
+          "cacheWrite": 448,
+          "output": 563,
+          "ms": 5503,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/rates.py';s=open(p).read() s=s.replace(\"re…",
+              "outTokens": 147
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36841,
+          "cacheWrite": 582,
+          "output": 539,
+          "ms": 5032,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T=\"Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\" git ad…",
+              "outTokens": 66
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37423,
+          "cacheWrite": 485,
+          "output": 891,
+          "ms": 6873,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "variant": "c",
+      "rep": 4,
+      "ranAt": "2026-10-16T19:37:45.357Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): keep explicit zero rate overrides",
+        "fix(invoice): tax exclusive lines after the coupon share"
+      ],
+      "wallMs": 46744,
+      "nanoAiu": 18644170000,
+      "totals": {
+        "fresh": 1114,
+        "cacheRead": 417937,
+        "cacheWrite": 39192,
+        "output": 4444
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 2561,
+      "argChars": 3956,
+      "testRuns": 6,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 10677,
+          "output": 136,
+          "ms": 1782,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 629
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24317,
+          "cacheWrite": 903,
+          "output": 146,
+          "ms": 1706,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat CONTRIBUTING.md | head -40; git --no-pager tag; python -m pytest -q -x 2>&1…",
+              "outTokens": 1024
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 25220,
+          "cacheWrite": 1380,
+          "output": 175,
+          "ms": 1569,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^(FAILED|[0-9]+ )\"; sed -n 40,80p CONTRIBUT…",
+              "outTokens": 2806
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 26600,
+          "cacheWrite": 4315,
+          "output": 194,
+          "ms": 1629,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 80,120p CONTRIBUTING.md; cat invoicer/money.py invoicer/discounts.py; gi…",
+              "outTokens": 2616
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30915,
+          "cacheWrite": 3626,
+          "output": 374,
+          "ms": 4663,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && python -m pytes…",
+              "outTokens": 824
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24317,
+          "cacheWrite": 11515,
+          "output": 355,
+          "ms": 3706,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer/money.py | grep -E \"^[-+].*(ROUND|quant…",
+              "outTokens": 306
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35832,
+          "cacheWrite": 683,
+          "output": 587,
+          "ms": 3737,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36515,
+          "cacheWrite": 654,
+          "output": 144,
+          "ms": 1353,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^(FAILED|[0-9]+ )\" | cut -c1-90 | head -20",
+              "outTokens": 533
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37169,
+          "cacheWrite": 949,
+          "output": 161,
+          "ms": 1587,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/invoice.py invoicer/localtax.py | head -260; python -m pytest -q 2…",
+              "outTokens": 2339
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38118,
+          "cacheWrite": 3313,
+          "output": 211,
+          "ms": 2547,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log -L'/if region.inclusive:/,+4:invoicer/invoice.py' --oneline …",
+              "outTokens": 131
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 41431,
+          "cacheWrite": 346,
+          "output": 224,
+          "ms": 1819,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/invoice.py' s=open(p).read() s=s.replace(\"…",
+              "outTokens": 62
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 41777,
+          "cacheWrite": 309,
+          "output": 608,
+          "ms": 4890,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T=\"Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\" git ad…",
+              "outTokens": 68
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42086,
+          "cacheWrite": 522,
+          "output": 1129,
+          "ms": 8036,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "c5",
+      "variant": "c",
+      "rep": 5,
+      "ranAt": "2026-10-16T19:43:34.273Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half away from zero again",
+        "fix(tax): keep explicit zero rates for a category",
+        "fix(invoice): tax exclusive lines after their coupon share"
+      ],
+      "wallMs": 57017,
+      "nanoAiu": 18034400000,
+      "totals": {
+        "fresh": 1370,
+        "cacheRead": 515565,
+        "cacheWrite": 31195,
+        "output": 4806
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 2070,
+      "argChars": 5352,
+      "testRuns": 7,
+      "testRunsUnpiped": 0,
+      "rtk": null,
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 10673,
+          "output": 147,
+          "ms": 2319,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline --decorate | head -30 && git status --short && ls …",
+              "outTokens": 616
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24313,
+          "cacheWrite": 900,
+          "output": 141,
+          "ms": 1497,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat CONTRIBUTING.md | head -40; git tag; python -m pytest -x -q 2>&1 | tail -30",
+              "outTokens": 1026
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 25213,
+          "cacheWrite": 1375,
+          "output": 186,
+          "ms": 1608,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,200p CONTRIBUTING.md; python -m pytest -q 2>&1 | tail -15; ls invoice…",
+              "outTokens": 1545
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 26588,
+          "cacheWrite": 2243,
+          "output": 219,
+          "ms": 3019,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/rates.py invoicer/money.py invoicer/discounts.py; grep -n \"US-CA\" …",
+              "outTokens": 2909
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24313,
+          "cacheWrite": 8532,
+          "output": 392,
+          "ms": 3675,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline -S\"ROUND_HALF_EVEN\" -- invoicer/money.py; git --no…",
+              "outTokens": 77
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer/money.py | head -60",
+              "outTokens": 676
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32845,
+          "cacheWrite": 1359,
+          "output": 380,
+          "ms": 3371,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && python - <<'E' …",
+              "outTokens": 234
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34204,
+          "cacheWrite": 601,
+          "output": 534,
+          "ms": 3839,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 28
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 28
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 28
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34805,
+          "cacheWrite": 663,
+          "output": 118,
+          "ms": 1293,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | tail -8; git status --short",
+              "outTokens": 226
+            }
+          ]
+        },
+        {
+          "fresh": 84,
+          "cacheRead": 35468,
+          "cacheWrite": 447,
+          "output": 145,
+          "ms": 1514,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q tests/test_samples.py 2>&1 | grep -B5 -A25 \"INV-0009 _\" | h…",
+              "outTokens": 17
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35915,
+          "cacheWrite": 168,
+          "output": 158,
+          "ms": 1711,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q \"tests/test_samples.py\" -k \"INV-0009\" 2>&1 | grep -E \"^E\" |…",
+              "outTokens": 320
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36083,
+          "cacheWrite": 598,
+          "output": 228,
+          "ms": 1850,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import json from invoicer import Invoice s=[x for x in json.load…",
+              "outTokens": 605
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36681,
+          "cacheWrite": 1000,
+          "output": 163,
+          "ms": 1596,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 125,180p invoicer/invoice.py; git --no-pager log --oneline -L125,175:inv…",
+              "outTokens": 694
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37681,
+          "cacheWrite": 1099,
+          "output": 248,
+          "ms": 2364,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline -S\"line_tax(line_gross, rate, inclusive=False)\" --…",
+              "outTokens": 203
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38780,
+          "cacheWrite": 489,
+          "output": 358,
+          "ms": 2286,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 28
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | tail -5",
+              "outTokens": 62
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39269,
+          "cacheWrite": 498,
+          "output": 535,
+          "ms": 4335,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "(ruff check . 2>&1 | tail -5); git add invoicer/money.py && git commit -q -m \"f…",
+              "outTokens": 88
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39767,
+          "cacheWrite": 550,
+          "output": 854,
+          "ms": 7087,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "d1",
+      "variant": "d",
+      "rep": 1,
+      "ranAt": "2026-10-16T19:31:02.882Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half away from zero again",
+        "fix(tax): keep zero rate overrides",
+        "fix(invoice): tax net of discount in exclusive regions"
+      ],
+      "wallMs": 63491,
+      "nanoAiu": 16133350000,
+      "totals": {
+        "fresh": 1286,
+        "cacheRead": 424040,
+        "cacheWrite": 29891,
+        "output": 4163
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 2096,
+      "argChars": 4503,
+      "testRuns": 7,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 22,
+        "input": 5795,
+        "output": 5404,
+        "saved": 391
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7186,
+          "output": 154,
+          "ms": 2494,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --oneline -30 && ls && git tag && (rtk npm test 2>&1 || rtk python …",
+              "outTokens": 1617
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20826,
+          "cacheWrite": 2417,
+          "output": 224,
+          "ms": 2563,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/money.py; rtk git log --oneline v0.9.0..HEAD -- invoicer/money.py …",
+              "outTokens": 1949
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 23243,
+          "cacheWrite": 2827,
+          "output": 174,
+          "ms": 2481,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,100p CONTRIBUTING.md; git show 80a6029 -- invoicer/money.py | head -6…",
+              "outTokens": 1655
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 26070,
+          "cacheWrite": 2357,
+          "output": 334,
+          "ms": 3170,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/money.py' s=open(p).read() s=s.replace(\"RO…",
+              "outTokens": 215
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20826,
+          "cacheWrite": 8163,
+          "output": 206,
+          "ms": 1890,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q tests/test_rates.py 2>&1 | grep -E \"^E\" | head -8; rtk git …",
+              "outTokens": 380
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28989,
+          "cacheWrite": 686,
+          "output": 173,
+          "ms": 1622,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "grep -n \"rate_for\" -B3 -A12 invoicer/tax.py | head -60; rtk git show 35e7746 --…",
+              "outTokens": 33
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 29675,
+          "cacheWrite": 218,
+          "output": 136,
+          "ms": 1554,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "ls invoicer; grep -n \"overrides\\|def rate_for\" -A3 invoicer/tax/*.py | head -60",
+              "outTokens": 153
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 29893,
+          "cacheWrite": 304,
+          "output": 121,
+          "ms": 1299,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/rates.py; git show 35e7746 --stat | tail -5",
+              "outTokens": 879
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30197,
+          "cacheWrite": 1310,
+          "output": 356,
+          "ms": 3021,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git log --oneline -S\"overrides.get(category) or\" -- invoicer | cat; git log --o…",
+              "outTokens": 57
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31507,
+          "cacheWrite": 467,
+          "output": 142,
+          "ms": 1348,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^FAILED|passed\" | sed 's/\\[.*//' | sort | u…",
+              "outTokens": 120
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31974,
+          "cacheWrite": 325,
+          "output": 159,
+          "ms": 1533,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk read invoicer/invoice.py | sed -n 60,200p; python -m pytest -q tests/test_i…",
+              "outTokens": 1528
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32299,
+          "cacheWrite": 2165,
+          "output": 411,
+          "ms": 2719,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git log --oneline -S\"line_tax(line_gross, rate, inclusive=False)\" -- invoicer |…",
+              "outTokens": 52
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34464,
+          "cacheWrite": 573,
+          "output": 182,
+          "ms": 1543,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^FAILED|passed\" | sed 's/\\[.*//' | sort | u…",
+              "outTokens": 129
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35037,
+          "cacheWrite": 363,
+          "output": 569,
+          "ms": 4890,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T='Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>' git ad…",
+              "outTokens": 71
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35400,
+          "cacheWrite": 530,
+          "output": 822,
+          "ms": 6757,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "d2",
+      "variant": "d",
+      "rep": 2,
+      "ranAt": "2026-10-16T19:39:58.692Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up again in the shared quantize helper",
+        "fix(tax): honour zero rate overrides for a category",
+        "fix(invoice): tax exclusive lines after the coupon share"
+      ],
+      "wallMs": 58146,
+      "nanoAiu": 14745760000,
+      "totals": {
+        "fresh": 1114,
+        "cacheRead": 351946,
+        "cacheWrite": 28254,
+        "output": 3940
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 1967,
+      "argChars": 4300,
+      "testRuns": 7,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 18,
+        "input": 5208,
+        "output": 4798,
+        "saved": 410
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7182,
+          "output": 138,
+          "ms": 1800,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --oneline -30 && ls && git tag && (cat Makefile package.json 2>/dev…",
+              "outTokens": 618
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20822,
+          "cacheWrite": 889,
+          "output": 163,
+          "ms": 1505,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk python -m pytest -q -x 2>&1 | tail -30; cat CONTRIBUTING.md | head -40; git…",
+              "outTokens": 1020
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 21711,
+          "cacheWrite": 1391,
+          "output": 161,
+          "ms": 1507,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,100p CONTRIBUTING.md; python -m pytest -q 2>&1 | tail -15; ls invoice…",
+              "outTokens": 1230
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 23102,
+          "cacheWrite": 1657,
+          "output": 240,
+          "ms": 1986,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^(FAILED|[0-9]+ )\" | sed 's/ - .*//' | awk …",
+              "outTokens": 1919
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24759,
+          "cacheWrite": 2805,
+          "output": 260,
+          "ms": 3196,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk read invoicer/money.py; git log --oneline -- invoicer/money.py; git log -S\"…",
+              "outTokens": 1312
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20822,
+          "cacheWrite": 8632,
+          "output": 253,
+          "ms": 2912,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show 80a6029 -- invoicer/money.py | grep -E \"^[+-]\" | head -40; git show 35…",
+              "outTokens": 476
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 29454,
+          "cacheWrite": 857,
+          "output": 372,
+          "ms": 3532,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/money.py'; s=open(p).read() s=s.replace(\"R…",
+              "outTokens": 209
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30311,
+          "cacheWrite": 583,
+          "output": 244,
+          "ms": 3045,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^FAILED\" | sed 's/\\[.*//' | sort | uniq -c;…",
+              "outTokens": 1880
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30894,
+          "cacheWrite": 2735,
+          "output": 258,
+          "ms": 3242,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git log --oneline -S\"line_tax(line_gross, rate, inclusive=False)\" -- invoicer/i…",
+              "outTokens": 92
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33629,
+          "cacheWrite": 343,
+          "output": 143,
+          "ms": 1561,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show d658235 -- invoicer/invoice.py | grep -E \"^[+-]\" | grep -n \"line_tax\\|…",
+              "outTokens": 74
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33972,
+          "cacheWrite": 244,
+          "output": 290,
+          "ms": 2026,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/invoice.py'; s=open(p).read() old=\"\"\" if region.incl…",
+              "outTokens": 78
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34216,
+          "cacheWrite": 398,
+          "output": 662,
+          "ms": 5622,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T=\"Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\" git ad…",
+              "outTokens": 80
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34614,
+          "cacheWrite": 538,
+          "output": 756,
+          "ms": 6203,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "d3",
+      "variant": "d",
+      "rep": 3,
+      "ranAt": "2026-10-16T19:35:14.663Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): honour zero-rated category overrides",
+        "fix(invoice): tax the discounted amount in exclusive regions"
+      ],
+      "wallMs": 95633,
+      "nanoAiu": 20799450000,
+      "totals": {
+        "fresh": 1372,
+        "cacheRead": 515480,
+        "cacheWrite": 42509,
+        "output": 4743
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 2067,
+      "argChars": 4994,
+      "testRuns": 9,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 17,
+        "input": 16719,
+        "output": 6098,
+        "saved": 10621
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7185,
+          "output": 121,
+          "ms": 1695,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --stat --format='%h %s' | head -60; ls; git tag",
+              "outTokens": 747
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20825,
+          "cacheWrite": 1177,
+          "output": 181,
+          "ms": 1939,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --format='%h %s' v0.9.0..HEAD | cat; python -m pytest -q 2>&…",
+              "outTokens": 1731
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 22002,
+          "cacheWrite": 2302,
+          "output": 186,
+          "ms": 2527,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^(FAILED|ERROR)|passed|failed\" | sed 's/ - …",
+              "outTokens": 1767
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24304,
+          "cacheWrite": 2703,
+          "output": 209,
+          "ms": 2370,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^FAILED\" | grep -v local_samples; python -m…",
+              "outTokens": 3495
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 27007,
+          "cacheWrite": 4925,
+          "output": 219,
+          "ms": 2043,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": false,
+              "label": "sed -n 60,140p invoicer/money.py; git --no-pager log --format='%h %s' -L '/def …",
+              "outTokens": 0
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31932,
+          "cacheWrite": 279,
+          "output": 278,
+          "ms": 2186,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 60,140p invoicer/money.py",
+              "outTokens": 694
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --format='%h %s' -- invoicer/money.py; git --no-pager log --…",
+              "outTokens": 396
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32211,
+          "cacheWrite": 1703,
+          "output": 246,
+          "ms": 3210,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer | head -80; git --no-pager show 35e7746…",
+              "outTokens": 3707
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20825,
+          "cacheWrite": 17706,
+          "output": 483,
+          "ms": 5006,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && sed -i 's/self.…",
+              "outTokens": 41
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38531,
+          "cacheWrite": 312,
+          "output": 460,
+          "ms": 2950,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 28
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 28
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 28
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38843,
+          "cacheWrite": 650,
+          "output": 112,
+          "ms": 1300,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | tail -8",
+              "outTokens": 140
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39493,
+          "cacheWrite": 278,
+          "output": 186,
+          "ms": 2405,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | grep -E \"^FAILED\" | sed 's/\\[.*//' | sort | uniq -c;…",
+              "outTokens": 486
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39771,
+          "cacheWrite": 881,
+          "output": 242,
+          "ms": 3548,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --format='%h %s' -S'line_tax(line_gross, rate, inclusive=Fal…",
+              "outTokens": 52
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 40652,
+          "cacheWrite": 265,
+          "output": 127,
+          "ms": 1331,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show d658235 -- invoicer/invoice.py | head -70",
+              "outTokens": 714
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 40917,
+          "cacheWrite": 1105,
+          "output": 356,
+          "ms": 2535,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 28
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | tail -15",
+              "outTokens": 33
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42022,
+          "cacheWrite": 483,
+          "output": 646,
+          "ms": 4819,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T=\"Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\" git ad…",
+              "outTokens": 72
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42505,
+          "cacheWrite": 555,
+          "output": 691,
+          "ms": 5922,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "d4",
+      "variant": "d",
+      "rep": 4,
+      "ranAt": "2026-10-16T19:41:57.456Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): honour zero-rate category overrides",
+        "fix(invoice): tax exclusive lines on the discounted amount"
+      ],
+      "wallMs": 74352,
+      "nanoAiu": 14354980000,
+      "totals": {
+        "fresh": 856,
+        "cacheRead": 255453,
+        "cacheWrite": 28753,
+        "output": 4441
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 2411,
+      "argChars": 3808,
+      "testRuns": 5,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 26,
+        "input": 3811,
+        "output": 3057,
+        "saved": 789
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7184,
+          "output": 138,
+          "ms": 2483,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --oneline -30 && ls && git tag && (rtk npm test 2>&1 | tail -40 || …",
+              "outTokens": 788
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20824,
+          "cacheWrite": 1092,
+          "output": 140,
+          "ms": 2487,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | tail -40; cat CONTRIBUTING.md | head -50; ls tools t…",
+              "outTokens": 1425
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 21916,
+          "cacheWrite": 1913,
+          "output": 246,
+          "ms": 2679,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 50,200p CONTRIBUTING.md | grep -i -B2 -A15 commit; python -m pytest -q 2…",
+              "outTokens": 477
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 23829,
+          "cacheWrite": 896,
+          "output": 190,
+          "ms": 2231,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/money.py invoicer/discounts.py; python -m pytest -q tests/test_mon…",
+              "outTokens": 3220
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24725,
+          "cacheWrite": 4436,
+          "output": 312,
+          "ms": 4061,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "grep -n -B3 -A8 \"def rate_for\" invoicer/rates.py; git log --format=%h\\ %s -L/de…",
+              "outTokens": 1440
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20824,
+          "cacheWrite": 10466,
+          "output": 556,
+          "ms": 4552,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && sed -i 's/retur…",
+              "outTokens": 185
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31290,
+          "cacheWrite": 537,
+          "output": 997,
+          "ms": 6634,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 27
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q 2>&1 | tail -15; git log --format='%h %s' -S\"overrides.get(…",
+              "outTokens": 74
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 31827,
+          "cacheWrite": 1196,
+          "output": 603,
+          "ms": 5928,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git status --short && C=\"Co-authored-by: Copilot <223556219+Copilot@users.norep…",
+              "outTokens": 164
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33023,
+          "cacheWrite": 532,
+          "output": 326,
+          "ms": 8549,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show d658235 -- invoicer/invoice.py | grep -E \"^[-+].*(line_tax|inclusive)\"…",
+              "outTokens": 224
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33555,
+          "cacheWrite": 501,
+          "output": 933,
+          "ms": 6919,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "d5",
+      "variant": "d",
+      "rep": 5,
+      "ranAt": "2026-10-16T19:43:35.043Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up again instead of half even",
+        "fix(invoice): tax exclusive lines on the discounted amount",
+        "fix(tax): keep explicit zero rates for categories"
+      ],
+      "wallMs": 48560,
+      "nanoAiu": 15192870000,
+      "totals": {
+        "fresh": 1028,
+        "cacheRead": 318802,
+        "cacheWrite": 32237,
+        "output": 3740
+      },
+      "skills": 2,
+      "hookChars": 0,
+      "proseChars": 2044,
+      "argChars": 3767,
+      "testRuns": 8,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 27,
+        "input": 7527,
+        "output": 6341,
+        "saved": 1221
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 7184,
+          "output": 136,
+          "ms": 1690,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --oneline -20 && ls && git tag && (make test 2>&1 || true) | tail -…",
+              "outTokens": 444
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20824,
+          "cacheWrite": 677,
+          "output": 135,
+          "ms": 1441,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat CONTRIBUTING.md | head -50; python -m pytest -q 2>&1 | tail -30",
+              "outTokens": 1079
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 21501,
+          "cacheWrite": 1488,
+          "output": 178,
+          "ms": 1661,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 50,200p CONTRIBUTING.md | grep -n -i -B2 -A15 commit; python -m pytest -…",
+              "outTokens": 838
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 22989,
+          "cacheWrite": 1177,
+          "output": 262,
+          "ms": 2111,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 55,80p CONTRIBUTING.md | head -5; sed -n 24,40p CONTRIBUTING.md; cat inv…",
+              "outTokens": 1314
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24166,
+          "cacheWrite": 1980,
+          "output": 188,
+          "ms": 2682,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk pytest -q 2>&1 | grep -E \"FAIL\\]\" | sed 's/\\[LOC.*//;s/^[0-9. ]*//' | sort …",
+              "outTokens": 2950
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 26146,
+          "cacheWrite": 4133,
+          "output": 429,
+          "ms": 4841,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git log --oneline -S\"ROUND_HALF_EVEN\" -- invoicer/money.py; git log --oneline -…",
+              "outTokens": 246
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 20824,
+          "cacheWrite": 10019,
+          "output": 160,
+          "ms": 1823,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show 80a6029 --stat --format=%s | head; git show 80a6029 -- invoicer/money.…",
+              "outTokens": 1281
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30843,
+          "cacheWrite": 1938,
+          "output": 590,
+          "ms": 4411,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/money.py'; s=open(p).read() s=s.replace(\"R…",
+              "outTokens": 260
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32781,
+          "cacheWrite": 767,
+          "output": 243,
+          "ms": 2343,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git diff --stat; rtk pytest -q 2>&1 | grep -E \"FAIL\\]\" | sed 's/\\[LOC.*//;s/^[0…",
+              "outTokens": 1397
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33548,
+          "cacheWrite": 2067,
+          "output": 361,
+          "ms": 3159,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git log --format=%h\\ %s -S\"overrides.get(category) or\" -- invoicer/rates.py inv…",
+              "outTokens": 53
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35615,
+          "cacheWrite": 310,
+          "output": 371,
+          "ms": 3030,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T='Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>' git ad…",
+              "outTokens": 144
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35925,
+          "cacheWrite": 497,
+          "output": 687,
+          "ms": 5409,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "e1",
+      "variant": "e",
+      "rep": 1,
+      "ranAt": "2026-10-16T19:31:03.332Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): keep zero rate overrides for reduced categories",
+        "fix(invoice): tax exclusive lines after the coupon share"
+      ],
+      "wallMs": 59720,
+      "nanoAiu": 18909130000,
+      "totals": {
+        "fresh": 1198,
+        "cacheRead": 482378,
+        "cacheWrite": 39335,
+        "output": 4012
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 1682,
+      "argChars": 4054,
+      "testRuns": 7,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 18,
+        "input": 14196,
+        "output": 7262,
+        "saved": 6934
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 11125,
+          "output": 147,
+          "ms": 1951,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --oneline --decorate | head -30; ls; git tag; (python -m pytest -q …",
+              "outTokens": 1372
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24765,
+          "cacheWrite": 2027,
+          "output": 184,
+          "ms": 2207,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | grep FAILED | grep -v test_sample_totals;…",
+              "outTokens": 2362
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 26792,
+          "cacheWrite": 3462,
+          "output": 194,
+          "ms": 2236,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,120p CONTRIBUTING.md; cat invoicer/money.py invoicer/rates.py; git lo…",
+              "outTokens": 2975
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30254,
+          "cacheWrite": 4079,
+          "output": 278,
+          "ms": 3661,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show 80a6029 -- invoicer/money.py | head -60; git show 35e7746 -- invoicer/…",
+              "outTokens": 1781
+            }
+          ]
+        },
+        {
+          "fresh": 84,
+          "cacheRead": 24765,
+          "cacheWrite": 12165,
+          "output": 388,
+          "ms": 3932,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && sed -i 's/retur…",
+              "outTokens": 100
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36930,
+          "cacheWrite": 364,
+          "output": 556,
+          "ms": 3937,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37294,
+          "cacheWrite": 638,
+          "output": 122,
+          "ms": 1229,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | tail -15; git status --short",
+              "outTokens": 275
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37932,
+          "cacheWrite": 463,
+          "output": 185,
+          "ms": 1614,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | grep FAILED | cut -c1-90 | awk -F'[' '{pr…",
+              "outTokens": 2261
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38395,
+          "cacheWrite": 3255,
+          "output": 230,
+          "ms": 3043,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git log --oneline -S\"line_tax(line_gross, rate, inclusive=False)\" -- invoicer/i…",
+              "outTokens": 52
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 41650,
+          "cacheWrite": 242,
+          "output": 127,
+          "ms": 1835,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show d658235 -- invoicer/invoice.py | grep -n \"^[-+]\" | head -40",
+              "outTokens": 327
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 41892,
+          "cacheWrite": 554,
+          "output": 246,
+          "ms": 1877,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/invoice.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42446,
+          "cacheWrite": 288,
+          "output": 115,
+          "ms": 1906,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | tail -8",
+              "outTokens": 33
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42734,
+          "cacheWrite": 155,
+          "output": 606,
+          "ms": 4731,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T='Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>' git co…",
+              "outTokens": 74
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 42889,
+          "cacheWrite": 518,
+          "output": 634,
+          "ms": 4627,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "e2",
+      "variant": "e",
+      "rep": 2,
+      "ranAt": "2026-10-16T19:39:57.660Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up again after the quantize refactor",
+        "fix(tax): keep zero rate overrides for food and books",
+        "fix(invoice): tax exclusive lines after their discount share"
+      ],
+      "wallMs": 55832,
+      "nanoAiu": 17738050000,
+      "totals": {
+        "fresh": 1114,
+        "cacheRead": 422000,
+        "cacheWrite": 36101,
+        "output": 4270
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 2074,
+      "argChars": 4139,
+      "testRuns": 7,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 14,
+        "input": 3798,
+        "output": 3419,
+        "saved": 379
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 11132,
+          "output": 144,
+          "ms": 1913,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --oneline -20 --stat | head -60; ls; python -m pytest -q --tb=short…",
+              "outTokens": 1562
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24772,
+          "cacheWrite": 2260,
+          "output": 206,
+          "ms": 1916,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log --oneline | cat | wc -l; git --no-pager tag; python -m pytes…",
+              "outTokens": 963
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 27032,
+          "cacheWrite": 1514,
+          "output": 170,
+          "ms": 1551,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 60,120p CONTRIBUTING.md; cat invoicer/money.py invoicer/discounts.py; gi…",
+              "outTokens": 3065
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28546,
+          "cacheWrite": 4153,
+          "output": 277,
+          "ms": 3061,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 80a6029 -- invoicer | head -60; git --no-pager log --onelin…",
+              "outTokens": 1378
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24772,
+          "cacheWrite": 9986,
+          "output": 346,
+          "ms": 3609,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && python -m pytes…",
+              "outTokens": 196
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34758,
+          "cacheWrite": 448,
+          "output": 343,
+          "ms": 2321,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35206,
+          "cacheWrite": 441,
+          "output": 177,
+          "ms": 2711,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager diff --stat | cat; python -m pytest -q --tb=line 2>&1 | grep -E …",
+              "outTokens": 251
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35647,
+          "cacheWrite": 556,
+          "output": 163,
+          "ms": 1554,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/invoice.py | sed -n 1,200p; python -m pytest -q --tb=short tests/t…",
+              "outTokens": 1958
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36203,
+          "cacheWrite": 2769,
+          "output": 238,
+          "ms": 3412,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 1,90p invoicer/rates.py; rtk git --no-pager log --oneline --format='%h %…",
+              "outTokens": 957
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38972,
+          "cacheWrite": 1412,
+          "output": 308,
+          "ms": 3788,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show 35e7746 -- invoicer/rates.py | grep -n \"rate_for\\|overrides…",
+              "outTokens": 184
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 40384,
+          "cacheWrite": 437,
+          "output": 436,
+          "ms": 4017,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/rates.py';s=open(p).read() s=s.replace(\"\"\"…",
+              "outTokens": 87
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 40821,
+          "cacheWrite": 426,
+          "output": 631,
+          "ms": 5418,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "C=\"Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\" git ad…",
+              "outTokens": 95
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 41247,
+          "cacheWrite": 567,
+          "output": 831,
+          "ms": 6312,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "e3",
+      "variant": "e",
+      "rep": 3,
+      "ranAt": "2026-10-16T19:35:14.221Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): keep zero rate overrides",
+        "fix(invoice): tax exclusive lines on the discounted amount"
+      ],
+      "wallMs": 90826,
+      "nanoAiu": 16750240000,
+      "totals": {
+        "fresh": 1114,
+        "cacheRead": 409119,
+        "cacheWrite": 33981,
+        "output": 3941
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 2091,
+      "argChars": 4533,
+      "testRuns": 8,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 16,
+        "input": 3838,
+        "output": 3409,
+        "saved": 429
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 11139,
+          "output": 144,
+          "ms": 1864,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --oneline --decorate | head -30; git tag; ls; python -m pytest -q -…",
+              "outTokens": 1179
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24779,
+          "cacheWrite": 1587,
+          "output": 245,
+          "ms": 2448,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=line 2>&1 | grep -E \"^(FAILED|[0-9]+ )|passed|failed\" …",
+              "outTokens": 1331
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 26366,
+          "cacheWrite": 2176,
+          "output": 228,
+          "ms": 2624,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 60,120p CONTRIBUTING.md; cat invoicer/money.py; python -m pytest -q --tb…",
+              "outTokens": 2524
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28542,
+          "cacheWrite": 3472,
+          "output": 256,
+          "ms": 2546,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show 80a6029 --stat | tail -5; grep -n \"rate_for\" -B3 -A12 invoicer/tax.py …",
+              "outTokens": 344
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 32014,
+          "cacheWrite": 698,
+          "output": 236,
+          "ms": 3529,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show 80a6029 -- invoicer/money.py invoicer/cli.py | head -70; ls invoicer; …",
+              "outTokens": 1301
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24779,
+          "cacheWrite": 9814,
+          "output": 207,
+          "ms": 2027,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show 35e7746 -- invoicer/rates.py | grep -n \"overrides\" ; git show c57669e:…",
+              "outTokens": 294
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34593,
+          "cacheWrite": 573,
+          "output": 387,
+          "ms": 4760,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/rates.py';s=open(p).read() s=s.replace(\"re…",
+              "outTokens": 393
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 35166,
+          "cacheWrite": 853,
+          "output": 221,
+          "ms": 2658,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short tests/test_samples.py -k \"INV-0002\" 2>&1 | grep …",
+              "outTokens": 772
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 36019,
+          "cacheWrite": 1276,
+          "output": 213,
+          "ms": 4140,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "grep -n \"allocate\\|discount\\|taxable\\|tax\" invoicer/invoice.py | sed -n 1,60p; …",
+              "outTokens": 533
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 37295,
+          "cacheWrite": 866,
+          "output": 151,
+          "ms": 1818,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 160,173p invoicer/invoice.py; git show d658235 -- invoicer/invoice.py | …",
+              "outTokens": 234
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38161,
+          "cacheWrite": 483,
+          "output": 312,
+          "ms": 2467,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/invoice.py';s=open(p).read() a=s.index(\" if region.i…",
+              "outTokens": 120
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 38644,
+          "cacheWrite": 477,
+          "output": 582,
+          "ms": 4451,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T=\"Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\" git ad…",
+              "outTokens": 84
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39121,
+          "cacheWrite": 567,
+          "output": 759,
+          "ms": 6083,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "e4",
+      "variant": "e",
+      "rep": 4,
+      "ranAt": "2026-10-16T19:41:58.506Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up again instead of half even",
+        "fix(tax): keep zero-rated category overrides",
+        "fix(invoice): tax exclusive lines after their coupon share"
+      ],
+      "wallMs": 69088,
+      "nanoAiu": 17391350000,
+      "totals": {
+        "fresh": 1112,
+        "cacheRead": 411395,
+        "cacheWrite": 36292,
+        "output": 3982
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 1759,
+      "argChars": 3628,
+      "testRuns": 7,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 21,
+        "input": 6094,
+        "output": 5370,
+        "saved": 758
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 11134,
+          "output": 144,
+          "ms": 1900,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --oneline -20 && ls && git tag && (python -m pytest -q --tb=short 2…",
+              "outTokens": 1175
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24774,
+          "cacheWrite": 1785,
+          "output": 209,
+          "ms": 2637,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | grep FAILED | grep -v test_sample_totals …",
+              "outTokens": 1074
+            }
+          ]
+        },
+        {
+          "fresh": 84,
+          "cacheRead": 26559,
+          "cacheWrite": 1562,
+          "output": 191,
+          "ms": 2326,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,80p CONTRIBUTING.md; cat invoicer/discounts.py; git log --format='%h …",
+              "outTokens": 1504
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 28121,
+          "cacheWrite": 2191,
+          "output": 157,
+          "ms": 1627,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk read invoicer/money.py; git --no-pager show 80a6029 -- invoicer/money.py | …",
+              "outTokens": 2153
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 30312,
+          "cacheWrite": 3015,
+          "output": 303,
+          "ms": 3412,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && python -m pytes…",
+              "outTokens": 41
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24774,
+          "cacheWrite": 8797,
+          "output": 333,
+          "ms": 2383,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33571,
+          "cacheWrite": 441,
+          "output": 147,
+          "ms": 1480,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short 2>&1 | grep -E \"FAILED|passed|failed\" | sed 's/ …",
+              "outTokens": 431
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34012,
+          "cacheWrite": 841,
+          "output": 180,
+          "ms": 2328,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=short tests/test_invoice.py tests/test_cli.py 2>&1 | g…",
+              "outTokens": 3418
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34853,
+          "cacheWrite": 4593,
+          "output": 415,
+          "ms": 5115,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git log --format='%h %s' -S'line_tax(line_gross, rate, inclusive=False)' -- inv…",
+              "outTokens": 203
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39446,
+          "cacheWrite": 513,
+          "output": 234,
+          "ms": 3239,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show d658235 -- invoicer/invoice.py | grep -E \"^[-+]\" | head -40",
+              "outTokens": 298
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39959,
+          "cacheWrite": 519,
+          "output": 462,
+          "ms": 4489,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' p='invoicer/invoice.py' s=open(p).read() s=s.replace(\"line_tax(l…",
+              "outTokens": 87
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 40478,
+          "cacheWrite": 418,
+          "output": 416,
+          "ms": 3300,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "T='Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>' && git…",
+              "outTokens": 140
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 40896,
+          "cacheWrite": 483,
+          "output": 791,
+          "ms": 6596,
+          "tools": []
+        }
+      ]
+    },
+    {
+      "id": "e5",
+      "variant": "e",
+      "rep": 5,
+      "ranAt": "2026-10-16T19:43:35.427Z",
+      "success": true,
+      "committed": true,
+      "subjectOk": true,
+      "testsPass": true,
+      "testsChanged": false,
+      "subjects": [
+        "fix(money): round half up instead of half even",
+        "fix(tax): keep zero rate overrides",
+        "fix(invoice): tax added-on lines after the coupon share"
+      ],
+      "wallMs": 52330,
+      "nanoAiu": 19328490000,
+      "totals": {
+        "fresh": 1200,
+        "cacheRead": 495974,
+        "cacheWrite": 38523,
+        "output": 4498
+      },
+      "skills": 22,
+      "hookChars": 4466,
+      "proseChars": 2028,
+      "argChars": 4626,
+      "testRuns": 6,
+      "testRunsUnpiped": 0,
+      "rtk": {
+        "commands": 13,
+        "input": 4828,
+        "output": 4422,
+        "saved": 406
+      },
+      "calls": [
+        {
+          "fresh": 82,
+          "cacheRead": 13640,
+          "cacheWrite": 11130,
+          "output": 142,
+          "ms": 1807,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "rtk git log --oneline -30 && git tag && ls && (python -m pytest -q --tb=short 2…",
+              "outTokens": 1617
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24770,
+          "cacheWrite": 2405,
+          "output": 219,
+          "ms": 2060,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "cat invoicer/money.py; python -m pytest -q --tb=line 2>&1 | grep -E \"^(FAILED|/…",
+              "outTokens": 2838
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 27175,
+          "cacheWrite": 3964,
+          "output": 293,
+          "ms": 2663,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git show 80a6029 --stat --format=%s | head; git show 80a6029 -- invoicer/money.…",
+              "outTokens": 1695
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 24770,
+          "cacheWrite": 8881,
+          "output": 401,
+          "ms": 4202,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -i 's/ROUND_HALF_EVEN/ROUND_HALF_UP/g' invoicer/money.py && python -m pytes…",
+              "outTokens": 281
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 33651,
+          "cacheWrite": 595,
+          "output": 360,
+          "ms": 2646,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            },
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/money.py",
+              "outTokens": 27
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34246,
+          "cacheWrite": 437,
+          "output": 219,
+          "ms": 1915,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=line 2>&1 | grep -E \"^(FAILED|/|[0-9]+ )\" | sed 's/\\[.…",
+              "outTokens": 4572
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 34683,
+          "cacheWrite": 5316,
+          "output": 334,
+          "ms": 2435,
+          "tools": [
+            {
+              "name": "edit",
+              "ok": true,
+              "label": "invoicer/rates.py",
+              "outTokens": 27
+            },
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python -m pytest -q --tb=line 2>&1 | grep -E \"^(FAILED|/|[0-9]+ )\" | cut -c1-16…",
+              "outTokens": 418
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 39999,
+          "cacheWrite": 1017,
+          "output": 139,
+          "ms": 1371,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "sed -n 40,60p tests/test_invoice.py; rtk read invoicer/invoice.py | sed -n 1,20…",
+              "outTokens": 1940
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 41016,
+          "cacheWrite": 2735,
+          "output": 263,
+          "ms": 2982,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": false,
+              "label": "git log -L '/if region.inclusive:/,+4:invoicer/invoice.py' --format='%h %s' -s …",
+              "outTokens": 0
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 43751,
+          "cacheWrite": 271,
+          "output": 187,
+          "ms": 1578,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager log -S'line_gross, rate, inclusive=False' --format='%h %s' -- in…",
+              "outTokens": 54
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 44022,
+          "cacheWrite": 265,
+          "output": 133,
+          "ms": 1421,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git --no-pager show d658235 -- invoicer/invoice.py | grep -E '^[+-]' | head -50",
+              "outTokens": 298
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 44287,
+          "cacheWrite": 522,
+          "output": 222,
+          "ms": 2177,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "python - <<'E' import re p='invoicer/invoice.py' s=open(p).read() s=s.replace(\"…",
+              "outTokens": 87
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 44809,
+          "cacheWrite": 346,
+          "output": 666,
+          "ms": 5757,
+          "tools": [
+            {
+              "name": "bash",
+              "ok": true,
+              "label": "git status --short && git add invoicer/money.py && git commit -q -m \"fix(money)…",
+              "outTokens": 95
+            }
+          ]
+        },
+        {
+          "fresh": 86,
+          "cacheRead": 45155,
+          "cacheWrite": 639,
+          "output": 920,
+          "ms": 7366,
+          "tools": []
+        }
+      ]
+    }
+  ]
+}

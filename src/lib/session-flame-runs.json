@@ -1,0 +1,106 @@
+{
+  "recorded": "2026-10-16",
+  "cli": "1.0.99-3",
+  "prompt": "Build a TodoMVC app where I can add, complete and delete todos. Use a single index.html with plain JavaScript: no dependencies, no build step.",
+  "runs": [
+    {
+      "slug": "claude-opus-5.5--default",
+      "model": "claude-opus-5.5",
+      "label": "Claude Opus 5.5",
+      "tier": "default",
+      "file": "claude-opus-5.5--default.jsonl",
+      "length": 32997,
+      "limit": 200000,
+      "bytes": 34301,
+      "sha256": "e01a81425235ae5a658cabd5ba6acbd18ed2e7d9ced1f73dfecce7c2e44e26e3"
+    },
+    {
+      "slug": "claude-opus-5.5--long_context",
+      "model": "claude-opus-5.5",
+      "label": "Claude Opus 5.5",
+      "tier": "long_context",
+      "file": "claude-opus-5.5--long_context.jsonl",
+      "length": 28668,
+      "limit": 968000,
+      "bytes": 31055,
+      "sha256": "020bbc219da168ddef71e156ac3e289f27ec96355ac10a6b4f74f6f08d9c1025"
+    },
+    {
+      "slug": "claude-sonnet-5.5--default",
+      "model": "claude-sonnet-5.5",
+      "label": "Claude Sonnet 5.5",
+      "tier": "default",
+      "file": "claude-sonnet-5.5--default.jsonl",
+      "length": 17288,
+      "limit": 200000,
+      "bytes": 24274,
+      "sha256": "c26d61997a3c221d567de664304777cf96cca1642ee7e4dcc27631f333920f4d"
+    },
+    {
+      "slug": "claude-sonnet-5.5--long_context",
+      "model": "claude-sonnet-5.5",
+      "label": "Claude Sonnet 5.5",
+      "tier": "long_context",
+      "file": "claude-sonnet-5.5--long_context.jsonl",
+      "length": 18257,
+      "limit": 872000,
+      "bytes": 25274,
+      "sha256": "467ea52d98090f3d6bff26bbaea41aecd41bdabe3ab835ea0322bacba9ab2dda"
+    },
+    {
+      "slug": "gpt-6-astra--default",
+      "model": "gpt-6-astra",
+      "label": "GPT-6 Astra",
+      "tier": "default",
+      "file": "gpt-6-astra--default.jsonl",
+      "length": 74778,
+      "limit": 272000,
+      "bytes": 77959,
+      "sha256": "12f277ab11f19e07e0adb25a5b1b12edab29cd4f2c1c8af791514bb6ab4ef56e"
+    },
+    {
+      "slug": "gpt-6-astra--long_context",
+      "model": "gpt-6-astra",
+      "label": "GPT-6 Astra",
+      "tier": "long_context",
+      "file": "gpt-6-astra--long_context.jsonl",
+      "length": 149075,
+      "limit": 922000,
+      "bytes": 92682,
+      "sha256": "7e8f3446e4fec115714d1e01f11e671a4bd4b07fdcbf94a305b59ee850e126fc"
+    },
+    {
+      "slug": "gpt-6.1-sol--default",
+      "model": "gpt-6.1-sol",
+      "label": "GPT-6.1 Sol",
+      "tier": "default",
+      "file": "gpt-6.1-sol--default.jsonl",
+      "length": 108450,
+      "limit": 272000,
+      "bytes": 75388,
+      "sha256": "b242a696796fda7c00007abebdf41f215e4bdb724200af44025950c88625593f"
+    },
+    {
+      "slug": "gpt-6.1-sol--long_context",
+      "model": "gpt-6.1-sol",
+      "label": "GPT-6.1 Sol",
+      "tier": "long_context",
+      "file": "gpt-6.1-sol--long_context.jsonl",
+      "length": 106386,
+      "limit": 922000,
+      "bytes": 75880,
+      "sha256": "bafef4a9b2145d0f1ebc46e2121010f11f5de9946ece0cf0b52535bac52148d1"
+    },
+    {
+      "slug": "hydrafusion--default",
+      "model": "hydrafusion",
+      "label": "HydraFusion",
+      "tier": "default",
+      "file": "hydrafusion--default.jsonl",
+      "length": 134385,
+      "limit": 272000,
+      "bytes": 93762,
+      "sha256": "e259108779cba16f57fb44090b29312e03cf880cac423bb5ee2644b7af36bc18"
+    }
+  ]
+}
