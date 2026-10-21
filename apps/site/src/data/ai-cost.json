@@ -1,0 +1,956 @@
+{
+  "window": {
+    "start": "2026-09-22",
+    "end": "2026-10-19"
+  },
+  "billing": [
+    {
+      "month": "2026-09",
+      "pricePerUnit": 0.01,
+      "credits": 552288.79,
+      "gross": 5522.89,
+      "net": 0,
+      "bySku": [
+        {
+          "name": "Copilot AI Credits",
+          "credits": 544070.46
+        },
+        {
+          "name": "Code Quality AI Credits",
+          "credits": 5379.86
+        },
+        {
+          "name": "Copilot Cloud Agent",
+          "credits": 2838.46
+        }
+      ],
+      "byModel": [
+        {
+          "name": "Code Review model",
+          "credits": 368543.61
+        },
+        {
+          "name": "Claude Sonnet 5",
+          "credits": 37529.44
+        },
+        {
+          "name": "GPT-6 Astra",
+          "credits": 36744.64
+        },
+        {
+          "name": "GPT-5.6 Sol",
+          "credits": 36587.49
+        },
+        {
+          "name": "Claude Opus 5",
+          "credits": 28042.65
+        },
+        {
+          "name": "Other",
+          "credits": 10460.52
+        },
+        {
+          "name": "Auto: Claude Opus 5",
+          "credits": 9083.02
+        },
+        {
+          "name": "Claude Opus 4.8",
+          "credits": 8775.82
+        },
+        {
+          "name": "GPT-5.3-Codex",
+          "credits": 4535.39
+        },
+        {
+          "name": "Claude Haiku 4.5",
+          "credits": 2620.54
+        },
+        {
+          "name": "Auto: GPT-5.6 Sol",
+          "credits": 1451.8
+        },
+        {
+          "name": "Auto: Claude Sonnet 5",
+          "credits": 1293.14
+        },
+        {
+          "name": "GPT-5.2",
+          "credits": 1270.83
+        },
+        {
+          "name": "Claude Opus 5.5",
+          "credits": 745.78
+        },
+        {
+          "name": "Auto: GPT-5.5",
+          "credits": 652.52
+        },
+        {
+          "name": "Claude Opus 4.7",
+          "credits": 466.02
+        },
+        {
+          "name": "Auto: GPT-6 Sol",
+          "credits": 457.63
+        },
+        {
+          "name": "Auto: GPT-6 Astra",
+          "credits": 447.44
+        },
+        {
+          "name": "GPT-5.6 Terra",
+          "credits": 402.43
+        },
+        {
+          "name": "GPT-5.5",
+          "credits": 400.59
+        },
+        {
+          "name": "Claude Sonnet 4.6",
+          "credits": 349.53
+        },
+        {
+          "name": "GPT-5.4",
+          "credits": 255.82
+        },
+        {
+          "name": "GPT-5.6 Luna",
+          "credits": 241.97
+        },
+        {
+          "name": "Auto: GPT-5.6 Terra",
+          "credits": 227.67
+        },
+        {
+          "name": "Kimi K3",
+          "credits": 139.68
+        },
+        {
+          "name": "Auto: Claude Opus 5.5",
+          "credits": 136.08
+        },
+        {
+          "name": "Auto: GPT-5.6 Luna",
+          "credits": 83.28
+        },
+        {
+          "name": "Auto: Gemini 3.7 Flash",
+          "credits": 63.4
+        },
+        {
+          "name": "GPT-6 Luna",
+          "credits": 49.2
+        },
+        {
+          "name": "GPT-5 mini",
+          "credits": 47.12
+        },
+        {
+          "name": "GPT-5.4 mini",
+          "credits": 32.21
+        },
+        {
+          "name": "Grok 4.7",
+          "credits": 25.51
+        },
+        {
+          "name": "Auto: GPT-5.3-Codex",
+          "credits": 24.3
+        },
+        {
+          "name": "Auto: GPT-6 Luna",
+          "credits": 20.81
+        },
+        {
+          "name": "MAI-Code-1.1-Flash",
+          "credits": 18.73
+        },
+        {
+          "name": "GPT-6 Sol",
+          "credits": 16.6
+        },
+        {
+          "name": "Auto: MAI-Code-1.1-Flash",
+          "credits": 13.8
+        },
+        {
+          "name": "Gemini 3.8 Flash",
+          "credits": 12.05
+        },
+        {
+          "name": "Claude Opus 4.6",
+          "credits": 10.56
+        },
+        {
+          "name": "Auto: Claude Haiku 4.5",
+          "credits": 9.18
+        }
+      ]
+    },
+    {
+      "month": "2026-10",
+      "pricePerUnit": 0.01,
+      "credits": 646420.96,
+      "gross": 6464.21,
+      "net": 0,
+      "bySku": [
+        {
+          "name": "Copilot AI Credits",
+          "credits": 634384.56
+        },
+        {
+          "name": "Code Security AI Credits",
+          "credits": 8466.84
+        },
+        {
+          "name": "Code Quality AI Credits",
+          "credits": 3133.7
+        },
+        {
+          "name": "Copilot Cloud Agent",
+          "credits": 435.86
+        }
+      ],
+      "byModel": [
+        {
+          "name": "Code Review model",
+          "credits": 297270.01
+        },
+        {
+          "name": "Claude Opus 5.5",
+          "credits": 121488.6
+        },
+        {
+          "name": "Claude Sonnet 5",
+          "credits": 108126.52
+        },
+        {
+          "name": "GPT-5.5",
+          "credits": 39439.77
+        },
+        {
+          "name": "Claude Sonnet 5.5",
+          "credits": 28844.77
+        },
+        {
+          "name": "GPT-5.4",
+          "credits": 14044.31
+        },
+        {
+          "name": "GPT-6 Astra",
+          "credits": 9677.95
+        },
+        {
+          "name": "Claude Haiku 4.5",
+          "credits": 5835.43
+        },
+        {
+          "name": "GPT-5.2",
+          "credits": 5193.91
+        },
+        {
+          "name": "GPT-5.6 Sol",
+          "credits": 3040.06
+        },
+        {
+          "name": "Auto: GPT-6.1 Sol",
+          "credits": 2824.65
+        },
+        {
+          "name": "GPT-5.3-Codex",
+          "credits": 2763.73
+        },
+        {
+          "name": "Claude Opus 5",
+          "credits": 2609.92
+        },
+        {
+          "name": "GPT-6.1 Sol",
+          "credits": 1927.96
+        },
+        {
+          "name": "Auto: Claude Opus 5.5",
+          "credits": 1068.76
+        },
+        {
+          "name": "GPT-5.6 Terra",
+          "credits": 850.67
+        },
+        {
+          "name": "Claude Opus 4.8",
+          "credits": 389.04
+        },
+        {
+          "name": "GPT-5.6 Luna",
+          "credits": 302.78
+        },
+        {
+          "name": "Auto: GPT-6 Luna",
+          "credits": 291.4
+        },
+        {
+          "name": "MAI-Code-1.1-Flash",
+          "credits": 147.37
+        },
+        {
+          "name": "Auto: GPT-5.6 Terra",
+          "credits": 124.8
+        },
+        {
+          "name": "Auto: Claude Sonnet 5.5",
+          "credits": 81.06
+        },
+        {
+          "name": "Auto: Gemini 3.8 Flash",
+          "credits": 42.78
+        },
+        {
+          "name": "Claude Sonnet 4.6",
+          "credits": 17.52
+        },
+        {
+          "name": "GPT-5.4 mini",
+          "credits": 14.24
+        },
+        {
+          "name": "GPT-6 Luna",
+          "credits": 2.89
+        },
+        {
+          "name": "Claude Haiku 5.5",
+          "credits": 0.08
+        }
+      ]
+    }
+  ],
+  "days": [
+    {
+      "day": "2026-09-22",
+      "dau": 942,
+      "wau": 1093,
+      "mau": 1364,
+      "cliDau": 759,
+      "appDau": 42,
+      "cli": {
+        "requests": 448212,
+        "prompts": 44039,
+        "promptTokens": 76796900382,
+        "outputTokens": 301283427
+      },
+      "app": {
+        "requests": 5694,
+        "prompts": 312,
+        "promptTokens": 726198567,
+        "outputTokens": 3368364
+      }
+    },
+    {
+      "day": "2026-09-23",
+      "dau": 941,
+      "wau": 1125,
+      "mau": 1367,
+      "cliDau": 758,
+      "appDau": 41,
+      "cli": {
+        "requests": 409338,
+        "prompts": 40660,
+        "promptTokens": 69252080039,
+        "outputTokens": 288016225
+      },
+      "app": {
+        "requests": 7521,
+        "prompts": 182,
+        "promptTokens": 1132409070,
+        "outputTokens": 5084746
+      }
+    },
+    {
+      "day": "2026-09-24",
+      "dau": 941,
+      "wau": 1158,
+      "mau": 1371,
+      "cliDau": 787,
+      "appDau": 36,
+      "cli": {
+        "requests": 455492,
+        "prompts": 50858,
+        "promptTokens": 78464624509,
+        "outputTokens": 321627509
+      },
+      "app": {
+        "requests": 10400,
+        "prompts": 914,
+        "promptTokens": 1945281790,
+        "outputTokens": 8548259
+      }
+    },
+    {
+      "day": "2026-09-25",
+      "dau": 870,
+      "wau": 1168,
+      "mau": 1373,
+      "cliDau": 713,
+      "appDau": 31,
+      "cli": {
+        "requests": 535006,
+        "prompts": 149344,
+        "promptTokens": 70920273915,
+        "outputTokens": 383822315
+      },
+      "app": {
+        "requests": 13555,
+        "prompts": 1067,
+        "promptTokens": 1917843045,
+        "outputTokens": 10938390
+      }
+    },
+    {
+      "day": "2026-09-26",
+      "dau": 450,
+      "wau": 1173,
+      "mau": 1373,
+      "cliDau": 351,
+      "appDau": 12,
+      "cli": {
+        "requests": 316570,
+        "prompts": 112796,
+        "promptTokens": 33835570993,
+        "outputTokens": 231209086
+      },
+      "app": {
+        "requests": 10229,
+        "prompts": 1534,
+        "promptTokens": 556928421,
+        "outputTokens": 6414749
+      }
+    },
+    {
+      "day": "2026-09-27",
+      "dau": 439,
+      "wau": 439,
+      "mau": 1376,
+      "cliDau": 329,
+      "appDau": 14,
+      "cli": {
+        "requests": 249789,
+        "prompts": 34193,
+        "promptTokens": 36683160475,
+        "outputTokens": 170562305
+      },
+      "app": {
+        "requests": 14888,
+        "prompts": 1270,
+        "promptTokens": 846472635,
+        "outputTokens": 10799744
+      }
+    },
+    {
+      "day": "2026-09-28",
+      "dau": 876,
+      "wau": 897,
+      "mau": 1381,
+      "cliDau": 724,
+      "appDau": 26,
+      "cli": {
+        "requests": 391680,
+        "prompts": 67235,
+        "promptTokens": 57086360781,
+        "outputTokens": 258906784
+      },
+      "app": {
+        "requests": 26240,
+        "prompts": 1832,
+        "promptTokens": 2879562108,
+        "outputTokens": 22193508
+      }
+    },
+    {
+      "day": "2026-09-29",
+      "dau": 872,
+      "wau": 964,
+      "mau": 1383,
+      "cliDau": 731,
+      "appDau": 28,
+      "cli": {
+        "requests": 426791,
+        "prompts": 56408,
+        "promptTokens": 64565646266,
+        "outputTokens": 299176487
+      },
+      "app": {
+        "requests": 8491,
+        "prompts": 293,
+        "promptTokens": 2155540369,
+        "outputTokens": 10106599
+      }
+    },
+    {
+      "day": "2026-09-30",
+      "dau": 884,
+      "wau": 1001,
+      "mau": 1384,
+      "cliDau": 754,
+      "appDau": 31,
+      "cli": {
+        "requests": 491588,
+        "prompts": 87789,
+        "promptTokens": 70238691848,
+        "outputTokens": 362114323
+      },
+      "app": {
+        "requests": 9855,
+        "prompts": 268,
+        "promptTokens": 2550822545,
+        "outputTokens": 13771449
+      }
+    },
+    {
+      "day": "2026-10-01",
+      "dau": 856,
+      "wau": 1022,
+      "mau": 856,
+      "cliDau": 720,
+      "appDau": 28,
+      "cli": {
+        "requests": 457096,
+        "prompts": 92958,
+        "promptTokens": 62605785337,
+        "outputTokens": 349834730
+      },
+      "app": {
+        "requests": 7501,
+        "prompts": 404,
+        "promptTokens": 1491497864,
+        "outputTokens": 8104315
+      }
+    },
+    {
+      "day": "2026-10-02",
+      "dau": 822,
+      "wau": 1033,
+      "mau": 921,
+      "cliDau": 669,
+      "appDau": 65,
+      "cli": {
+        "requests": 364370,
+        "prompts": 58453,
+        "promptTokens": 50997814298,
+        "outputTokens": 277833369
+      },
+      "app": {
+        "requests": 41734,
+        "prompts": 2976,
+        "promptTokens": 5810746495,
+        "outputTokens": 34390658
+      }
+    },
+    {
+      "day": "2026-10-03",
+      "dau": 443,
+      "wau": 1034,
+      "mau": 926,
+      "cliDau": 316,
+      "appDau": 35,
+      "cli": {
+        "requests": 161188,
+        "prompts": 25194,
+        "promptTokens": 26626358882,
+        "outputTokens": 124806812
+      },
+      "app": {
+        "requests": 30557,
+        "prompts": 2149,
+        "promptTokens": 5096493731,
+        "outputTokens": 31877468
+      }
+    },
+    {
+      "day": "2026-10-04",
+      "dau": 410,
+      "wau": 410,
+      "mau": 934,
+      "cliDau": 292,
+      "appDau": 34,
+      "cli": {
+        "requests": 150355,
+        "prompts": 22447,
+        "promptTokens": 28280289938,
+        "outputTokens": 132198037
+      },
+      "app": {
+        "requests": 21252,
+        "prompts": 1513,
+        "promptTokens": 3545430384,
+        "outputTokens": 19098725
+      }
+    },
+    {
+      "day": "2026-10-05",
+      "dau": 839,
+      "wau": 852,
+      "mau": 977,
+      "cliDau": 672,
+      "appDau": 72,
+      "cli": {
+        "requests": 311560,
+        "prompts": 31590,
+        "promptTokens": 52439308600,
+        "outputTokens": 237809319
+      },
+      "app": {
+        "requests": 65067,
+        "prompts": 3058,
+        "promptTokens": 9109892539,
+        "outputTokens": 55710762
+      }
+    },
+    {
+      "day": "2026-10-06",
+      "dau": 867,
+      "wau": 939,
+      "mau": 1007,
+      "cliDau": 716,
+      "appDau": 72,
+      "cli": {
+        "requests": 332632,
+        "prompts": 30249,
+        "promptTokens": 54453530406,
+        "outputTokens": 249223550
+      },
+      "app": {
+        "requests": 78567,
+        "prompts": 4339,
+        "promptTokens": 11647728763,
+        "outputTokens": 79036663
+      }
+    },
+    {
+      "day": "2026-10-07",
+      "dau": 860,
+      "wau": 972,
+      "mau": 1024,
+      "cliDau": 629,
+      "appDau": 291,
+      "cli": {
+        "requests": 239288,
+        "prompts": 21766,
+        "promptTokens": 34820730431,
+        "outputTokens": 182128600
+      },
+      "app": {
+        "requests": 145874,
+        "prompts": 11415,
+        "promptTokens": 22931557094,
+        "outputTokens": 117173625
+      }
+    },
+    {
+      "day": "2026-10-08",
+      "dau": 851,
+      "wau": 992,
+      "mau": 1039,
+      "cliDau": 497,
+      "appDau": 378,
+      "cli": {
+        "requests": 191472,
+        "prompts": 17136,
+        "promptTokens": 30067712740,
+        "outputTokens": 145217133
+      },
+      "app": {
+        "requests": 194502,
+        "prompts": 17125,
+        "promptTokens": 32965689463,
+        "outputTokens": 160143193
+      }
+    },
+    {
+      "day": "2026-10-09",
+      "dau": 843,
+      "wau": 1032,
+      "mau": 1076,
+      "cliDau": 448,
+      "appDau": 402,
+      "cli": {
+        "requests": 184519,
+        "prompts": 16296,
+        "promptTokens": 26608915075,
+        "outputTokens": 146705484
+      },
+      "app": {
+        "requests": 223696,
+        "prompts": 17362,
+        "promptTokens": 40568155745,
+        "outputTokens": 207247364
+      }
+    },
+    {
+      "day": "2026-10-10",
+      "dau": 490,
+      "wau": 1034,
+      "mau": 1076,
+      "cliDau": 208,
+      "appDau": 209,
+      "cli": {
+        "requests": 95984,
+        "prompts": 7545,
+        "promptTokens": 14411713687,
+        "outputTokens": 67978249
+      },
+      "app": {
+        "requests": 117046,
+        "prompts": 7913,
+        "promptTokens": 23917480083,
+        "outputTokens": 113734535
+      }
+    },
+    {
+      "day": "2026-10-11",
+      "dau": 481,
+      "wau": 481,
+      "mau": 1081,
+      "cliDau": 187,
+      "appDau": 219,
+      "cli": {
+        "requests": 81811,
+        "prompts": 7505,
+        "promptTokens": 11852483187,
+        "outputTokens": 60328144
+      },
+      "app": {
+        "requests": 99858,
+        "prompts": 8160,
+        "promptTokens": 20917151251,
+        "outputTokens": 93289960
+      }
+    },
+    {
+      "day": "2026-10-12",
+      "dau": 845,
+      "wau": 865,
+      "mau": 1099,
+      "cliDau": 412,
+      "appDau": 443,
+      "cli": {
+        "requests": 155583,
+        "prompts": 15299,
+        "promptTokens": 19495168584,
+        "outputTokens": 114890259
+      },
+      "app": {
+        "requests": 195701,
+        "prompts": 17259,
+        "promptTokens": 33011291873,
+        "outputTokens": 162086815
+      }
+    },
+    {
+      "day": "2026-10-13",
+      "dau": 908,
+      "wau": 973,
+      "mau": 1109,
+      "cliDau": 441,
+      "appDau": 494,
+      "cli": {
+        "requests": 184910,
+        "prompts": 16501,
+        "promptTokens": 24892341271,
+        "outputTokens": 154397792
+      },
+      "app": {
+        "requests": 250039,
+        "prompts": 21949,
+        "promptTokens": 45116458043,
+        "outputTokens": 211016051
+      }
+    },
+    {
+      "day": "2026-10-14",
+      "dau": 900,
+      "wau": 1012,
+      "mau": 1119,
+      "cliDau": 439,
+      "appDau": 515,
+      "cli": {
+        "requests": 208166,
+        "prompts": 19062,
+        "promptTokens": 26635051863,
+        "outputTokens": 144605599
+      },
+      "app": {
+        "requests": 299585,
+        "prompts": 26012,
+        "promptTokens": 54388037203,
+        "outputTokens": 230684285
+      }
+    },
+    {
+      "day": "2026-10-15",
+      "dau": 910,
+      "wau": 1044,
+      "mau": 1126,
+      "cliDau": 400,
+      "appDau": 528,
+      "cli": {
+        "requests": 193335,
+        "prompts": 20638,
+        "promptTokens": 25456577312,
+        "outputTokens": 124398695
+      },
+      "app": {
+        "requests": 269485,
+        "prompts": 24310,
+        "promptTokens": 47082873597,
+        "outputTokens": 218082797
+      }
+    },
+    {
+      "day": "2026-10-16",
+      "dau": 865,
+      "wau": 1064,
+      "mau": 1134,
+      "cliDau": 367,
+      "appDau": 512,
+      "cli": {
+        "requests": 182869,
+        "prompts": 23615,
+        "promptTokens": 22162188673,
+        "outputTokens": 120142773
+      },
+      "app": {
+        "requests": 272066,
+        "prompts": 22109,
+        "promptTokens": 47182637560,
+        "outputTokens": 226895835
+      }
+    },
+    {
+      "day": "2026-10-17",
+      "dau": 1156,
+      "wau": 1186,
+      "mau": 1208,
+      "cliDau": 1146,
+      "appDau": 255,
+      "cli": {
+        "requests": 147399,
+        "prompts": 20507,
+        "promptTokens": 12787685127,
+        "outputTokens": 97752695
+      },
+      "app": {
+        "requests": 133930,
+        "prompts": 11307,
+        "promptTokens": 30339124854,
+        "outputTokens": 116270140
+      }
+    },
+    {
+      "day": "2026-10-18",
+      "dau": 1172,
+      "wau": 1172,
+      "mau": 1210,
+      "cliDau": 1161,
+      "appDau": 254,
+      "cli": {
+        "requests": 191122,
+        "prompts": 39798,
+        "promptTokens": 18899084665,
+        "outputTokens": 89450345
+      },
+      "app": {
+        "requests": 119997,
+        "prompts": 8964,
+        "promptTokens": 29807874295,
+        "outputTokens": 104852403
+      }
+    },
+    {
+      "day": "2026-10-19",
+      "dau": 1176,
+      "wau": 1182,
+      "mau": 1211,
+      "cliDau": 1163,
+      "appDau": 523,
+      "cli": {
+        "requests": 246533,
+        "prompts": 33302,
+        "promptTokens": 24082400838,
+        "outputTokens": 128873703
+      },
+      "app": {
+        "requests": 276700,
+        "prompts": 24440,
+        "promptTokens": 49120176619,
+        "outputTokens": 234506371
+      }
+    }
+  ],
+  "users": {
+    "count": 1314,
+    "withCredits": 13,
+    "byMonth": [
+      {
+        "month": "2026-09",
+        "credits": 37349.18,
+        "users": 10
+      },
+      {
+        "month": "2026-10",
+        "credits": 237003.72,
+        "users": 8
+      }
+    ]
+  },
+  "phases": [
+    {
+      "phase": "No Cohort",
+      "users": 46
+    },
+    {
+      "phase": "Phase 1",
+      "users": 6
+    },
+    {
+      "phase": "Phase 2",
+      "users": 581
+    },
+    {
+      "phase": "Phase 3",
+      "users": 681
+    }
+  ],
+  "features": {
+    "activeUsers": 1314,
+    "engaged": [
+      {
+        "feature": "copilot_cli",
+        "users": 1253
+      },
+      {
+        "feature": "github_app",
+        "users": 673
+      },
+      {
+        "feature": "agent_edit",
+        "users": 230
+      },
+      {
+        "feature": "cloud_agent",
+        "users": 80
+      },
+      {
+        "feature": "code_review_passive",
+        "users": 24
+      },
+      {
+        "feature": "code_completion",
+        "users": 14
+      },
+      {
+        "feature": "code_review_active",
+        "users": 8
+      }
+    ]
+  },
+  "thirdPartySessions": 11
+}

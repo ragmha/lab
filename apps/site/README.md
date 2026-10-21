@@ -7,6 +7,7 @@ is a page in `src/pages/`.
 | --- | --- |
 | [Universe Passport](https://lab.raghib.io/universe/passport/) | Learn the Universe 2026 releases, stamp lessons, and check your understanding |
 | [Universe field guide](https://lab.raghib.io/universe/) | Read the lessons, optional labs, release inventory, and download the slides |
+| [AI Cost](https://lab.raghib.io/ai-cost/) | Explore one organization’s AI-credit billing and Copilot usage |
 | [Chess](https://lab.raghib.io/chess/) | Play Stockfish locally |
 | [Context Autopsy](https://lab.raghib.io/context-autopsy/) | Inspect agent-session context and token use |
 | [Session Flame](https://lab.raghib.io/session-flame/) | Replay sessions as a flame chart |
@@ -27,6 +28,18 @@ the base). No accounts, sync, or team tracking.
 
 Release availability is a sourced snapshot checked 1–2 November 2026. Lessons
 never run agents, change permissions, or spend credits.
+
+## AI cost data
+
+`/ai-cost/` reads only `src/data/ai-cost.json`: daily organization totals,
+monthly credit totals, and public product and model names derived from one
+unnamed organization's private GitHub exports (AI-credit billing usage and the
+Copilot `organization-28-day` and `users-28-day` metrics reports). Raw exports,
+logins, and user, organization, and enterprise IDs are never committed. To
+regenerate, keep the exports outside the repository and run
+`bun scripts/ai-cost/aggregate.ts <folder>` from here; the header comment lists
+the expected file names. It refuses to write if an identifier, or a monthly
+credit total from fewer than five users, would be published.
 
 The [token-diet reproduction kit](scripts/token-diet/README.md) can consume paid
 model credits.
