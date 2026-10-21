@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { describe, test } from 'node:test'
 import { MIN_COHORT, aggregate, assertPublishable } from '../scripts/ai-cost/aggregate'
 import type { AiCost, Billing, OrgReport } from '../scripts/ai-cost/aggregate'
+import { combine, niceScale, topN, windowDelta } from '../src/lib/ai-cost'
 
 const item = (sku: string, model: string, grossQuantity: number) => ({
   product: 'Copilot', sku, model, unitType: 'ai-credits', pricePerUnit: 0.01,
@@ -95,6 +96,37 @@ describe('ai cost aggregation', () => {
     assert.throws(() => assertPublishable(`${json}"person-3"`, billings, org, users), /raw identifier/)
     assert.throws(() => assertPublishable(`${json}"secret-org"`, billings, org, users), /raw identifier/)
     assert.throws(() => assertPublishable(`${json}{"user_login":1}`, billings, org, users), /user_login/)
+  })
+})
+
+describe('ai cost chart helpers', () => {
+  const sep = [{ name: 'A', credits: 70 }, { name: 'B', credits: 20 }, { name: 'C', credits: 10 }]
+  const oct = [{ name: 'B', credits: 50 }, { name: 'D', credits: 40 }, { name: 'A', credits: 10 }]
+
+  test('combine adds credits per name, largest first', () => {
+    assert.deepEqual(combine(sep, oct), [
+      { name: 'A', credits: 80 }, { name: 'B', credits: 70 }, { name: 'D', credits: 40 }, { name: 'C', credits: 10 },
+    ])
+  })
+
+  test('topN keeps the largest used rows and counts the ones left out', () => {
+    assert.deepEqual(topN(sep, 2), { top: [sep[0], sep[1]], hidden: 1 })
+    assert.deepEqual(topN([...sep, { name: 'Idle', credits: 0 }], 5), { top: sep, hidden: 0 })
+  })
+
+  test('niceScale returns round steps that cover the maximum', () => {
+    assert.deepEqual(niceScale(6464.21), { max: 8000, ticks: [0, 2000, 4000, 6000, 8000] })
+    assert.deepEqual(niceScale(1176), { max: 1500, ticks: [0, 500, 1000, 1500] })
+    assert.deepEqual(niceScale(77.1e9), { max: 80e9, ticks: [0, 20e9, 40e9, 60e9, 80e9] })
+    assert.deepEqual(niceScale(4000), { max: 4000, ticks: [0, 1000, 2000, 3000, 4000] })
+    assert.deepEqual(niceScale(0), { max: 1, ticks: [0, 1] })
+  })
+
+  test('windowDelta compares the last window with the one before it', () => {
+    const values = [...Array(7).fill(10), ...Array(7).fill(15)]
+    assert.deepEqual(windowDelta(values), { current: 15, previous: 10, change: 0.5 })
+    assert.equal(windowDelta(values.slice(1)), undefined)
+    assert.equal(windowDelta(Array(14).fill(0))?.change, undefined)
   })
 })
 

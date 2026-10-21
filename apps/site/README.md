@@ -41,5 +41,11 @@ regenerate, keep the exports outside the repository and run
 the expected file names. It refuses to write if an identifier, or a monthly
 credit total from fewer than five users, would be published.
 
+The page fits one screen (`SiteLayout`'s opt-in `fit` mode, used only here)
+with six tabs. Tabs and the group and month controls are plain CSS, so they
+work without JavaScript; a small same-origin inline script only adds `#tab`
+deep links, tooltips, and hover highlighting, and makes no requests. On small
+phones a tab's panel scrolls inside the fixed frame instead of the page.
+
 The [token-diet reproduction kit](scripts/token-diet/README.md) can consume paid
 model credits.
