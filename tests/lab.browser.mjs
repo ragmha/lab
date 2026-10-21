@@ -120,6 +120,56 @@ test('standalone pages have working local links, assets and lab canonicals', { s
   }
 })
 
+test('ai cost dashboard stays on one screen and its tabs, controls and tooltips work', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    const url = new URL('/ai-cost/', base).href
+    const tabs = ['cost', 'adoption', 'tokens', 'guidance', 'limits', 'data']
+    for (const [width, height] of [[1440, 900], [1024, 700], [390, 844]]) {
+      const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'reduce' })
+      const errors = []
+      page.on('pageerror', (error) => errors.push(error.message))
+      await page.goto(url, { waitUntil: 'networkidle' })
+      for (const tab of tabs) {
+        await page.locator(`label[for="tab-${tab}"]`).click()
+        const panel = page.locator(`.panel[data-for="${tab}"]`)
+        assert.equal(await panel.isVisible(), true, `${tab} panel at ${width}x${height}`)
+        assert.equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, `${tab} scrolls the page at ${width}x${height}`)
+        // Phones let a panel scroll inside the fixed frame; larger screens must show everything.
+        if (width > 800) assert.equal(await panel.evaluate((node) => node.scrollHeight <= node.clientHeight + 1), true, `${tab} panel scrolls at ${width}x${height}`)
+      }
+      assert.deepEqual(errors, [])
+      await page.close()
+    }
+
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' })
+    await page.goto(url, { waitUntil: 'networkidle' })
+    const ranked = page.locator('.ranked:visible')
+    assert.equal(await ranked.count(), 1)
+    assert.match(await ranked.getAttribute('class'), /g-model v-all/)
+    await page.locator('label[for="grp-sku"]').click()
+    assert.match(await ranked.getAttribute('class'), /g-sku v-all/)
+    await page.locator('label[for="grp-model"]').click()
+    await page.locator('label[for="view-m1"]').click()
+    assert.match(await ranked.getAttribute('class'), /g-model v-m1/)
+    assert.equal(await page.locator('.col.v-m0').first().evaluate((node) => getComputedStyle(node).opacity), '0.3')
+    assert.equal(await page.locator('.col.v-m1').first().evaluate((node) => getComputedStyle(node).opacity), '1')
+    for (const name of ['tool', 'mode', 'user']) assert.equal(await page.locator(`#grp-${name}`).isDisabled(), true)
+    await page.locator('.cols:visible .col.v-m1 .seg').first().hover()
+    assert.match(await page.locator('.tip').innerText(), /credits/)
+    await page.close()
+
+    const deep = await browser.newPage()
+    await deep.goto(`${url}#adoption`, { waitUntil: 'networkidle' })
+    assert.equal(await deep.locator('#tab-adoption').isChecked(), true)
+    assert.equal(await deep.locator('.panel[data-for="cost"]').isHidden(), true)
+    await deep.locator('label[for="tab-tokens"]').click()
+    assert.equal(await deep.evaluate(() => location.hash), '#tokens')
+  } finally {
+    await browser.close()
+  }
+})
+
 test('all nine published flame fixtures load from the new asset paths', { skip: !base }, async () => {
   const browser = await chromium.launch()
   try {

@@ -6,15 +6,16 @@ import '../styles/site.css'
 interface Props {
   title?: string
   description: string
+  fit?: boolean
 }
 
-const { title, description } = Astro.props
+const { title, description, fit = false } = Astro.props
 ---
 
 <BaseLayout
   title={title}
   description={description}
-  bodyClass="site-surface"
+  bodyClass={fit ? 'site-surface site-fit' : 'site-surface'}
   pageClass="site-page"
   defaultTheme="dark"
 >
@@ -46,5 +47,14 @@ const { title, description } = Astro.props
 
   @media (max-width: 600px) {
     nav { flex-direction: row; flex-wrap: wrap; }
+  }
+
+  :global(.site-fit) nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    padding-top: 0;
+    font-size: 0.7rem;
+    line-height: 1.4;
   }
 </style>
