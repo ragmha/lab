@@ -391,23 +391,28 @@ const description =
             </tr>
             <tr>
               <th scope="row">Govern included and metered usage separately</th>
-              <td>Net billed was {usd.format(net)}. Discounts, where GitHub records included usage, covered every credit, so no usage became metered.</td>
-              <td>The included pool size and daily billing, to see how close the pool came to running out and to forecast.</td>
+              <td>Net billed was {usd.format(net)} after discounts. These organization exports do not establish the enterprise-wide included pool balance or when it was exhausted.</td>
+              <td>License entitlements, the included pool size, and complete enterprise daily usage before forecasting pool exhaustion.</td>
             </tr>
             <tr>
               <th scope="row">Size user-level budgets from consumption percentiles</th>
-              <td>{number.format(users.withCredits)} of {number.format(users.count)} users had per-user credits. Percentiles of so few people would identify them, so none are published.</td>
-              <td>A larger cohort, or percentiles kept private to budget owners.</td>
+              <td>{number.format(users.withCredits)} of {number.format(users.count)} users had non-zero per-user credits. This sparse, non-reconciling report is not a reliable budget baseline; individual extremes stay private.</td>
+              <td>Complete private per-user billing history, with disclosure checks before publishing cohort statistics.</td>
             </tr>
             <tr>
               <th scope="row">Tie model tier to task; prefer auto model selection</th>
-              <td>Models picked by auto selection took {autoShare(closed)} of {monthLabel(closed.month)} credits and {autoShare(latest)} of {monthLabel(latest.month)}.</td>
-              <td>Tokens per model from the AI usage report, to compare what each model costs per token.</td>
+              <td>Billing rows labelled <code>Auto:</code> accounted for {autoShare(closed)} of {monthLabel(closed.month)} credits and {autoShare(latest)} of {monthLabel(latest.month)}.</td>
+              <td>Per-model input, output, and cache token mix from the AI usage report, alongside model pricing; these token types need not cost the same.</td>
             </tr>
             <tr>
               <th scope="row">Budgets, alerts, and CLI session limits</th>
-              <td>Not in these exports; nothing here shows whether they are configured.</td>
-              <td>Billing budget settings, or the enterprise budgets API.</td>
+              <td>User-level budgets cap included and metered usage; cost center, organization, and enterprise budgets govern metered usage. Their configuration is not in these exports.</td>
+              <td>Budget settings and cost center assignments, hard-stop choices, and CLI invocation settings such as <code>--max-ai-credits</code>.</td>
+            </tr>
+            <tr>
+              <th scope="row">Assign alert owners and a review cadence</th>
+              <td>Alert delivery, budget breaches, and response decisions are not in these exports.</td>
+              <td>Owners and actions for 75%, 90%, and 100% alerts; daily anomaly checks, weekly reviews during rollout, then monthly budget reviews. Assess business continuity before enabling hard stops.</td>
             </tr>
           </tbody>
         </table>
