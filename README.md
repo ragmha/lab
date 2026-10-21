@@ -8,6 +8,7 @@ and custom domain are configured.
 | Path | Experiment |
 | --- | --- |
 | `/` | Experiment index |
+| `/ai-cost/` | One organization’s AI-credit billing beside its Copilot usage metrics |
 | `/chess/` | Stockfish chess, live search details, and context-window illustration |
 | `/context-autopsy/` | Local agent-session usage, cache, context, and cost analysis |
 | `/session-flame/` | Session replay, flame charts, recorded comparisons, evidence export |
@@ -59,10 +60,20 @@ requests. The theme choice alone is stored in local storage. Downloadable
 Copilot helpers copy local files or capture a new CLI invocation; inspect
 raw logs before sharing them.
 
-Only previously published experiment fixtures and measurements were
-imported. No private `.work/` trees, personal session logs, credentials,
+Apart from the `/ai-cost/` aggregate below, only previously published experiment
+fixtures and measurements were imported. No private `.work/` trees, personal session logs, credentials,
 or local configuration were copied. Hash tests preserve the nine recorded
 TodoMVC fixtures and both unmodified Stockfish distribution files.
+
+`/ai-cost/` reads only `src/data/ai-cost.json`: daily organization totals,
+monthly credit totals, and public product and model names derived from one
+unnamed organization's private GitHub exports (AI-credit billing usage and the
+Copilot `organization-28-day` and `users-28-day` metrics reports). Raw exports,
+logins, and user, organization, and enterprise IDs are never committed. To
+regenerate, keep the exports in a folder outside the repository and run
+`bun scripts/ai-cost/aggregate.ts <folder>`; the header comment lists the
+expected file names. It refuses to write if an identifier, or a monthly credit
+total from fewer than five users, would be published.
 
 See [source provenance and licenses](PROVENANCE.md) and the
 [token-diet reproduction kit](scripts/token-diet/README.md). The kit is

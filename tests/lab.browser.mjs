@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { chromium } from 'playwright'
 
 const base = process.env.LAB_TEST_URL
-const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/token-diet/']
+const paths = ['/', '/ai-cost/', '/chess/', '/context-autopsy/', '/session-flame/', '/token-diet/']
 const recorded = JSON.parse(await readFile(new URL('../src/lib/session-flame-runs.json', import.meta.url), 'utf8'))
 const languages = JSON.parse(await readFile(new URL('../src/data/languages.json', import.meta.url), 'utf8'))
 

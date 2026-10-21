@@ -1,0 +1,778 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro'
+import json from '../data/ai-cost.json'
+import type { AiCost } from '../../scripts/ai-cost/aggregate'
+
+const data: AiCost = json
+const { billing, days, users, phases, features, thirdPartySessions } = data
+const { start, end } = data.window
+type Month = AiCost['billing'][number]
+type Day = AiCost['days'][number]
+type Usage = Day['cli']
+
+const number = new Intl.NumberFormat('en-US')
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+const percent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 0 })
+const finePercent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 })
+const credits = (value: number) => number.format(Math.round(value))
+const date = (day: string, options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }) =>
+  new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { ...options, timeZone: 'UTC' })
+const lastDayOf = (month: string) => {
+  const [year, index] = month.split('-').map(Number)
+  return new Date(Date.UTC(year, index, 0)).toISOString().slice(0, 10)
+}
+
+const latest = billing.at(-1)!
+const partial = latest.month === end.slice(0, 7)
+const monthLabel = (month: string) => `${date(`${month}-01`, { month: 'long' })}${partial && month === latest.month ? ' to date' : ''}`
+const net = billing.reduce((sum, month) => sum + month.net, 0)
+// MAU resets on the 1st in this export, so the last day of a month is that month's active-user count.
+const closed = billing.flatMap((month) => {
+  const day = days.find((d) => d.day === lastDayOf(month.month))
+  return day ? [{ ...month, mau: day.mau }] : []
+})[0]
+if (!closed) throw new Error('/ai-cost/ needs one billing month that ends inside the usage window')
+
+const palette = ['var(--theme-blue)', 'var(--theme-green)', 'var(--theme-red)', 'var(--theme-text)', 'var(--theme-muted)', 'var(--theme-faint)']
+const breakdown = (id: string, label: string, noun: string, pick: (month: Month) => Month['bySku']) => {
+  const credit = (month: Month, name: string) => pick(month).find((row) => row.name === name)?.credits ?? 0
+  const totals: Record<string, number> = {}
+  for (const month of billing) for (const row of pick(month)) totals[row.name] = (totals[row.name] ?? 0) + row.credits
+  const keys = Object.keys(totals).sort((a, b) => totals[b] - totals[a])
+  const shown = keys.length > palette.length ? keys.slice(0, palette.length - 1) : keys
+  const other = keys.length - shown.length
+  return {
+    id,
+    label,
+    series: other ? [...shown, `${other} other ${noun}`] : shown,
+    months: billing.map((month) => {
+      const values = shown.map((key) => credit(month, key))
+      const rest = Math.max(0, month.credits - values.reduce((sum, value) => sum + value, 0))
+      return { month: month.month, credits: month.credits, values: other ? [...values, rest] : values }
+    }),
+  }
+}
+const views = [
+  breakdown('model', 'By model', 'models', (month) => month.byModel),
+  breakdown('sku', 'By SKU', 'SKUs', (month) => month.bySku),
+]
+const maxCredits = Math.max(...billing.map((month) => month.credits))
+const topModel = views[0].series[0]
+const topShare = (month: Month) => percent.format((month.byModel.find((row) => row.name === topModel)?.credits ?? 0) / month.credits)
+
+const userMonths = users.byMonth.map((row) => ({
+  ...row,
+  from: row.month === start.slice(0, 7) ? start : `${row.month}-01`,
+  to: row.month === end.slice(0, 7) ? end : lastDayOf(row.month),
+  billed: billing.find((month) => month.month === row.month)?.credits,
+}))
+
+const yMax = Math.ceil(Math.max(...days.map((day) => day.mau)) / 500) * 500
+const yTicks = Array.from({ length: yMax / 500 + 1 }, (_, i) => i * 500)
+const x = (i: number) => (i / (days.length - 1)) * 100
+const lines = [
+  { key: 'mau', name: 'Monthly active', color: 'var(--theme-faint)' },
+  { key: 'wau', name: 'Weekly active', color: 'var(--theme-muted)' },
+  { key: 'dau', name: 'Daily active', color: 'var(--theme-text)' },
+  { key: 'cliDau', name: 'CLI daily active', color: 'var(--theme-blue)' },
+  { key: 'appDau', name: 'App daily active', color: 'var(--theme-green)' },
+] as const
+const points = (key: (typeof lines)[number]['key']) =>
+  days.map((day, i) => `${x(i)},${100 - (day[key] / yMax) * 100}`).join(' ')
+const xLabels = days.flatMap((day, i) =>
+  i === 0 || i === days.length - 1 || day.day.endsWith('-01') ? [{ day: day.day, left: x(i) }] : [],
+)
+const firstDay = days[0]
+const appPeak = days.reduce((peak, day) => (day.appDau > peak.appDau ? day : peak))
+const cliPeak = days.reduce((peak, day) => (day.cliDau > peak.cliDau ? day : peak))
+
+const fields = ['requests', 'prompts', 'promptTokens', 'outputTokens'] as const
+const plus = (a: Usage, b: Usage) => Object.fromEntries(fields.map((field) => [field, a[field] + b[field]])) as Usage
+const total = (pick: (day: Day) => Usage) => days.map(pick).reduce(plus)
+const surfaces = [
+  { name: 'Copilot CLI', ...total((day) => day.cli) },
+  { name: 'Copilot app', ...total((day) => day.app) },
+  { name: 'Both', ...total((day) => plus(day.cli, day.app)) },
+].map((row) => ({
+  ...row,
+  tokens: row.promptTokens + row.outputTokens,
+  perRequest: (row.promptTokens + row.outputTokens) / row.requests,
+  outputShare: row.outputTokens / (row.promptTokens + row.outputTokens),
+  perPrompt: row.requests / row.prompts,
+}))
+const both = surfaces[2]
+const dayTokens = (usage: Usage) => usage.promptTokens + usage.outputTokens
+const maxDayTokens = Math.max(...days.map((day) => dayTokens(day.cli) + dayTokens(day.app)))
+
+const description =
+  `One GitHub organization’s AI-credit billing beside its Copilot usage metrics: ${usd.format(closed.gross)} of credits in ${monthLabel(closed.month)}, who used what, and what the token counts can and cannot tell you.`
+---
+
+<SiteLayout title="What AI Costs One GitHub Organization" description={description}>
+  <Fragment slot="heading">What Does AI Cost an Organization?</Fragment>
+  <div class="cost">
+    <dl class="lede">
+      <dt>Question</dt>
+      <dd>What do GitHub’s AI-credit billing and Copilot usage exports say about cost and adoption in one organization?</dd>
+      <dt>Result</dt>
+      <dd>
+        <strong>{usd.format(closed.gross)} of credits at list price in {monthLabel(closed.month)}</strong>, about
+        {usd.format(closed.gross / closed.mau)} per monthly active user. Discounts brought the bill to {usd.format(net)}.
+      </dd>
+      <dt>Why</dt>
+      <dd>
+        {topModel} took {topShare(closed)} of {monthLabel(closed.month)}’s credits. Each CLI or app model request carried
+        about {compact.format(both.perRequest)} tokens, and {finePercent.format(both.outputShare)} of them were output.
+      </dd>
+    </dl>
+
+    <dl class="stats">
+      {billing.map((month) => (
+        <div>
+          <dt>{monthLabel(month.month)} list value</dt>
+          <dd class="value">{usd.format(month.gross)}</dd>
+          <dd>{credits(month.credits)} credits × {usd.format(month.pricePerUnit)} <span class="tag">measured</span></dd>
+        </div>
+      ))}
+      <div>
+        <dt>Billed after discounts</dt>
+        <dd class="value">{usd.format(net)}</dd>
+        <dd>all months above <span class="tag">measured</span></dd>
+      </div>
+      <div>
+        <dt>Per monthly active user</dt>
+        <dd class="value">{usd.format(closed.gross / closed.mau)}</dd>
+        <dd>
+          {monthLabel(closed.month)} list value ÷ {number.format(closed.mau)} users active that month
+          <span class="tag derived">derived</span>
+        </dd>
+      </div>
+    </dl>
+
+    <section aria-labelledby="mix-title">
+      <h2 id="mix-title">Where the credits went</h2>
+      <p>
+        Billing groups AI credits by product SKU and model. {topModel} was the largest line: {topShare(closed)} of
+        {monthLabel(closed.month)}, {topShare(latest)} of {monthLabel(latest.month)}. Billing has no user, surface, or
+        mode dimension, so it cannot split cost between the CLI, the app, an IDE, or agent and ask modes.
+      </p>
+      <div class="tabs">
+        {views.map((view, index) => (
+          <>
+            <input type="radio" name="mix" id={`mix-${view.id}`} checked={index === 0} />
+            <label for={`mix-${view.id}`}>{view.label}</label>
+            <div>
+              <div class="stack" aria-hidden="true">
+                {view.months.map((month) => (
+                  <div class="stack-row">
+                    <span>{monthLabel(month.month)}</span>
+                    <span class="track">
+                      <span class="bar" style={`width:${(month.credits / maxCredits) * 100}%`}>
+                        {month.values.map((value, i) => <span style={`flex-grow:${value};background:${palette[i]}`} />)}
+                      </span>
+                    </span>
+                    <span>{compact.format(month.credits)}</span>
+                  </div>
+                ))}
+              </div>
+              <ul class="legend" aria-hidden="true">
+                {view.series.map((name, i) => <li><span class="swatch" style={`background:${palette[i]}`} />{name}</li>)}
+              </ul>
+              <div class="table-wrap">
+                <table>
+                  <caption>AI credits {view.label.toLowerCase()}, measured. Share of each month in brackets.</caption>
+                  <thead>
+                    <tr><th scope="col">{view.label.replace('By ', '')}</th>{view.months.map((month) => <th scope="col">{monthLabel(month.month)}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {view.series.map((name, i) => (
+                      <tr>
+                        <th scope="row">{name}</th>
+                        {view.months.map((month) => <td>{credits(month.values[i])} ({finePercent.format(month.values[i] / month.credits)})</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        ))}
+      </div>
+    </section>
+
+    <section aria-labelledby="users-title">
+      <h2 id="users-title">Billing and the per-user report disagree</h2>
+      <p>
+        The users report has an <code>ai_credits_used</code> value for every user and day. Only
+        {number.format(users.withCredits)} of {number.format(users.count)} users ever had a non-zero value, and their totals
+        cover a fraction of billed credits. GitHub describes this field as consumption analysis, not invoicing; these files
+        do not explain the gap. To avoid exposing individuals, the page shows only monthly totals, and the script refuses
+        months where fewer than five users had credits.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <caption>AI credits by source, both measured. The windows differ, so the columns are not expected to match.</caption>
+          <thead>
+            <tr><th scope="col">Month</th><th scope="col">Billing</th><th scope="col">Users report</th><th scope="col">Report days</th><th scope="col">Users with credits</th></tr>
+          </thead>
+          <tbody>
+            {userMonths.map((row) => (
+              <tr>
+                <th scope="row">{monthLabel(row.month)}</th>
+                <td>{row.billed === undefined ? '—' : credits(row.billed)}</td>
+                <td>{credits(row.credits)}</td>
+                <td>{date(row.from)}–{date(row.to)}</td>
+                <td>{number.format(row.users)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="adoption-title">
+      <h2 id="adoption-title">Who used Copilot</h2>
+      <p>
+        Daily Copilot app users rose from {number.format(firstDay.appDau)} on {date(start)} to a peak of
+        {number.format(appPeak.appDau)} on {date(appPeak.day)}. On {date(cliPeak.day)}, {number.format(cliPeak.cliDau)} CLI
+        users made {compact.format(cliPeak.cli.requests)} requests; on {date(start)}, {number.format(firstDay.cliDau)} made
+        {compact.format(firstDay.cli.requests)}. The export does not say why.
+      </p>
+      <figure>
+        <div class="plot">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            {yTicks.map((tick) => <line class="grid" x1="0" x2="100" y1={100 - (tick / yMax) * 100} y2={100 - (tick / yMax) * 100} />)}
+            {xLabels.slice(1, -1).map((label) => <line class="reset" x1={label.left} x2={label.left} y1="0" y2="100" />)}
+            {lines.map((line) => <polyline points={points(line.key)} style={`stroke:${line.color}`} />)}
+          </svg>
+          {yTicks.slice(1).map((tick) => <span class="y" style={`bottom:${(tick / yMax) * 100}%`} aria-hidden="true">{number.format(tick)}</span>)}
+        </div>
+        <div class="x" aria-hidden="true">
+          {xLabels.map((label) => <span style={`left:${label.left}%;translate:${-label.left}% 0`}>{date(label.day)}</span>)}
+        </div>
+        <ul class="legend" aria-hidden="true">
+          {lines.map((line) => <li><span class="swatch" style={`background:${line.color}`} />{line.name}</li>)}
+        </ul>
+        <figcaption>
+          Active users per day, measured. Weekly counts drop back to the daily count every seven days and monthly counts
+          restart on the 1st (dotted line), so in this export they behave like week-to-date and month-to-date counts rather
+          than trailing windows.
+        </figcaption>
+      </figure>
+      <details>
+        <summary>Daily numbers</summary>
+        <div class="table-wrap">
+          <table>
+            <caption>Active users and CLI plus app tokens per day, measured.</caption>
+            <thead>
+              <tr><th scope="col">Day</th><th scope="col">Daily</th><th scope="col">Weekly</th><th scope="col">Monthly</th><th scope="col">CLI daily</th><th scope="col">App daily</th><th scope="col">CLI tokens</th><th scope="col">App tokens</th></tr>
+            </thead>
+            <tbody>
+              {days.map((day) => (
+                <tr>
+                  <th scope="row">{date(day.day)}</th>
+                  <td>{number.format(day.dau)}</td>
+                  <td>{number.format(day.wau)}</td>
+                  <td>{number.format(day.mau)}</td>
+                  <td>{number.format(day.cliDau)}</td>
+                  <td>{number.format(day.appDau)}</td>
+                  <td>{compact.format(dayTokens(day.cli))}</td>
+                  <td>{compact.format(dayTokens(day.app))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <div class="pair">
+        <figure>
+          <ul class="meters">
+            {features.engaged.map((row) => (
+              <li>
+                <code>{row.feature}</code>
+                <span class="meter" aria-hidden="true"><span style={`width:${(row.users / features.activeUsers) * 100}%`} /></span>
+                <span>{number.format(row.users)}</span>
+              </li>
+            ))}
+          </ul>
+          <figcaption>Users engaged with each feature over 28 days, of {number.format(features.activeUsers)} active users. Measured.</figcaption>
+        </figure>
+        <figure>
+          <ul class="meters">
+            {phases.map((row) => (
+              <li>
+                <span>{row.phase}</span>
+                <span class="meter" aria-hidden="true"><span style={`width:${(row.users / features.activeUsers) * 100}%`} /></span>
+                <span>{number.format(row.users)}</span>
+              </li>
+            ))}
+          </ul>
+          <figcaption>Users in each of GitHub’s AI adoption phases on {date(end)}. Measured; the export does not define the phases.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="tokens-title">
+      <h2 id="tokens-title">Token economics, CLI and app only</h2>
+      <p>
+        Only the CLI and the Copilot app report tokens. Over 28 days they sent {compact.format(both.promptTokens)} prompt tokens
+        and got {compact.format(both.outputTokens)} back. Each user prompt became about {both.perPrompt.toFixed(1)} model
+        requests, and each request re-sent roughly {compact.format(both.perRequest)} tokens of context. Credits are not split
+        by surface, so these tokens cannot be priced from these files.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <caption>{date(start)}–{date(end)}. Counts are measured; the last three columns are derived from them.</caption>
+          <thead>
+            <tr><th scope="col">Surface</th><th scope="col">Requests</th><th scope="col">Prompt tokens</th><th scope="col">Output tokens</th><th scope="col">Requests / prompt</th><th scope="col">Tokens / request</th><th scope="col">Output share</th></tr>
+          </thead>
+          <tbody>
+            {surfaces.map((row) => (
+              <tr>
+                <th scope="row">{row.name}</th>
+                <td>{compact.format(row.requests)}</td>
+                <td>{compact.format(row.promptTokens)}</td>
+                <td>{compact.format(row.outputTokens)}</td>
+                <td>{row.perPrompt.toFixed(1)}</td>
+                <td>{compact.format(row.perRequest)}</td>
+                <td>{finePercent.format(row.outputShare)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <figure>
+        <div class="plot columns" aria-hidden="true">
+          {days.map((day) => (
+            <span class="column" style={`height:${((dayTokens(day.cli) + dayTokens(day.app)) / maxDayTokens) * 100}%`}>
+              <span style={`flex-grow:${dayTokens(day.app)};background:var(--theme-green)`} />
+              <span style={`flex-grow:${dayTokens(day.cli)};background:var(--theme-blue)`} />
+            </span>
+          ))}
+          <span class="y" style="bottom:100%">{compact.format(maxDayTokens)}</span>
+        </div>
+        <div class="x" aria-hidden="true">
+          {xLabels.map((label) => <span style={`left:${label.left}%;translate:${-label.left}% 0`}>{date(label.day)}</span>)}
+        </div>
+        <ul class="legend" aria-hidden="true">
+          <li><span class="swatch" style="background:var(--theme-blue)" />CLI</li>
+          <li><span class="swatch" style="background:var(--theme-green)" />Copilot app</li>
+        </ul>
+        <figcaption>Prompt plus output tokens per day, measured. The daily numbers table above has the values.</figcaption>
+      </figure>
+    </section>
+
+    <section aria-labelledby="limits-title">
+      <h2 id="limits-title">Coverage and limits</h2>
+      <ul>
+        <li>One organization, not named here. Usage covers {date(start, { dateStyle: 'medium' })}–{date(end, { dateStyle: 'medium' })}; billing covers {billing.map((month) => monthLabel(month.month)).join(' and ')}.</li>
+        {partial && <li>{monthLabel(latest.month)} is incomplete, and its billing file does not record when it was exported.</li>}
+        <li>List value is credits × {usd.format(latest.pricePerUnit)}. Discounts covered all usage, so the amount billed was {usd.format(net)}. The billing files contain no Copilot seat licence charges.</li>
+        <li>Billing has no user, surface, or mode breakdown. Cost by tool, mode, or person, as in some AI cost dashboards, cannot be built from it.</li>
+        <li>Token counts exist only for the CLI and the Copilot app. IDE, code review, and cloud agent usage have no tokens here, and the export does not say whether prompt tokens include cached input.</li>
+        <li>Third-party agents running inside GitHub logged {number.format(thirdPartySessions)} sessions. Spend with other AI vendors is outside these sources.</li>
+        <li>Nothing here measures productivity, savings, return on investment, or which pull requests AI helped write.</li>
+        <li>Raw exports stay private. The published JSON holds only daily organization totals, monthly credit totals, and public product and model names.</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="reproduce-title">
+      <h2 id="reproduce-title">Reproduce with your organization</h2>
+      <ol>
+        <li>Save each month of <code>GET /organizations/&#123;org&#125;/settings/billing/ai_credit/usage?year=&amp;month=</code> as <code>ai-credit-YYYY-MM.json</code>.</li>
+        <li>Save the reports from <code>GET /orgs/&#123;org&#125;/copilot/metrics/reports/organization-28-day/latest</code> and <code>…/users-28-day/latest</code> as <code>organization-28-day.ndjson</code> and <code>users-28-day.ndjson</code>.</li>
+        <li>Keep that folder outside the repository and run <code>bun scripts/ai-cost/aggregate.ts &lt;folder&gt;</code>. It writes <code>src/data/ai-cost.json</code> and fails if a login, user ID, organization ID, or small user cohort would be published.</li>
+      </ol>
+    </section>
+  </div>
+</SiteLayout>
+
+<style>
+  .cost {
+    margin-top: 1rem;
+  }
+
+  .cost h2 {
+    margin: 2.5rem 0 0;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .cost section > p,
+  .cost section > ul,
+  .cost section > ol {
+    margin-top: 0.75rem;
+  }
+
+  .cost code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    overflow-wrap: anywhere;
+  }
+
+  .cost ul,
+  .cost ol {
+    padding-left: 1.25rem;
+    font-size: 0.9rem;
+  }
+
+  .cost section > :is(ul, ol) li + li {
+    margin-top: 0.5rem;
+  }
+
+  figcaption,
+  caption,
+  summary,
+  .stats dt,
+  .stats dd,
+  .legend,
+  .x,
+  .y {
+    color: var(--theme-muted);
+  }
+
+  .lede {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0 1rem;
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .lede dt,
+  .stats dt {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    line-height: 1.65;
+    text-transform: uppercase;
+  }
+
+  .lede dt {
+    color: var(--theme-muted);
+  }
+
+  .lede dd,
+  .stats dd {
+    margin: 0;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 1px;
+    margin: 1.5rem 0 0;
+    border: 1px solid var(--theme-rule);
+    background: var(--theme-rule);
+  }
+
+  .stats > div {
+    padding: 0.75rem;
+    background: var(--theme-bg);
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+
+  .stats .value {
+    color: var(--theme-text);
+    font-size: 1.35rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 0 0.35rem;
+    border: 1px solid var(--theme-rule-strong);
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .tag.derived {
+    border-style: dashed;
+  }
+
+  /* Tabs: radio, label, panel siblings */
+  .tabs {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.25rem;
+    margin-top: 0.75rem;
+  }
+
+  .tabs > input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .tabs > label {
+    padding: 0.4rem 0;
+    border-bottom: 2px solid transparent;
+    color: var(--theme-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .tabs > input:checked + label {
+    border-bottom-color: var(--theme-text);
+    color: var(--theme-text);
+    font-weight: 600;
+  }
+
+  .tabs > input:focus-visible + label {
+    outline: 2px solid var(--theme-text);
+    outline-offset: 2px;
+  }
+
+  .tabs > label + * {
+    display: none;
+    order: 1;
+    flex-basis: 100%;
+    min-width: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--theme-rule);
+  }
+
+  .tabs > input:checked + label + * {
+    display: block;
+  }
+
+  /* Charts */
+  .stack {
+    display: grid;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  .stack-row,
+  .meters li {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr) 4.5rem;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .stack-row > :last-child,
+  .meters li > :last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .track {
+    display: block;
+    height: 1.25rem;
+  }
+
+  .bar {
+    display: flex;
+    gap: 1px;
+    height: 100%;
+  }
+
+  .bar > span,
+  .column > span {
+    flex-basis: 0;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.75rem;
+  }
+
+  .cost .legend {
+    padding: 0;
+  }
+
+  .swatch {
+    display: inline-block;
+    width: 0.65rem;
+    height: 0.65rem;
+    margin-right: 0.4rem;
+  }
+
+  figure {
+    margin: 1.25rem 0 0;
+  }
+
+  figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  .plot {
+    position: relative;
+    height: 14rem;
+    margin-top: 1rem;
+  }
+
+  .plot svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .plot line,
+  .plot polyline {
+    fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .plot .grid {
+    stroke: var(--theme-rule);
+  }
+
+  .plot .reset {
+    stroke: var(--theme-rule-strong);
+    stroke-dasharray: 2 3;
+  }
+
+  .plot polyline {
+    stroke-width: 1.75;
+    stroke-linejoin: round;
+  }
+
+  .y {
+    position: absolute;
+    left: 0;
+    padding-bottom: 0.1rem;
+    font-size: 0.7rem;
+    line-height: 1;
+  }
+
+  .x {
+    position: relative;
+    height: 1.25rem;
+    margin-top: 0.35rem;
+    font-size: 0.7rem;
+  }
+
+  .x span {
+    position: absolute;
+    white-space: nowrap;
+  }
+
+  .columns {
+    display: flex;
+    align-items: end;
+    gap: 2px;
+    height: 10rem;
+    border-bottom: 1px solid var(--theme-rule);
+  }
+
+  .column {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 2rem;
+  }
+
+  .cost .meters {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.75rem;
+  }
+
+  .meters li {
+    grid-template-columns: 9.5rem minmax(0, 1fr) 3rem;
+    gap: 0.5rem;
+  }
+
+  .meters li > :first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meter {
+    display: block;
+    height: 0.6rem;
+    background: var(--theme-rule);
+  }
+
+  .meter > span {
+    display: block;
+    height: 100%;
+    background: var(--theme-text);
+  }
+
+  details {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+  }
+
+  summary {
+    cursor: pointer;
+  }
+
+  .table-wrap {
+    margin-top: 0.75rem;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  caption {
+    padding-bottom: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  th,
+  td {
+    padding: 0.3rem 0.45rem;
+    border-bottom: 1px solid var(--theme-rule);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th:first-child {
+    text-align: left;
+  }
+
+  thead th {
+    color: var(--theme-muted);
+    font-weight: 500;
+  }
+
+  tbody th {
+    font-weight: 600;
+  }
+
+  @media (max-width: 44rem) {
+    .pair {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stack-row {
+      grid-template-columns: 6.5rem minmax(0, 1fr) 3.5rem;
+    }
+  }
+</style>

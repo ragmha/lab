@@ -1,0 +1,123 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { describe, test } from 'node:test'
+import { MIN_COHORT, aggregate, assertPublishable } from '../scripts/ai-cost/aggregate'
+import type { AiCost, Billing, OrgReport } from '../scripts/ai-cost/aggregate'
+
+const item = (sku: string, model: string, grossQuantity: number) => ({
+  product: 'Copilot', sku, model, unitType: 'ai-credits', pricePerUnit: 0.01,
+  grossQuantity, grossAmount: grossQuantity / 100, netAmount: 0,
+})
+const billings: Billing[] = [
+  { organization: 'secret-org', timePeriod: { year: 2026, month: 10 }, usageItems: [item('Copilot AI Credits', 'Model B', 50)] },
+  {
+    organization: 'secret-org',
+    timePeriod: { year: 2026, month: 9 },
+    usageItems: [
+      item('Copilot AI Credits', 'Model B', 300),
+      item('Code Quality AI Credits', 'Model A', 100),
+      item('Copilot AI Credits', 'Model A', 600),
+    ],
+  },
+]
+const surface = (requests: number) => ({
+  session_count: 1, request_count: requests, prompt_count: 2,
+  token_usage: { prompt_tokens_sum: requests * 100, output_tokens_sum: requests },
+})
+const day = (date: string, phase1: number) => ({
+  day: date, daily_active_users: 9, weekly_active_users: 9, monthly_active_users: 9,
+  daily_active_cli_users: 6, daily_active_copilot_app_users: 5,
+  totals_by_cli: surface(10), totals_by_copilot_app: surface(4),
+  totals_by_ai_adoption_phase: [
+    { phase: 'Phase 2', phase_number: 2, users_in_phase_28d: 3 },
+    { phase: 'Phase 1', phase_number: 1, users_in_phase_28d: phase1 },
+  ],
+  totals_by_3rd_party_agent: [{ session_count: 2 }],
+})
+const org: OrgReport = {
+  organization_id: '424242',
+  enterprise_id: '535353',
+  report_start_day: '2026-09-30',
+  report_end_day: '2026-10-01',
+  day_totals: [day('2026-10-01', 7), day('2026-09-30', 1)],
+  copilot_feature_engagement: {
+    active_user_count: 9,
+    totals_by_feature: [{ feature: 'agent_edit', engaged_user_count: 2 }, { feature: 'copilot_cli', engaged_user_count: 6 }],
+  },
+}
+const row = (user: number, date: string, credits: number) =>
+  JSON.stringify({ day: date, user_id: 9000 + user, user_login: `person-${user}`, ai_credits_used: credits })
+const users = [
+  ...[1, 2, 3, 4, 5, 6].map((user) => row(user, '2026-09-30', 10)),
+  ...[1, 2, 3, 4, 5].map((user) => row(user, '2026-10-01', 20)),
+  row(7, '2026-09-30', 0),
+  '',
+]
+
+describe('ai cost aggregation', () => {
+  const result = aggregate(billings, org, users)
+
+  test('rolls billing up by month, SKU, and model', () => {
+    assert.deepEqual(result.billing.map(({ month, credits, gross, net }) => ({ month, credits, gross, net })), [
+      { month: '2026-09', credits: 1000, gross: 10, net: 0 },
+      { month: '2026-10', credits: 50, gross: 0.5, net: 0 },
+    ])
+    assert.deepEqual(result.billing[0].bySku, [{ name: 'Copilot AI Credits', credits: 900 }, { name: 'Code Quality AI Credits', credits: 100 }])
+    assert.deepEqual(result.billing[0].byModel, [{ name: 'Model A', credits: 700 }, { name: 'Model B', credits: 300 }])
+  })
+
+  test('sorts days, sums surfaces, and keeps only monthly per-user credit totals', () => {
+    assert.deepEqual(result.days.map((d) => d.day), ['2026-09-30', '2026-10-01'])
+    assert.deepEqual(result.days[0].app, { requests: 4, prompts: 2, promptTokens: 400, outputTokens: 4 })
+    assert.deepEqual(result.users, {
+      count: 7,
+      withCredits: 6,
+      byMonth: [{ month: '2026-09', credits: 60, users: 6 }, { month: '2026-10', credits: 100, users: 5 }],
+    })
+    assert.deepEqual(result.phases, [{ phase: 'Phase 1', users: 7 }, { phase: 'Phase 2', users: 3 }])
+    assert.deepEqual(result.features.engaged.map((f) => f.feature), ['copilot_cli', 'agent_edit'])
+    assert.equal(result.thirdPartySessions, 4)
+  })
+
+  test('rejects inputs that are inconsistent or would expose a small cohort', () => {
+    assert.throws(() => aggregate(billings, org, [...users, row(8, '2026-10-02', 1)]), /outside/)
+    assert.throws(() => aggregate(billings, org, users.slice(2)), /2026-09: only 4/)
+    assert.throws(() => aggregate(billings, org, users.filter((line) => !line.includes('"person-5"'))), /2026-10: only 4/)
+    const mixed = [{ ...billings[0], usageItems: [...billings[0].usageItems, { ...item('X', 'Y', 1), pricePerUnit: 0.02 }] }]
+    assert.throws(() => aggregate(mixed, org, users), /one credit price/)
+    const tiny = { ...org, day_totals: [{ ...day('2026-09-30', 1), daily_active_copilot_app_users: MIN_COHORT - 1 }] }
+    assert.throws(() => aggregate(billings, tiny, users.filter((line) => !line.includes('10-01'))), /app usage from fewer/)
+  })
+
+  test('refuses to publish raw identifiers', () => {
+    const json = JSON.stringify(result)
+    assert.doesNotThrow(() => assertPublishable(json, billings, org, users))
+    assert.throws(() => assertPublishable(`${json}"person-3"`, billings, org, users), /raw identifier/)
+    assert.throws(() => assertPublishable(`${json}"secret-org"`, billings, org, users), /raw identifier/)
+    assert.throws(() => assertPublishable(`${json}{"user_login":1}`, billings, org, users), /user_login/)
+  })
+})
+
+describe('published ai cost data', () => {
+  const raw = readFileSync(new URL('../src/data/ai-cost.json', import.meta.url), 'utf8')
+  const data = JSON.parse(raw) as AiCost
+
+  test('holds only aggregate fields', () => {
+    for (const leak of ['user_login', 'user_id', 'organization_id', 'enterprise_id', '/Users/', 'gho_', 'ghp_', 'github_pat_']) {
+      assert.equal(raw.includes(leak), false, leak)
+    }
+    assert.deepEqual(Object.keys(data).sort(), ['billing', 'days', 'features', 'phases', 'thirdPartySessions', 'users', 'window'])
+    assert.ok(data.users.byMonth.every((month) => month.users >= MIN_COHORT))
+  })
+
+  test('stays internally consistent', () => {
+    const { start, end } = data.window
+    assert.equal(data.days.length, 28)
+    assert.ok(data.days.every((d, i) => d.day >= start && d.day <= end && (i === 0 || d.day > data.days[i - 1].day)))
+    for (const month of data.billing) {
+      const skus = month.bySku.reduce((sum, row) => sum + row.credits, 0)
+      assert.ok(Math.abs(skus - month.credits) < 0.05, month.month)
+      assert.ok(Math.abs(month.credits * month.pricePerUnit - month.gross) < 0.05, month.month)
+    }
+  })
+})
