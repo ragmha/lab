@@ -27,7 +27,7 @@ const latest = billing.at(-1)!
 const partial = latest.month === end.slice(0, 7)
 const monthLabel = (month: string) => `${date(`${month}-01`, { month: 'long' })}${partial && month === latest.month ? ' to date' : ''}`
 const net = billing.reduce((sum, month) => sum + month.net, 0)
-// MAU resets on the 1st in this export, so the last day of a month is that month's active-user count.
+// Use reported month-end MAU without assuming a calendar-month or trailing-window definition.
 const closed = billing.flatMap((month) => {
   const day = days.find((d) => d.day === lastDayOf(month.month))
   return day ? [{ ...month, mau: day.mau }] : []
@@ -118,7 +118,7 @@ const description =
       <dt>Result</dt>
       <dd>
         <strong>{usd.format(closed.gross)} of credits at list price in {monthLabel(closed.month)}</strong>, about
-        {usd.format(closed.gross / closed.mau)} per monthly active user. Discounts brought the bill to {usd.format(net)}.
+        {usd.format(closed.gross / closed.mau)} per reported monthly active user. Discounts brought the bill to {usd.format(net)}.
       </dd>
       <dt>Why</dt>
       <dd>
@@ -144,7 +144,7 @@ const description =
         <dt>Per monthly active user</dt>
         <dd class="value">{usd.format(closed.gross / closed.mau)}</dd>
         <dd>
-          {monthLabel(closed.month)} list value ÷ {number.format(closed.mau)} users active that month
+          {monthLabel(closed.month)} list value ÷ {number.format(closed.mau)} reported month-end monthly active users
           <span class="tag derived">derived</span>
         </dd>
       </div>
@@ -318,9 +318,10 @@ const description =
       <h2 id="tokens-title">Token economics, CLI and app only</h2>
       <p>
         Only the CLI and the Copilot app report tokens. Over 28 days they sent {compact.format(both.promptTokens)} prompt tokens
-        and got {compact.format(both.outputTokens)} back. Each user prompt became about {both.perPrompt.toFixed(1)} model
-        requests, and each request re-sent roughly {compact.format(both.perRequest)} tokens of context. Credits are not split
-        by surface, so these tokens cannot be priced from these files.
+        and got {compact.format(both.outputTokens)} back. Across the window, that averages {both.perPrompt.toFixed(1)} model
+        requests per recorded prompt and {compact.format(both.perRequest)} prompt-plus-output tokens per request.
+        These aggregates do not establish how much context was repeated. Credits are not split by surface, so these
+        tokens cannot be priced from these files.
       </p>
       <div class="table-wrap">
         <table>
@@ -370,6 +371,7 @@ const description =
         <li>One organization, not named here. Usage covers {date(start, { dateStyle: 'medium' })}–{date(end, { dateStyle: 'medium' })}; billing covers {billing.map((month) => monthLabel(month.month)).join(' and ')}.</li>
         {partial && <li>{monthLabel(latest.month)} is incomplete, and its billing file does not record when it was exported.</li>}
         <li>List value is credits × {usd.format(latest.pricePerUnit)}. Discounts covered all usage, so the amount billed was {usd.format(net)}. The billing files contain no Copilot seat licence charges.</li>
+        <li>List value per active user divides billing by the reported monthly active count on {date(lastDayOf(closed.month))}. It is a cross-source ratio, not a measured per-person bill; the active-user window behavior is noted above.</li>
         <li>Billing has no user, surface, or mode breakdown. Cost by tool, mode, or person, as in some AI cost dashboards, cannot be built from it.</li>
         <li>Token counts exist only for the CLI and the Copilot app. IDE, code review, and cloud agent usage have no tokens here, and the export does not say whether prompt tokens include cached input.</li>
         <li>Third-party agents running inside GitHub logged {number.format(thirdPartySessions)} sessions. Spend with other AI vendors is outside these sources.</li>
@@ -383,7 +385,7 @@ const description =
       <ol>
         <li>Save each month of <code>GET /organizations/&#123;org&#125;/settings/billing/ai_credit/usage?year=&amp;month=</code> as <code>ai-credit-YYYY-MM.json</code>.</li>
         <li>Save the reports from <code>GET /orgs/&#123;org&#125;/copilot/metrics/reports/organization-28-day/latest</code> and <code>…/users-28-day/latest</code> as <code>organization-28-day.ndjson</code> and <code>users-28-day.ndjson</code>.</li>
-        <li>Keep that folder outside the repository and run <code>bun scripts/ai-cost/aggregate.ts &lt;folder&gt;</code>. It writes <code>src/data/ai-cost.json</code> and fails if a login, user ID, organization ID, or small user cohort would be published.</li>
+        <li>Keep that folder outside the repository and run <code>bun scripts/ai-cost/aggregate.ts &lt;folder&gt;</code>. It writes <code>src/data/ai-cost.json</code> and fails on raw identifiers, monthly credit cohorts of one to four users, or CLI/app days with requests from fewer than five users.</li>
       </ol>
     </section>
   </div>
