@@ -60,6 +60,10 @@ const views = [
 const maxCredits = Math.max(...billing.map((month) => month.credits))
 const topModel = views[0].series[0]
 const topShare = (month: Month) => percent.format((month.byModel.find((row) => row.name === topModel)?.credits ?? 0) / month.credits)
+// Billing labels models picked by auto model selection as "Auto: <model>".
+const autoShare = (month: Month) =>
+  finePercent.format(month.byModel.filter((row) => row.name.startsWith('Auto: ')).reduce((sum, row) => sum + row.credits, 0) / month.credits)
+const growth = latest.month === closed.month ? 0 : latest.credits / closed.credits - 1
 
 const userMonths = users.byMonth.map((row) => ({
   ...row,
@@ -156,6 +160,7 @@ const description =
         Billing groups AI credits by product SKU and model. {topModel} was the largest line: {topShare(closed)} of
         {monthLabel(closed.month)}, {topShare(latest)} of {monthLabel(latest.month)}. Billing has no user, surface, or
         mode dimension, so it cannot split cost between the CLI, the app, an IDE, or agent and ask modes.
+        {growth > 0 && <> {monthLabel(latest.month)} already used {percent.format(growth)} more credits than all of {monthLabel(closed.month)}.</>}
       </p>
       <div class="tabs">
         {views.map((view, index) => (
@@ -365,6 +370,50 @@ const description =
       </figure>
     </section>
 
+    <section aria-labelledby="guidance-title">
+      <h2 id="guidance-title">Against GitHub’s AI-credit guidance</h2>
+      <p>
+        GitHub’s <a href="https://learn.github.com/well-architected/governance/recommendations/managing-ai-credits">managing AI credits</a>
+        guidance treats credits like cloud spend: attribute cost first, then set budgets and model guidance. These
+        exports answer part of that.
+      </p>
+      <div class="table-wrap">
+        <table class="text-table">
+          <caption>What the guidance asks for, what these exports show, and what would be needed to answer it.</caption>
+          <thead>
+            <tr><th scope="col">Guidance</th><th scope="col">These exports</th><th scope="col">Needed</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Attribute cost by user, model, and cost center</th>
+              <td>Billing is monthly by SKU and model. The users report does not reconcile with it and has no cost center.</td>
+              <td>The <a href="https://docs.github.com/billing/reference/billing-reports#ai-usage-report">AI usage report</a>: credits per user, model, and day, with input, output, cache-read, and cache-write tokens.</td>
+            </tr>
+            <tr>
+              <th scope="row">Govern included and metered usage separately</th>
+              <td>Net billed was {usd.format(net)}. Discounts, where GitHub records included usage, covered every credit, so no usage became metered.</td>
+              <td>The included pool size and daily billing, to see how close the pool came to running out and to forecast.</td>
+            </tr>
+            <tr>
+              <th scope="row">Size user-level budgets from consumption percentiles</th>
+              <td>{number.format(users.withCredits)} of {number.format(users.count)} users had per-user credits. Percentiles of so few people would identify them, so none are published.</td>
+              <td>A larger cohort, or percentiles kept private to budget owners.</td>
+            </tr>
+            <tr>
+              <th scope="row">Tie model tier to task; prefer auto model selection</th>
+              <td>Models picked by auto selection took {autoShare(closed)} of {monthLabel(closed.month)} credits and {autoShare(latest)} of {monthLabel(latest.month)}.</td>
+              <td>Tokens per model from the AI usage report, to compare what each model costs per token.</td>
+            </tr>
+            <tr>
+              <th scope="row">Budgets, alerts, and CLI session limits</th>
+              <td>Not in these exports; nothing here shows whether they are configured.</td>
+              <td>Billing budget settings, or the enterprise budgets API.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section aria-labelledby="limits-title">
       <h2 id="limits-title">Coverage and limits</h2>
       <ul>
@@ -373,7 +422,7 @@ const description =
         <li>List value is credits × {usd.format(latest.pricePerUnit)}. Discounts covered all usage, so the amount billed was {usd.format(net)}. The billing files contain no Copilot seat licence charges.</li>
         <li>List value per active user divides billing by the reported monthly active count on {date(lastDayOf(closed.month))}. It is a cross-source ratio, not a measured per-person bill; the active-user window behavior is noted above.</li>
         <li>Billing has no user, surface, or mode breakdown. Cost by tool, mode, or person, as in some AI cost dashboards, cannot be built from it.</li>
-        <li>Token counts exist only for the CLI and the Copilot app. IDE, code review, and cloud agent usage have no tokens here, and the export does not say whether prompt tokens include cached input.</li>
+        <li>Token counts exist only for the CLI and the Copilot app. IDE, code review, and cloud agent usage have no tokens here, and the export does not say whether prompt tokens include cached input. GitHub’s AI usage report has per-model input, output, and cache tokens, but it was not part of these exports.</li>
         <li>Third-party agents running inside GitHub logged {number.format(thirdPartySessions)} sessions. Spend with other AI vendors is outside these sources.</li>
         <li>Nothing here measures productivity, savings, return on investment, or which pull requests AI helped write.</li>
         <li>Raw exports stay private. The published JSON holds only daily organization totals, monthly credit totals, and public product and model names.</li>
@@ -757,6 +806,12 @@ const description =
 
   th:first-child {
     text-align: left;
+  }
+
+  .text-table :is(th, td) {
+    text-align: left;
+    vertical-align: top;
+    white-space: normal;
   }
 
   thead th {
