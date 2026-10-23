@@ -73,7 +73,8 @@ Copilot `organization-28-day` and `users-28-day` metrics reports). Raw exports,
 logins, and user, organization, and enterprise IDs are never committed. To
 regenerate, keep the exports in a folder outside the repository and run
 `bun scripts/ai-cost/aggregate.ts <folder>`; the header comment lists the
-expected file names. It refuses to write if an identifier, or a monthly credit
+expected file names. Models missing from the script's `PUBLIC_MODELS`
+allowlist (internal or preview labels) are published only as "Other". It refuses to write if an identifier, or a monthly credit
 total from fewer than five users, would be published.
 
 The page fits one screen (`SiteLayout`'s opt-in `fit` mode, used only here)

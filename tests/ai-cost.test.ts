@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, test } from 'node:test'
-import { MIN_COHORT, aggregate, assertPublishable } from '../scripts/ai-cost/aggregate'
+import { MIN_COHORT, aggregate, assertPublishable, publicModel } from '../scripts/ai-cost/aggregate'
 import type { AiCost, Billing, OrgReport } from '../scripts/ai-cost/aggregate'
 import { combine, niceScale, topN, windowDelta } from '../src/lib/ai-cost'
 
@@ -10,14 +10,14 @@ const item = (sku: string, model: string, grossQuantity: number) => ({
   grossQuantity, grossAmount: grossQuantity / 100, netAmount: 0,
 })
 const billings: Billing[] = [
-  { organization: 'secret-org', timePeriod: { year: 2026, month: 10 }, usageItems: [item('Copilot AI Credits', 'Model B', 50)] },
+  { organization: 'secret-org', timePeriod: { year: 2026, month: 10 }, usageItems: [item('Copilot AI Credits', 'Claude Sonnet 5', 50)] },
   {
     organization: 'secret-org',
     timePeriod: { year: 2026, month: 9 },
     usageItems: [
-      item('Copilot AI Credits', 'Model B', 300),
-      item('Code Quality AI Credits', 'Model A', 100),
-      item('Copilot AI Credits', 'Model A', 600),
+      item('Copilot AI Credits', 'Claude Sonnet 5', 300),
+      item('Code Quality AI Credits', 'GPT-5.5', 100),
+      item('Copilot AI Credits', 'GPT-5.5', 600),
     ],
   },
 ]
@@ -64,7 +64,16 @@ describe('ai cost aggregation', () => {
       { month: '2026-10', credits: 50, gross: 0.5, net: 0 },
     ])
     assert.deepEqual(result.billing[0].bySku, [{ name: 'Copilot AI Credits', credits: 900 }, { name: 'Code Quality AI Credits', credits: 100 }])
-    assert.deepEqual(result.billing[0].byModel, [{ name: 'Model A', credits: 700 }, { name: 'Model B', credits: 300 }])
+    assert.deepEqual(result.billing[0].byModel, [{ name: 'GPT-5.5', credits: 700 }, { name: 'Claude Sonnet 5', credits: 300 }])
+  })
+
+  test('publishes unlisted models only as Other, keeping totals', () => {
+    const secret = billings.map((b) => ({ ...b, usageItems: b.usageItems.map((item) => ({ ...item, model: `Secret ${item.model}` })) }))
+    const hidden = aggregate(secret, org, users)
+    for (const [i, month] of hidden.billing.entries()) {
+      assert.deepEqual(month.byModel, [{ name: 'Other', credits: result.billing[i].credits }])
+      assert.equal(month.credits, result.billing[i].credits)
+    }
   })
 
   test('sorts days, sums surfaces, and keeps only monthly per-user credit totals', () => {
@@ -140,6 +149,7 @@ describe('published ai cost data', () => {
     }
     assert.deepEqual(Object.keys(data).sort(), ['billing', 'days', 'features', 'phases', 'thirdPartySessions', 'users', 'window'])
     assert.ok(data.users.byMonth.every((month) => month.users >= MIN_COHORT))
+    for (const { byModel } of data.billing) for (const { name } of byModel) assert.ok(publicModel(name) === name || name === 'Other', name)
   })
 
   test('stays internally consistent', () => {

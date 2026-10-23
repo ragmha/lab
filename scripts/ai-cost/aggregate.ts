@@ -40,6 +40,40 @@ export type OrgReport = {
 }
 
 export const MIN_COHORT = 5
+// Generally available model names. Anything else (internal or preview labels) is published as "Other".
+// ponytail: hand-kept list; add a model here once it is publicly listed.
+export const PUBLIC_MODELS = new Set([
+  'Claude Haiku 4.5',
+  'Claude Haiku 5.5',
+  'Claude Opus 4.6',
+  'Claude Opus 4.7',
+  'Claude Opus 4.8',
+  'Claude Opus 5',
+  'Claude Opus 5.5',
+  'Claude Sonnet 4.6',
+  'Claude Sonnet 5',
+  'Claude Sonnet 5.5',
+  'Code Review model',
+  'GPT-5 mini',
+  'GPT-5.2',
+  'GPT-5.3-Codex',
+  'GPT-5.4',
+  'GPT-5.4 mini',
+  'GPT-5.5',
+  'GPT-5.6 Luna',
+  'GPT-5.6 Sol',
+  'GPT-5.6 Terra',
+  'GPT-6 Astra',
+  'GPT-6 Luna',
+  'GPT-6 Sol',
+  'GPT-6.1 Sol',
+  'Gemini 3.7 Flash',
+  'Gemini 3.8 Flash',
+  'Grok 4.7',
+  'Kimi K3',
+  'MAI-Code-1.1-Flash',
+])
+export const publicModel = (name: string) => (PUBLIC_MODELS.has(name.replace(/^Auto: /, '')) ? name : 'Other')
 const check = (ok: unknown, message: string) => {
   if (!ok) throw new Error(message)
 }
@@ -69,7 +103,7 @@ export function aggregate(billings: Billing[], org: OrgReport, userLines: Iterab
         check(item.unitType === 'ai-credits', `unexpected unit ${item.unitType}`)
         check(Number.isFinite(item.grossQuantity) && item.grossQuantity >= 0, `bad quantity for ${item.model}`)
         add(bySku, item.sku, item.grossQuantity)
-        add(byModel, item.model, item.grossQuantity)
+        add(byModel, publicModel(item.model), item.grossQuantity)
         credits += item.grossQuantity
         gross += item.grossAmount
         net += item.netAmount
