@@ -8,6 +8,7 @@ and custom domain are configured.
 | Path | Experiment |
 | --- | --- |
 | `/` | Experiment index |
+| `/ai-cost/` | One-screen dashboard of one organization’s AI-credit billing, Copilot usage and token counts, checked against GitHub’s AI-credit guidance |
 | `/chess/` | Stockfish chess, live search details, and context-window illustration |
 | `/context-autopsy/` | Local agent-session usage, cache, context, and cost analysis |
 | `/session-flame/` | Session replay, flame charts, recorded comparisons, evidence export |
@@ -37,7 +38,8 @@ tests, the typechecked build, and the same browser checks.
 The browser checks cover the real Stockfish worker/WASM (including offline
 play), session replay and comparison downloads in Chromium and WebKit,
 all nine published fixture selections, offline context import through its
-worker, token-diet round switching, themes, small screens, and local links.
+worker, token-diet round switching, the `/ai-cost/` one-screen tabs and
+controls, themes, small screens, and local links.
 
 The homepage uses a responsive showcase grid (three, two, or one column) with
 animated click-through previews (`public/previews/*.gif`) that fall back to
@@ -59,10 +61,27 @@ requests. The theme choice alone is stored in local storage. Downloadable
 Copilot helpers copy local files or capture a new CLI invocation; inspect
 raw logs before sharing them.
 
-Only previously published experiment fixtures and measurements were
-imported. No private `.work/` trees, personal session logs, credentials,
+Apart from the `/ai-cost/` aggregate below, only previously published experiment
+fixtures and measurements were imported. No private `.work/` trees, personal session logs, credentials,
 or local configuration were copied. Hash tests preserve the nine recorded
 TodoMVC fixtures and both unmodified Stockfish distribution files.
+
+`/ai-cost/` reads only `src/data/ai-cost.json`: daily organization totals,
+monthly credit totals, and public product and model names derived from one
+unnamed organization's private GitHub exports (AI-credit billing usage and the
+Copilot `organization-28-day` and `users-28-day` metrics reports). Raw exports,
+logins, and user, organization, and enterprise IDs are never committed. To
+regenerate, keep the exports in a folder outside the repository and run
+`bun scripts/ai-cost/aggregate.ts <folder>`; the header comment lists the
+expected file names. Models missing from the script's `PUBLIC_MODELS`
+allowlist (internal or preview labels) are published only as "Other". It refuses to write if an identifier, or a monthly credit
+total from fewer than five users, would be published.
+
+The page fits one screen (`SiteLayout`'s opt-in `fit` mode, used only here)
+with six tabs. Tabs and the group and month controls are plain CSS, so they
+work without JavaScript; a small same-origin inline script only adds `#tab`
+deep links, tooltips, and hover highlighting, and makes no requests. On small
+phones a tab's panel scrolls inside the fixed frame instead of the page.
 
 See [source provenance and licenses](PROVENANCE.md) and the
 [token-diet reproduction kit](scripts/token-diet/README.md). The kit is
