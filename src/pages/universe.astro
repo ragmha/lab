@@ -1,0 +1,90 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ThemeToggle from '../components/ThemeToggle.astro'
+import { lessons, releases, scope, sources, statusNote } from '../data/universe.mjs'
+import '../styles/theme.css'
+import '../styles/universe.css'
+const statuses = [...new Set(releases.map((release) => release.status))]
+const groups = [...new Set(releases.map((release) => release.group))]
+const slidesUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/downloads/universe-2026-starter.pptx`
+---
+<BaseLayout title="Universe 2026 · A practical field guide" description="An ordered, safety-first learning guide to GitHub Universe 2026 with a sourced announcement inventory." bodyClass="universe-surface" pageClass="universe-page" defaultTheme="system">
+  <!-- THESIS: A field guide turns announcements into ordered, observable practice, not marketing cards.
+  OWN-WORLD: Lab neutrals, system sans, crisp rules, blue selected state, native controls.
+  STORY: Check access, try one bounded task, connect context, review evidence.
+  FIRST VIEWPORT: Compact masthead, eight-step navigation at left, the first lesson at reading width.
+  FORM: Brief-pinned Read/Operate guide; a sequential workbook with a searchable reference index. -->
+  <a class="skip-link" href="#lesson-content">Skip to lesson</a>
+  <header class="guide-header">
+    <a href="/" class="lab-link">Raghib’s Lab</a>
+    <nav aria-label="Guide sections"><a href="#lesson-0">Learning path</a><a href="#inventory">Release inventory</a><ThemeToggle /></nav>
+  </header>
+  <main>
+    <div class="guide-intro">
+      <div>
+        <h1>Universe 2026,<br />one useful step at a time.</h1>
+        <p>What changed. What you can try. What still needs access.</p>
+      </div>
+      <div class="edition">
+        <p><strong>Verified 1 Nov 2026</strong></p>
+        <p>Overview + official recap + <br />31 launch-day changelog posts. <br />Not every conference session.</p>
+        <a href={sources.overview.url}>Read the original overview ↗</a>
+        <a class="slides-download" href={slidesUrl} download>Download the 18-slide deck (PPTX)</a>
+      </div>
+    </div>
+    <div class="learning-workspace">
+      <aside class="path">
+        <h2>Your learning path</h2>
+        <p class="path-note">Three days, eight short lessons. <br />Times are editorial estimates.</p>
+        <ol start="0" class="lesson-nav">
+          {lessons.map((lesson, index) => <li><a href={`#lesson-${index}`} data-lesson-link={index}><span class="step-number">{index}</span><span>{lesson.short}<small>{lesson.minutes} min</small></span><span class="nav-done" aria-label="Completed" hidden>✓</span></a></li>)}
+        </ol>
+        <div class="progress-area">
+          <label for="guide-progress" id="progress-label">0 of {lessons.length} lessons complete</label>
+          <progress id="guide-progress" max={lessons.length} value="0" aria-labelledby="progress-label"></progress>
+          <p id="storage-status" role="status">Progress stays in this browser. No account or tracking.</p>
+          <button type="button" id="reset-progress" disabled>Reset progress</button>
+        </div>
+      </aside>
+      <div id="lesson-content" class="lesson-content" tabindex="-1">
+        <noscript><p class="notice">JavaScript is off. All lessons and sources remain readable; local progress, copy buttons, and filters require JavaScript.</p></noscript>
+        {lessons.map((lesson, index) => <article id={`lesson-${index}`} class="lesson" data-lesson={index} aria-labelledby={`title-${index}`}>
+          <div class="lesson-meta"><span>{lesson.day}</span><span>Step {index} / 7 · {lesson.minutes} min</span></div>
+          <h2 id={`title-${index}`}>{lesson.title}</h2>
+          <p class="lesson-what">{lesson.what}</p>
+          <p>{lesson.why}</p>
+          <div class="prerequisites"><h3>Before you start</h3><p>{lesson.prerequisites}</p></div>
+          <div class="notice"><strong>Permission & credit gate</strong><p>{lesson.warning}</p></div>
+          <h3>Do this in order</h3>
+          <ol class="exercise-steps">{lesson.steps.map((step) => <li>{step}</li>)}</ol>
+          {lesson.prompt && <div class="prompt-area"><div class="prompt-heading"><h3>Safe sample prompt</h3><button type="button" data-copy={index} disabled>Copy prompt</button></div><pre><code id={`prompt-${index}`}>{lesson.prompt}</code></pre></div>}
+          <div class="done-condition"><h3>You’re done when</h3><p>{lesson.done}</p><label class="completion"><input type="checkbox" data-complete={index} disabled /> Mark step {index} complete</label></div>
+          <details><summary>No access? Use this practice alternative</summary><p>{lesson.fallback}</p></details>
+          <details class="reading"><summary>Official reading for this lesson</summary><ul>{lesson.reading.map((key) => <li><a href={sources[key].url}>{sources[key].label} ↗</a></li>)}</ul></details>
+          <footer class="lesson-footer">{index > 0 ? <a href={`#lesson-${index - 1}`} data-lesson-link={index - 1}>← Previous step</a> : <a href="#inventory">Browse announcements</a>}{index < lessons.length - 1 ? <a class="next-step" href={`#lesson-${index + 1}`} data-lesson-link={index + 1}>Next: {lessons[index + 1].short} →</a> : <a class="next-step" href="#inventory">Explore the inventory →</a>}</footer>
+        </article>)}
+      </div>
+    </div>
+    <section id="inventory" class="inventory" aria-labelledby="inventory-title">
+      <div class="inventory-heading"><h2 id="inventory-title">The release inventory</h2><p>Use this as a reference, not a prerequisite.<br />Each announcement has its own access gate.</p></div>
+      <p class="scope-note"><strong>Read the status literally.</strong> {statusNote} {scope}</p>
+      <form class="filters" role="search" onsubmit="return false">
+        <div><label for="release-search">Find an announcement</label><input id="release-search" type="search" placeholder="Try “security” or “credits”" disabled /></div>
+        <div><label for="release-group">Theme</label><select id="release-group" disabled><option value="">All themes</option>{groups.map((group) => <option>{group}</option>)}</select></div>
+        <div><label for="release-status">Status</label><select id="release-status" disabled><option value="">All statuses</option>{statuses.map((status) => <option>{status}</option>)}</select></div>
+        <button id="clear-filters" type="button" disabled>Clear filters</button>
+      </form>
+      <p id="result-count" role="status">{releases.length} announcements</p>
+      <div class="release-list">
+        {releases.map((release) => <article class="release" data-group={release.group} data-status={release.status}>
+          <div class="release-label"><span>{release.group}</span><span class:list={['status', { 'status-ga': release.status === 'GA', 'status-preview': release.status.includes('preview'), 'status-roadmap': release.status === 'Roadmap' }]}>{release.status}</span></div>
+          <div class="release-body"><h3>{release.name}</h3><p>{release.detail}</p><p class="access-gate"><strong>Access / gate:</strong> {release.gate}</p><div class="release-links"><a href={`#lesson-${release.lesson}`} data-lesson-link={release.lesson}>Practice in step {release.lesson} →</a>{release.reading.map((key) => <a href={sources[key].url}>{sources[key].label} ↗</a>)}</div></div>
+        </article>)}
+      </div>
+      <p id="empty-results" class="notice" hidden>No announcements match. Try a broader search or clear the filters.</p>
+    </section>
+    <footer class="guide-footer"><p>Independent learning guide. Not an official GitHub product.<br />Instructions only: no paid actions, installs, permissions, scans, or cloud runs execute here.</p><a href={sources.recap.url}>Official Universe recap ↗</a></footer>
+  </main>
+  <p id="copy-status" class="copy-status" role="status"></p>
+  <script src="../scripts/universe.ts"></script>
+</BaseLayout>

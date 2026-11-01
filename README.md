@@ -12,6 +12,7 @@ and custom domain are configured.
 | `/context-autopsy/` | Local agent-session usage, cache, context, and cost analysis |
 | `/session-flame/` | Session replay, flame charts, recorded comparisons, evidence export |
 | `/token-diet/` | Two recorded token-use experiments and their reproduction kit |
+| `/universe/` | Universe 2026 learning path, local progress, and sourced announcement inventory |
 
 ## Develop and verify
 
@@ -52,6 +53,25 @@ so building locally does not require network access or credentials. GitHub's
 language analysis can lag the latest commit. The browser makes no GitHub API calls.
 
 ## Privacy and source data
+
+The Universe field guide covers the official overview, recap, and 31 launch-day
+changelog posts (deduplicated), verified 1 November 2026, not an exhaustive
+changelog or every conference session.
+Its eight ordered lessons use editorial time estimates and separate access,
+permissions, and AI credit gates from practice. All instructions are inert:
+the site cannot run agents, scans, installs, or account changes. Progress is
+stored only in this browser; a visible warning reports blocked or corrupt
+storage. Without JavaScript all lessons and official links remain readable.
+
+The Universe Passport canvas in `.github/extensions/universe-passport/` shows
+the same content (`src/data/universe.mjs`) inside the GitHub Copilot app as
+lesson stamps, a GA-or-preview status round, and a searchable release board.
+Copilot loads it in sessions opened in this repository; ask Copilot to open the
+Universe Passport canvas. It serves only on a loopback address, runs nothing on
+your behalf, and saves progress outside the repository in
+`~/.copilot/extensions/universe-passport/artifacts/progress.json` (under
+`COPILOT_HOME` when set). `bun run test` covers its server and store;
+`bun run test:browser` covers its UI.
 
 Imported sessions are parsed on the device, not uploaded. There are no
 analytics, server handlers, accounts, databases, or third-party runtime
