@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
-import { analyzeEdits, classifyPath, demoEdits, parseEdits, summarizeCategories } from '../src/lib/agent-edits'
+import { analyzeEdits, classifyPath, demoEdits, parseEdits, pathParts, summarizeCategories } from '../src/lib/agent-edits'
 
 describe('agent edit breakdown', () => {
   test('classifies agent artifacts before generic tests, config, and docs', () => {
@@ -141,5 +141,12 @@ describe('agent edit breakdown', () => {
     const runtime = summarizeCategories(analysis.agents).find((category) => category.id === 'runtime')
     assert.deepEqual(runtime && { files: runtime.files, added: runtime.added, agents: runtime.changes.map((change) => change.label).sort() },
       { files: 1, added: 2, agents: ['Main agent', 'Subagent · helper'] })
+  })
+
+  test('splits displayed paths only after separators', () => {
+    assert.deepEqual(pathParts('evals/answer.eval.json'), ['evals/', 'answer.eval.json'])
+    assert.deepEqual(pathParts('/repo/AGENTS.md'), ['/', 'repo/', 'AGENTS.md'])
+    assert.deepEqual(pathParts('C:\\repo\\src\\'), ['C:\\', 'repo\\', 'src\\'])
+    assert.deepEqual(pathParts('README.md'), ['README.md'])
   })
 })

@@ -7,6 +7,26 @@ const base = process.env.LAB_TEST_URL
 const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/token-diet/', '/agent-edits/']
 const recorded = JSON.parse(await readFile(new URL('../src/lib/session-flame-runs.json', import.meta.url), 'utf8'))
 const languages = JSON.parse(await readFile(new URL('../src/data/languages.json', import.meta.url), 'utf8'))
+// Reads each matched element's text back as rendered lines, so tests can check where wrapping happens.
+const renderedLines = (page, selector) => page.locator(selector).evaluateAll((elements) => elements.map((element) => {
+  const lines = []
+  let top = -Infinity
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    for (let index = 0; index < node.length; index++) {
+      const range = document.createRange()
+      range.setStart(node, index)
+      range.setEnd(node, index + 1)
+      const rect = range.getBoundingClientRect()
+      if (!rect.width) continue
+      if (rect.top > top + rect.height / 2) lines.push('')
+      top = Math.max(top, rect.top)
+      lines[lines.length - 1] += node.data[index]
+    }
+  }
+  return lines
+}))
+const breaksOnlyAfterSlash = (lines) => lines.slice(0, -1).every((line) => line.endsWith('/'))
 
 test('homepage terminal grid keeps native keyboard links and works without JavaScript', { skip: !base }, async () => {
   const browser = await chromium.launch()
@@ -82,19 +102,33 @@ test('agent edits show one filterable category table and import locally offline'
     assert.ok(await page.locator('#category-rows .file-agent').getByText(agents[1]).count())
     await page.locator('#agent-filter').selectOption('all')
     await page.setViewportSize({ width: 360, height: 800 })
-    const narrow = await page.evaluate(() => ({
-      overflow: document.documentElement.scrollWidth > innerWidth,
-      wrapped: [...document.querySelectorAll('#agent-results .category-detail summary small')]
-        .filter((label) => label.getBoundingClientRect().height >= parseFloat(getComputedStyle(label).fontSize) * 2)
-        .map((label) => label.textContent),
-    }))
-    assert.deepEqual(narrow, { overflow: false, wrapped: [] })
+    await page.locator('#category-rows details').evaluateAll((rows) => rows.forEach((row) => { row.open = true }))
+    const narrow = await page.evaluate(() => {
+      const table = document.querySelector('.breakdown-table').getBoundingClientRect().width
+      const textBox = (node) => { const range = document.createRange(); range.selectNodeContents(node); return range.getBoundingClientRect() }
+      return {
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        wrapped: [...document.querySelectorAll('#agent-results .category-detail summary small')]
+          .filter((label) => label.getBoundingClientRect().height >= parseFloat(getComputedStyle(label).fontSize) * 2)
+          .map((label) => label.textContent),
+        squeezed: [...document.querySelectorAll('#category-rows .file-list li')]
+          .filter((file) => file.getBoundingClientRect().width < table * 0.9).map((file) => file.querySelector('code').textContent),
+        overlapping: [...document.querySelectorAll('#category-rows .category-row')]
+          .filter((row) => [...row.querySelectorAll(':scope > td')].some((cell) => textBox(cell).bottom > row.querySelector('.file-list').getBoundingClientRect().top))
+          .map((row) => row.querySelector('summary').textContent),
+      }
+    })
+    assert.deepEqual(narrow, { overflow: false, wrapped: [], squeezed: [], overlapping: [] })
+    const samplePaths = await renderedLines(page, '#category-rows .file-list code')
+    assert.equal(samplePaths.length, 4)
+    assert.ok(samplePaths.every(breaksOnlyAfterSlash), `Path broke mid-segment: ${JSON.stringify(samplePaths)}`)
+    assert.ok((await renderedLines(page, '#category-rows .file-agent')).every((lines) => lines.length <= 2))
     await page.setViewportSize({ width: 1280, height: 720 })
     await context.setOffline(true)
     const records = [
       { type: 'session.start', data: { sessionId: 'browser-sample' } },
       { type: 'tool.execution_start', data: { toolCallId: 'edit-1', toolName: 'edit', arguments: {
-        path: 'evals/golden.eval.json', old_str: 'old\n', new_str: 'new\nadded\n',
+        path: 'evals/regression-suite/customer-support/golden-answers/refund-policy.eval.json', old_str: 'old\n', new_str: 'new\nadded\n',
       } } },
       { type: 'tool.execution_complete', data: { toolCallId: 'edit-1', success: true } },
     ]
@@ -130,7 +164,12 @@ test('agent edits show one filterable category table and import locally offline'
     assert.deepEqual([styles.headerBorder, styles.footerBorder, styles.summary, styles.tableLayout], ['solid', 'solid', 'flex', 'fixed'])
     assert.deepEqual([styles.rowAdded, styles.fileAdded, styles.totalAdded], [styles.green, styles.green, styles.green])
     assert.deepEqual([styles.rowRemoved, styles.totalRemoved], [styles.red, styles.red])
-    assert.ok(await page.locator('.file-list').getByText('evals/golden.eval.json').count())
+    assert.ok(await page.locator('.file-list').getByText('evals/regression-suite/customer-support/golden-answers/refund-policy.eval.json').count())
+    for (const width of [768, 360]) {
+      await page.setViewportSize({ width, height: 800 })
+      const [longPath] = await renderedLines(page, '#category-rows .file-list code')
+      assert.ok(longPath.length > 1 && breaksOnlyAfterSlash(longPath), `Long path should wrap only after "/" at ${width}px: ${JSON.stringify(longPath)}`)
+    }
     await page.locator('#clear-button').click()
     assert.equal(await page.locator('#table-summary').textContent(), '0 files · 0 agent groups')
     assert.deepEqual(errors, [])

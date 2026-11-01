@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SiteHeader from '../components/SiteHeader.astro'
-import { analyzeEdits, demoEdits, parseEdits, summarizeCategories } from '../lib/agent-edits'
+import { analyzeEdits, demoEdits, parseEdits, pathParts, summarizeCategories } from '../lib/agent-edits'
 import '../styles/site.css'
 
 const sample = analyzeEdits([parseEdits(demoEdits)])
@@ -63,7 +63,7 @@ const appJsonLd = JSON.stringify({
                     <summary><span class="category-icon" aria-hidden="true">{category.icon}</span><span>{category.name}</span><small>{category.files} {category.files === 1 ? 'file' : 'files'}</small></summary>
                     <ul class="file-list">
                       {category.changes.map((change) => (
-                        <li><code>{change.path}</code><span class="file-agent">{change.label}</span><span class="file-counts"><span class="added">+{number(change.added)}</span><span class="removed">−{number(change.removed)}</span></span></li>
+                        <li><code>{pathParts(change.path).map((part) => <span>{part}</span>)}</code><span class="file-agent"><span>{change.label}</span> · <span>{change.source}</span></span><span class="file-counts"><span class="added">+{number(change.added)}</span><span class="removed">−{number(change.removed)}</span></span></li>
                       ))}
                     </ul>
                   </details>
@@ -111,7 +111,7 @@ const appJsonLd = JSON.stringify({
 </BaseLayout>
 
 <script>
-  import { analyzeEdits, demoEdits, parseEdits, summarizeCategories } from '../lib/agent-edits'
+  import { analyzeEdits, demoEdits, parseEdits, pathParts, summarizeCategories } from '../lib/agent-edits'
   import type { EditAnalysis, ImportedEdits } from '../lib/agent-edits'
 
   const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
@@ -159,8 +159,11 @@ const appJsonLd = JSON.stringify({
       for (const change of category.changes) {
         const file = document.createElement('li')
         const path = document.createElement('code')
-        path.textContent = change.path
-        file.append(path, textNode('span', 'file-agent', `${change.label} · ${change.source}`))
+        path.append(...pathParts(change.path).map((part) => textNode('span', '', part)))
+        const agent = document.createElement('span')
+        agent.className = 'file-agent'
+        agent.append(textNode('span', '', change.label), ' · ', textNode('span', '', change.source))
+        file.append(path, agent)
         const counts = document.createElement('span')
         counts.className = 'file-counts'
         counts.append(textNode('span', 'added', `+${format(change.added)}`), textNode('span', 'removed', `−${format(change.removed)}`))
@@ -325,17 +328,26 @@ const appJsonLd = JSON.stringify({
   #agent-results .category-detail summary small { color: var(--theme-muted); font-size: 0.65rem; white-space: nowrap; }
   #agent-results .category-icon { display: grid; width: 1.5rem; height: 1.5rem; flex: none; place-items: center; border: 1px solid var(--theme-rule-strong); color: var(--theme-blue); font-size: 0.55rem; }
   #agent-results .breakdown-table tfoot { border-top: 1px solid var(--theme-rule-strong); font-weight: 700; }
-  #agent-results .file-list { margin: 0 0 0.55rem 1.25rem; padding: 0; list-style: none; }
+  #agent-results .file-list { margin: 0 0 0.55rem 1.25rem; padding: 0; list-style: none; container: file-list / inline-size; }
   #agent-results .file-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 0.65rem; padding: 0.4rem 0; border-top: 1px dashed var(--theme-rule); }
+  /* The list's container type stops the last item's margin collapsing into the list's own. */
+  #agent-results .file-list li:last-child { margin-bottom: 0; }
   #agent-results .file-list code { min-width: 0; overflow-wrap: anywhere; color: var(--theme-muted); font-size: 0.68rem; }
   #agent-results .file-agent { color: var(--theme-muted); font-size: 0.62rem; }
+  /* Atomic pieces wrap as units: paths between folders, attribution between agent and source. */
+  #agent-results .file-list code > span, #agent-results .file-agent > span { display: inline-block; }
   #agent-results .file-counts { display: flex; gap: 0.55rem; font-size: 0.65rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #agent-results .empty-report { margin: 0; padding: 1.5rem 0; color: var(--theme-muted); text-align: center; font-size: 0.75rem; }
-  @media (max-width: 44rem) {
-    #agent-results { padding: 0.75rem; }
-    #agent-results .breakdown-table th:first-child { width: 56%; }
+  @container file-list (max-width: 40rem) {
     #agent-results .file-list li { grid-template-columns: minmax(0, 1fr) auto; gap: 0.35rem 0.5rem; }
     #agent-results .file-agent { grid-column: 1; }
     #agent-results .file-counts { grid-column: 2; grid-row: 1 / span 2; }
+  }
+  @media (max-width: 44rem) {
+    #agent-results { padding: 0.75rem; container-type: inline-size; }
+    #agent-results .breakdown-table th:first-child { width: 56%; }
+    /* An open file list spans all columns below its category; 0.9rem removes both cell paddings. */
+    #agent-results .category-row td { vertical-align: top; line-height: 2.25rem; }
+    #agent-results .file-list { width: calc(100cqi - 0.9rem); margin-left: 0; }
   }
 </style>

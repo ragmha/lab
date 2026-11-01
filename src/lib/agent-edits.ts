@@ -422,6 +422,9 @@ export function summarizeCategories(agents: EditAnalysis['agents']): CategorySum
   })
 }
 
+/** Splits after each path separator so the UI can wrap between segments instead of inside them. */
+export const pathParts = (path: string) => path.match(/[^\\/]*[\\/]|[^\\/]+$/g) ?? [path]
+
 export const demoEdits = [
   { type: 'session.start', data: { sessionId: 'copilot-demo' } },
   { type: 'tool.execution_start', data: { toolCallId: 'main-1', toolName: 'edit', arguments: { path: 'src/agent.ts', old_str: 'const run = false\n', new_str: 'const run = true\n' } } },
