@@ -12,6 +12,7 @@ and custom domain are configured.
 | `/context-autopsy/` | Local agent-session usage, cache, context, and cost analysis |
 | `/session-flame/` | Session replay, flame charts, recorded comparisons, evidence export |
 | `/token-diet/` | Two recorded token-use experiments and their reproduction kit |
+| `/agent-edits/` | Local agent edit calls grouped by agent, artifact category, and file |
 
 ## Develop and verify
 

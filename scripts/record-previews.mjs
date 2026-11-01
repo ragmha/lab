@@ -34,6 +34,12 @@ const tours = {
     (p) => p.locator('label[for="tab-tokens"]').click(),
     (p) => p.locator('label[for="tab-round-two"]').click(),
   ],
+  'agent-edits': [
+    (p) => p.locator('#agent-filter').selectOption({ label: 'General Purpose Agent · e7a1f9 · Copilot CLI · session copilot-demo' }),
+    (p) => p.locator('#agent-filter').selectOption({ label: 'Unknown attribution · Codex CLI · session codex-demo' }),
+    (p) => p.locator('#import-panel').scrollIntoViewIfNeeded(),
+    (p) => p.locator('#demo-button').click(),
+  ],
   chess: [
     (p) => p.locator('[data-square="e2"]:not([disabled])').waitFor({ timeout: 60000 }),
     ...['e2', 'e4', 'g1', 'f3', 'f1', 'c4'].map((square) => (p) =>
@@ -42,14 +48,20 @@ const tours = {
   ],
 }
 
+const selected = process.argv[3] ? [process.argv[3]] : Object.keys(tours)
+for (const slug of selected) if (!tours[slug]) throw new Error(`Unknown experiment: ${slug}`)
 mkdirSync(out, { recursive: true })
 const browser = await chromium.launch({ channel: 'chrome' })
-for (const [slug, steps] of Object.entries(tours)) {
+for (const slug of selected) {
+  const steps = tours[slug]
   const dir = mkdtempSync(join(tmpdir(), `preview-${slug}-`))
   const context = await browser.newContext({ viewport: size, colorScheme: 'dark', recordVideo: { dir, size } })
   const page = await context.newPage()
   await page.goto(`${base}/${slug}/`, { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
+  if (slug === 'agent-edits') {
+    await page.screenshot({ path: new URL('../src/assets/lab/agent-edits.png', import.meta.url).pathname })
+  }
   for (const step of steps) {
     await step(page)
     await page.waitForTimeout(1300)
