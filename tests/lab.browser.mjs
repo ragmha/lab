@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { chromium } from 'playwright'
 
 const base = process.env.LAB_TEST_URL
-const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/token-diet/']
+const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/token-diet/', '/agent-edits/']
 const recorded = JSON.parse(await readFile(new URL('../src/lib/session-flame-runs.json', import.meta.url), 'utf8'))
 const languages = JSON.parse(await readFile(new URL('../src/data/languages.json', import.meta.url), 'utf8'))
 
@@ -16,7 +16,7 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       await page.goto(base, { waitUntil: 'networkidle' })
       const panels = page.locator('.experiment-grid a')
       assert.deepEqual(await panels.evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
-        ['/session-flame/', '/context-autopsy/', '/token-diet/', '/chess/'])
+        ['/session-flame/', '/context-autopsy/', '/token-diet/', '/agent-edits/', '/chess/'])
       assert.equal(await page.locator('h1').innerText(), 'Raghib’s Lab — Experiments')
       const total = languages.reduce((sum, language) => sum + language.size, 0)
       assert.deepEqual(await page.locator('.language-legend li').allTextContents(), languages.map(({ node, size }) => `${node.name} ${(size / total * 100).toFixed(1)}%`))
@@ -32,7 +32,7 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       })
       assert.ok(baselineGap < 1, `Visible flask and LAB baselines differ by ${baselineGap}px at ${width}px`)
       assert.equal(await page.locator('.experiment-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length), width > 1088 ? 3 : width > 672 ? 2 : 1)
-      assert.equal(await page.locator('.experiment-preview img').count(), 4)
+      assert.equal(await page.locator('.experiment-preview img').count(), 5)
       assert.doesNotMatch(await page.locator('.experiment-preview img').first().evaluate((img) => img.currentSrc), /\.gif$/)
       if (width > 1088) assert.equal(await panels.evaluateAll((links) => new Set(links.slice(0, 3).map((link) => link.getBoundingClientRect().height)).size), 1)
       assert.ok(await page.locator('.experiment-grid').evaluate((grid) => [...grid.querySelectorAll('a')].every((link) => link.getBoundingClientRect().height >= 44)))
@@ -48,7 +48,94 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
     const motion = await browser.newPage({ reducedMotion: 'no-preference' })
     await motion.goto(base, { waitUntil: 'networkidle' })
     assert.deepEqual(await motion.locator('.experiment-preview img').evaluateAll((images) => images.map((img) => new URL(img.currentSrc).pathname)),
-      ['/previews/session-flame.gif', '/previews/context-autopsy.gif', '/previews/token-diet.gif', '/previews/chess.gif'])
+      ['/previews/session-flame.gif', '/previews/context-autopsy.gif', '/previews/token-diet.gif', '/previews/agent-edits.gif', '/previews/chess.gif'])
+  } finally {
+    await browser.close()
+  }
+})
+
+test('agent edits show one filterable category table and import locally offline', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    const errors = []
+    const mutations = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    page.on('request', (request) => { if (request.method() !== 'GET') mutations.push(request.url()) })
+    await page.goto(new URL('/agent-edits/', base).href, { waitUntil: 'networkidle' })
+    assert.equal(await page.locator('h1').innerText(), 'What Did the Agent Actually Write?')
+    assert.equal(await page.locator('.agent-card').count(), 0)
+    assert.equal(await page.locator('#agent-filter').inputValue(), 'all')
+    const agents = await page.locator('#agent-filter option').allTextContents()
+    assert.match(agents[1], /^General Purpose Agent · e7a1f9 · Copilot CLI/)
+    assert.equal(agents.filter((label) => label.startsWith('Main agent ·')).length, 2)
+    assert.ok(agents.some((label) => label.startsWith('Unknown attribution · Codex CLI')))
+    assert.equal(await page.locator('#category-rows tr').count(), 4)
+    assert.match(await page.locator('#category-rows tr').first().innerText(), /Evals/)
+    assert.match(await page.locator('tfoot').innerText(), /Total\s*\+6\s*−3/)
+    await page.locator('#agent-filter').selectOption({ label: agents[1] })
+    assert.equal(await page.locator('#category-rows tr').count(), 1)
+    assert.match(await page.locator('#category-rows tr').first().innerText(), /Evals/)
+    assert.match(await page.locator('tfoot').innerText(), /Total\s*\+3\s*−0/)
+    assert.ok(await page.locator('#category-rows .file-list').getByText('evals/answer.eval.json').count())
+    assert.ok(await page.locator('#category-rows .file-agent').getByText(agents[1]).count())
+    await page.locator('#agent-filter').selectOption('all')
+    await page.setViewportSize({ width: 360, height: 800 })
+    const narrow = await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      wrapped: [...document.querySelectorAll('#agent-results .category-detail summary small')]
+        .filter((label) => label.getBoundingClientRect().height >= parseFloat(getComputedStyle(label).fontSize) * 2)
+        .map((label) => label.textContent),
+    }))
+    assert.deepEqual(narrow, { overflow: false, wrapped: [] })
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await context.setOffline(true)
+    const records = [
+      { type: 'session.start', data: { sessionId: 'browser-sample' } },
+      { type: 'tool.execution_start', data: { toolCallId: 'edit-1', toolName: 'edit', arguments: {
+        path: 'evals/golden.eval.json', old_str: 'old\n', new_str: 'new\nadded\n',
+      } } },
+      { type: 'tool.execution_complete', data: { toolCallId: 'edit-1', success: true } },
+    ]
+    await page.locator('#session-files').setInputFiles({
+      name: 'copilot.jsonl', mimeType: 'application/json',
+      buffer: Buffer.from(records.map((record) => JSON.stringify(record)).join('\n')),
+    })
+    await page.waitForFunction(() => document.querySelector('#table-summary')?.textContent === '1 file · 1 agent group')
+    assert.equal(await page.locator('#status').textContent(), '1 file changed across 1 agent group.')
+    assert.equal(await page.locator('#total-added').textContent(), '+2')
+    assert.equal(await page.locator('#total-removed').textContent(), '−1')
+    const styles = await page.evaluate(() => {
+      const color = (value) => {
+        const probe = document.body.appendChild(document.createElement('span'))
+        probe.style.color = value
+        const resolved = getComputedStyle(probe).color
+        probe.remove()
+        return resolved
+      }
+      const row = document.querySelector('#category-rows .category-row')
+      return {
+        green: color('var(--theme-green)'), red: color('var(--theme-red)'),
+        headerBorder: getComputedStyle(document.querySelector('.breakdown-table thead th')).borderBottomStyle,
+        footerBorder: getComputedStyle(document.querySelector('.breakdown-table tfoot')).borderTopStyle,
+        summary: getComputedStyle(row.querySelector('summary')).display,
+        rowAdded: getComputedStyle(row.querySelector('td.added')).color, rowRemoved: getComputedStyle(row.querySelector('td.removed')).color,
+        fileAdded: getComputedStyle(document.querySelector('#agent-results .file-counts .added')).color,
+        totalAdded: getComputedStyle(document.querySelector('#total-added')).color, totalRemoved: getComputedStyle(document.querySelector('#total-removed')).color,
+        tableLayout: getComputedStyle(document.querySelector('.breakdown-table')).tableLayout,
+      }
+    })
+    assert.notEqual(styles.green, styles.red)
+    assert.deepEqual([styles.headerBorder, styles.footerBorder, styles.summary, styles.tableLayout], ['solid', 'solid', 'flex', 'fixed'])
+    assert.deepEqual([styles.rowAdded, styles.fileAdded, styles.totalAdded], [styles.green, styles.green, styles.green])
+    assert.deepEqual([styles.rowRemoved, styles.totalRemoved], [styles.red, styles.red])
+    assert.ok(await page.locator('.file-list').getByText('evals/golden.eval.json').count())
+    await page.locator('#clear-button').click()
+    assert.equal(await page.locator('#table-summary').textContent(), '0 files · 0 agent groups')
+    assert.deepEqual(errors, [])
+    assert.deepEqual(mutations, [])
+    await context.close()
   } finally {
     await browser.close()
   }
