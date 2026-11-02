@@ -19,23 +19,33 @@
     </div>
     <div class="deck">
       <a class="button" href="/downloads/universe-2026-starter.pptx" download>Download the 18-slide deck (PPTX)</a>
-      <p>Blocked in this panel? It is also in the repository at public/downloads/universe-2026-starter.pptx.</p>
+      <p>18 teaching slides with linked official sources.</p>
     </div>
   </header>
   <div class="tabs" role="tablist" aria-label="Universe Passport">
     <button type="button" role="tab" id="tab-passport" data-tab="passport" aria-controls="panel-passport" aria-selected="true">Passport</button>
     <button type="button" role="tab" id="tab-round" data-tab="round" aria-controls="panel-round" aria-selected="false" tabindex="-1">Status round</button>
+    <button type="button" role="tab" id="tab-labs" data-tab="labs" aria-controls="panel-labs" aria-selected="false" tabindex="-1">Field labs</button>
     <button type="button" role="tab" id="tab-board" data-tab="board" aria-controls="panel-board" aria-selected="false" tabindex="-1">Release board</button>
   </div>
   <p id="notice" class="notice" role="alert" hidden></p>
   <main>
     <section id="panel-passport" role="tabpanel" aria-labelledby="tab-passport" tabindex="0"><p class="state">Loading…</p></section>
     <section id="panel-round" role="tabpanel" aria-labelledby="tab-round" tabindex="0" hidden><p class="state">Loading…</p></section>
+    <section id="panel-labs" role="tabpanel" aria-labelledby="tab-labs" tabindex="0" hidden><p class="state">Loading…</p></section>
     <section id="panel-board" role="tabpanel" aria-labelledby="tab-board" tabindex="0" hidden><p class="state">Loading…</p></section>
   </main>
   <footer class="footer">
     <p>Independent learning guide, not an official GitHub product. Instructions only: no paid actions, installs, permissions, scans, or cloud runs execute here.</p>
     <p id="storage"></p>
+    <details class="transfer">
+      <summary>Move progress between the website and canvas</summary>
+      <p>Export from one surface, then import here. This merges missing stamps and keeps the higher round score; existing stamps keep their route and date. No automatic synchronization. Website checkmarks are self-reported, not proof of an exercise.</p>
+      <button id="export-progress" class="button" type="button" disabled>Export progress</button>
+      <label for="import-progress">Import a Universe Passport JSON file (maximum 16 KB)</label>
+      <input id="import-progress" type="file" accept=".json,application/json" disabled>
+      <p id="transfer-status" role="status"></p>
+    </details>
   </footer>
   <p id="live" class="sr-only" aria-live="polite"></p>
 </body>

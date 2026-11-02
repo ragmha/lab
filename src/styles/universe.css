@@ -107,6 +107,17 @@
 .guide-footer { display: flex; gap: 2rem; justify-content: space-between; border-top: 1px solid var(--line); margin-top: 2rem; padding: 1.8rem 0; font-size: .8rem; color: var(--muted); }
 .guide-footer p { margin: 0; }
 .copy-status:not(:empty) { position: fixed; right: 1.5rem; bottom: 1rem; max-width: min(90vw, 420px); z-index: 5; background: var(--theme-bg); border: 1px solid var(--theme-rule-strong); border-radius: 4px; padding: .8rem 1rem; box-shadow: 0 4px 16px #0002; }
+.transfer { margin-top: .75rem; }
+.transfer summary, .field-labs summary { cursor: pointer; font-weight: 600; padding-block: .6rem; }
+.transfer label { display: block; margin-top: .75rem; }
+.transfer input { max-width: 100%; font-size: .75rem; }
+.transfer button { background: var(--theme-surface); border: 1px solid var(--theme-rule-strong); border-radius: 4px; color: var(--text); padding: .4rem .65rem; }
+.field-labs { border-top: 1px solid var(--line); margin-top: 3rem; padding-top: 2rem; scroll-margin-top: 1rem; }
+.field-labs > p, .field-lab { max-width: 75ch; }
+.field-lab { border-bottom: 1px solid var(--line); padding-block: .75rem; scroll-margin-top: 1rem; }
+.field-lab h3 { margin-top: 1.75rem; font-size: 1rem; }
+.field-lab p, .field-lab li { overflow-wrap: anywhere; }
+.field-lab details { border-block: 1px solid var(--line); }
 .skip-link { position: fixed; top: -100px; left: 1rem; z-index: 10; background: var(--theme-bg); color: var(--text); padding: .8rem; }
 .skip-link:focus { top: 1rem; }
 @media (max-width: 900px) {

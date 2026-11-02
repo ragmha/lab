@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { lessons, releases, scope, sources, statusNote } from '../../../src/data/universe.mjs'
+import { labs, lessons, releases, scope, sources, statusNote } from '../../../src/data/universe.mjs'
 import { PassportError, roundSize } from './store.mjs'
 
 const deck = 'universe-2026-starter.pptx'
@@ -9,6 +9,8 @@ const files = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/app.mjs': ['app.mjs', 'text/javascript; charset=utf-8'],
   '/styles.css': ['styles.css', 'text/css; charset=utf-8'],
+  '/src/data/universe-progress.mjs': ['../../../src/data/universe-progress.mjs', 'text/javascript; charset=utf-8'],
+  '/src/data/universe.mjs': ['../../../src/data/universe.mjs', 'text/javascript; charset=utf-8'],
   [`/downloads/${deck}`]: [`../../../public/downloads/${deck}`, 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
 }
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-src 'none'"
@@ -25,7 +27,7 @@ async function readCommand(request) {
   let body = ''
   for await (const chunk of request) {
     body += chunk
-    if (body.length > 2048) throw new PassportError('request_too_large', 'That progress change is too large.', 413)
+    if (body.length > 32768) throw new PassportError('request_too_large', 'That progress change is too large.', 413)
   }
   try {
     return JSON.parse(body)
@@ -76,7 +78,7 @@ export async function startServer(store, onError) {
       if (pathname === '/api/state' && request.method === 'GET') {
         const progress = await store.read()
         sendJson(response, 200, {
-          lessons, releases, sources, scope, statusNote, roundSize, progress, storage: store.storage,
+          labs, lessons, releases, sources, scope, statusNote, roundSize, progress, storage: store.storage,
         })
       } else if (pathname === '/api/progress' && request.method === 'POST') {
         if (request.headers.origin !== origin) {

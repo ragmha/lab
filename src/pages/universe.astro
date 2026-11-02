@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import ThemeToggle from '../components/ThemeToggle.astro'
-import { lessons, releases, scope, sources, statusNote } from '../data/universe.mjs'
+import { labs, lessons, releases, scope, sources, statusNote } from '../data/universe.mjs'
 import '../styles/theme.css'
 import '../styles/universe.css'
 const statuses = [...new Set(releases.map((release) => release.status))]
@@ -17,7 +17,7 @@ const slidesUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/downloads/univ
   <a class="skip-link" href="#lesson-content">Skip to lesson</a>
   <header class="guide-header">
     <a href="/" class="lab-link">Raghib’s Lab</a>
-    <nav aria-label="Guide sections"><a href="#lesson-0">Learning path</a><a href="#inventory">Release inventory</a><ThemeToggle /></nav>
+    <nav aria-label="Guide sections"><a href="#lesson-0">Learning path</a><a href="#field-labs">Field labs</a><a href="#inventory">Release inventory</a><ThemeToggle /></nav>
   </header>
   <main>
     <div class="guide-intro">
@@ -28,8 +28,10 @@ const slidesUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/downloads/univ
       <div class="edition">
         <p><strong>Verified 1 Nov 2026</strong></p>
         <p>Overview + official recap + <br />31 launch-day changelog posts. <br />Not every conference session.</p>
+        <p>Two release-week additions checked 2 Nov.</p>
         <a href={sources.overview.url}>Read the original overview ↗</a>
         <a class="slides-download" href={slidesUrl} download>Download the 18-slide deck (PPTX)</a>
+        <a class="slides-download" href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/universe/passport/`}>Open the interactive Passport →</a>
       </div>
     </div>
     <div class="learning-workspace">
@@ -44,6 +46,14 @@ const slidesUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/downloads/univ
           <progress id="guide-progress" max={lessons.length} value="0" aria-labelledby="progress-label"></progress>
           <p id="storage-status" role="status">Progress stays in this browser. No account or tracking.</p>
           <button type="button" id="reset-progress" disabled>Reset progress</button>
+          <details class="transfer">
+            <summary>Move progress to or from the canvas</summary>
+            <p>Import adds missing stamps and keeps the higher round score. Existing stamps keep their route and date. No automatic synchronization; website checkmarks are self-reported.</p>
+            <button type="button" id="export-progress" disabled>Export progress</button>
+            <label for="import-progress">Import a Universe Passport JSON file (maximum 16 KB)</label>
+            <input id="import-progress" type="file" accept=".json,application/json" disabled />
+            <p id="transfer-status" role="status"></p>
+          </details>
         </div>
       </aside>
       <div id="lesson-content" class="lesson-content" tabindex="-1">
@@ -65,6 +75,22 @@ const slidesUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/downloads/univ
         </article>)}
       </div>
     </div>
+    <section id="field-labs" class="field-labs" aria-labelledby="labs-title">
+      <h2 id="labs-title">Optional field labs</h2>
+      <p>After the eight core steps, pick a topic and produce a small evidence sheet. Explain the scenario in your own words before opening its answer. These are design and reasoning exercises, not verified credentials. Times are editorial estimates.</p>
+      {labs.map((lab) => <details id={`lab-${lab.id}`} class="field-lab">
+        <summary>{lab.title} · about {lab.minutes} min</summary>
+        <p>{lab.goal}</p>
+        <h3>Before you start</h3><p>{lab.prerequisites}</p>
+        <div class="notice"><strong>Permission & credit gate</strong><p>{lab.warning}</p></div>
+        <h3>Do this in order</h3>
+        <ol class="exercise-steps">{lab.steps.map((step) => <li>{step}</li>)}</ol>
+        <h3>Evidence to keep</h3><p>{lab.done}</p><p>{lab.fallback}</p>
+        <h3>Explain your decision</h3><p>{lab.question}</p>
+        <details><summary>Compare your answer</summary><p>{lab.answer}</p></details>
+        <h3>Official reading</h3><ul>{lab.reading.map((key) => <li><a href={sources[key].url}>{sources[key].label} ↗</a></li>)}</ul>
+      </details>)}
+    </section>
     <section id="inventory" class="inventory" aria-labelledby="inventory-title">
       <div class="inventory-heading"><h2 id="inventory-title">The release inventory</h2><p>Use this as a reference, not a prerequisite.<br />Each announcement has its own access gate.</p></div>
       <p class="scope-note"><strong>Read the status literally.</strong> {statusNote} {scope}</p>
@@ -78,7 +104,7 @@ const slidesUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/downloads/univ
       <div class="release-list">
         {releases.map((release) => <article class="release" data-group={release.group} data-status={release.status}>
           <div class="release-label"><span>{release.group}</span><span class:list={['status', { 'status-ga': release.status === 'GA', 'status-preview': release.status.includes('preview'), 'status-roadmap': release.status === 'Roadmap' }]}>{release.status}</span></div>
-          <div class="release-body"><h3>{release.name}</h3><p>{release.detail}</p><p class="access-gate"><strong>Access / gate:</strong> {release.gate}</p><div class="release-links"><a href={`#lesson-${release.lesson}`} data-lesson-link={release.lesson}>Practice in step {release.lesson} →</a>{release.reading.map((key) => <a href={sources[key].url}>{sources[key].label} ↗</a>)}</div></div>
+          <div class="release-body"><h3>{release.name}</h3>{release.addition && <p>{release.addition}</p>}<p>{release.detail}</p><p class="access-gate"><strong>Access / gate:</strong> {release.gate}</p><div class="release-links"><a href={`#lesson-${release.lesson}`} data-lesson-link={release.lesson}>Related core step {release.lesson} →</a>{labs.filter((lab) => release.reading[0] !== 'recap' && lab.reading.some((key) => key === release.reading[0])).slice(0, 1).map((lab) => <a href={`#lab-${lab.id}`}>Field lab: {lab.title} →</a>)}{release.reading.map((key) => <a href={sources[key].url}>{sources[key].label} ↗</a>)}</div></div>
         </article>)}
       </div>
       <p id="empty-results" class="notice" hidden>No announcements match. Try a broader search or clear the filters.</p>

@@ -1,7 +1,7 @@
 // @ts-check
 // Shared by the /universe/ page and the Universe Passport canvas (.github/extensions/universe-passport).
 export const statusNote = '“Announced” means the recap names it, but this baseline does not verify GA or your access. “Available” is a documented capability without an established GA/preview label. Mixed status is called out explicitly.'
-export const scope = 'Scope: overview, official recap, and 31 launch-day changelog posts checked 1 Nov 2026, deduplicated into this inventory. Not an exhaustive changelog or every conference session.'
+export const scope = 'Scope: overview, official recap, and 31 launch-day changelog posts checked 1 Nov 2026, plus two separately labelled release-week additions checked 2 Nov 2026. Not an exhaustive changelog or every conference session. Availability is a dated snapshot, not a live account check.'
 
 export const sources = {
   overview: { label: 'Universe overview · 28 Oct', url: 'https://github.blog/news-insights/company-news/github-universe-2026-evolving-every-layer-of-the-stack/' },
@@ -46,6 +46,8 @@ export const sources = {
   billing: { label: 'Enterprise access release', url: 'https://github.blog/changelog/2026-10-28-github-enterprise-now-includes-access-to-github-copilot' },
   fusionLaunch: { label: 'Fusion GA release', url: 'https://github.blog/changelog/2026-10-28-route-and-orchestrate-models-with-github-copilot-fusion' },
   connectorLaunch: { label: 'Connectors preview release', url: 'https://github.blog/changelog/2026-10-28-connect-your-tools-to-copilot-without-all-the-setup' },
+  assisted: { label: 'Assisted permissions GA · 26 Oct', url: 'https://github.blog/changelog/2026-10-26-github-copilot-assisted-permissions-generally-available/' },
+  serviceAuth: { label: 'Server-to-server authentication preview · 27 Oct', url: 'https://github.blog/changelog/2026-10-27-github-copilot-supports-server-to-server-authentication/' },
 }
 
 /** @satisfies {Array<{
@@ -218,8 +220,96 @@ export const lessons = [
 ]
 
 /** @satisfies {Array<{
+  id: string; title: string; minutes: number; goal: string; prerequisites: string;
+  warning: string; steps: string[]; done: string; fallback: string;
+  question: string; answer: string; reading: Array<keyof typeof sources>;
+}>} */
+export const labs = [
+  {
+    id: 'intelligence',
+    title: 'Intelligence & model choices',
+    minutes: 25,
+    goal: 'Build a small evidence sheet that separates saved context, background learning, and model selection.',
+    prerequisites: 'Complete core steps 0–2. A local note and the linked docs are enough; account access is optional.',
+    warning: 'Do not enable Dreaming, change permission modes, install local models, or submit image-generation requests for this lab. Those require separate consent, policy checks, and cost review.',
+    steps: [
+      'Read the intelligence announcement. Write one harmless candidate memory, such as a test command, with the file that proves it. List where you would inspect or delete it. Do not save credentials or personal information.',
+      'Compare Memory with Dreaming in two columns. Record which changes may happen automatically and which checked-in changes arrive as proposed PRs. Record Dreaming’s opt-in and AI-credit gates.',
+      'Use the Fusion docs and VS Code release notes to compare one routed response with an explicit model/harness comparison. Write what evidence would justify using Judge or Synthesize; do not pay for repeated runs just to complete the sheet.',
+      'Read the local-model and image-generation posts. Record their separate preview status and local-resource or billing requirements. Do not assume a local-model route makes every Fusion operation local, or that image generation is included without separate billing.',
+      'Read the assisted-permissions addition. Describe a command you would still review manually and how your organization can restrict permission modes. Assisted is neither “ask every time” nor “allow everything.”',
+    ],
+    done: 'Your sheet has a sourced memory example, a Memory/Dreaming comparison, model-choice criteria, and explicit privacy/cost boundaries.',
+    fallback: 'Without feature access, use only the docs and label the sheet “design exercise”; do not claim a memory was saved or a model was run.',
+    question: 'Does enabling Dreaming authorize it to directly rewrite checked-in instructions without review?',
+    answer: 'No. The launch source distinguishes automatic memory curation from proposed PRs for checked-in skills and instructions. Review both memory changes and proposed PRs; neither a preview label nor an assisted-permissions mode grants blanket authorization.',
+    reading: ['intelligence', 'fusion', 'vscode', 'localFusion', 'images', 'assisted'],
+  },
+  {
+    id: 'automation',
+    title: 'Automations, Actions & agent identity',
+    minutes: 30,
+    goal: 'Design the same read-only triage task for two different execution systems, without installing or running either.',
+    prerequisites: 'Complete core step 5. Use a hypothetical issue or a public issue you may read; no tokens or service accounts are needed.',
+    warning: 'Do not create a GitHub App, grant scopes, obtain installation tokens, install workflows, or enable triggers here. Real execution can spend organization AI credits and Actions resources.',
+    steps: [
+      'Write a three-line specification: which issues may be read, what draft summary is returned, and which actions are forbidden. Keep comments, labels, assignments, and repository writes outside the task.',
+      'For hosted Copilot Automations, record the owner, manual trigger, tools, approved credit cap, and reviewer. Keep the private/internal-repository documentation gate and the launch-copy ambiguity visible.',
+      'For GitHub Agentic Workflows, read its official setup and compiled-output example. Explain the Markdown-to-Actions-YAML path; list workflow permissions, runner, model access, and output controls you would review before a run. Do not treat it as the hosted Automations UI.',
+      'Add a failure plan: stop repeated triggers, inspect logs and credit use, and require human review of group-proposed prompt/tool/trigger changes. Sketch one manual test with expected output rather than enabling a schedule.',
+      'Read the SDK transition and server-to-server authentication addition. Draw the identity chain: organization-installed GitHub App, short-lived installation token, Copilot SDK request, organization attribution and billing. Note the read-only Copilot Requests permission and who may revoke access; never put a real token in the sheet.',
+    ],
+    done: 'You have two execution designs for one task, each with a permission boundary, cost owner, manual-test expectation, and stop procedure.',
+    fallback: 'A paper comparison is the intended no-access route. It proves workflow understanding, not a deployed automation.',
+    question: 'Can you copy a hosted automation prompt into a Markdown file and assume it has the same permissions and billing?',
+    answer: 'No. Agentic Workflows compiles into Actions workflows with its own execution and permission setup. Hosted Automations has separate controls and access gates. A server-to-server SDK request is attributed and billed to its organization, not automatically to an individual subscription.',
+    reading: ['agentic', 'automations', 'automationControls', 'automationLearning', 'automationVSCode', 'sdk', 'serviceAuth'],
+  },
+  {
+    id: 'security',
+    title: 'Security coverage & evidence',
+    minutes: 25,
+    goal: 'Choose a security feature for a concrete risk and explain what its evidence can—and cannot—establish.',
+    prerequisites: 'Complete core step 6. Use documentation or an existing finding you are authorized to inspect; do not create a vulnerable repository.',
+    warning: 'No scans, test-secret pushes, risky-package installs, auto-fixes, or approvals are needed. Check repository eligibility, admin policies, and the payer before any later scan.',
+    steps: [
+      'Create a four-row table for a code vulnerability, an unstructured secret, a risky npm dependency, and a vulnerable dependency function. Match each to AI Scan/CodeQL, AI push protection, package firewall, or reachability analysis; record its current access gate from the source.',
+      'Distinguish the new whole-repository AI Scan from PR coverage mentioned in the recap. The repository preview scans the latest default-branch commit; do not assume its settings, eligibility, or result set are identical to PR scanning.',
+      'Explain Security Canvas as a place to inspect findings, not a substitute for the underlying detectors. Add separate rows for AI-application code scanning and enterprise public-secret monitoring; they address different surfaces and have different prerequisites.',
+      'For one existing or hypothetical finding, record the affected file/dependency, supporting evidence, possible false-positive explanation, proposed fix, and how you would verify the fix. For a repository AI Scan finding, include a rescan after the fix.',
+      'Separate Copilot review approvals, optional Max effort, and Agent Merge from your decision to merge. Write the human checks and repository requirements that must hold before allowing an automated merge.',
+    ],
+    done: 'Your coverage table has sources and access gates, and one finding has a concrete verification plan rather than an unexamined “AI says so.”',
+    fallback: 'Use a clearly labelled hypothetical finding if you cannot access real alerts. Classic alerts are a practice source, not proof you used Security Canvas or the new AI Scan.',
+    question: 'Does “no finding” from a whole-repository AI Scan prove every changed PR is safe to merge?',
+    answer: 'No. A scan is evidence with a scope and point in time, not proof of absence. Default-branch and PR scans are distinct. Inspect the diff, relevant tests, scanner coverage, and applicable branch rules before merging.',
+    reading: ['securityCanvas', 'aiScan', 'aiApplications', 'secrets', 'publicMonitoring', 'reachability', 'recap', 'approvals', 'agentMerge'],
+  },
+  {
+    id: 'platform',
+    title: 'Platform adoption plan',
+    minutes: 25,
+    goal: 'Prepare one reversible adoption proposal instead of enabling every new feature.',
+    prerequisites: 'Complete core step 7. A repository you may inspect and a local note are sufficient.',
+    warning: 'Do not update Actions workflows, opt an enterprise into compute changes, install Replica, migrate an SDK, or create/merge PRs during this planning lab.',
+    steps: [
+      'Inspect one existing Actions workflow. Use the lockfile announcement to explain the difference between its readable action reference and an exact locked commit. Write how a dependency update would be reviewed; do not invent lockfile syntax or edit the workflow.',
+      'Read multi-cloud compute and the connected-cloud release. Separate runner reliability, eligible compute entitlement, and Copilot model usage. Record enterprise opt-in or plan gates instead of assuming all compute is free.',
+      'Sketch a two-change PR stack, a plan attached as an issue artifact, and a PR-attention queue. For terminal attachments, check your installed gh help before writing a command. Keep announced-only availability distinct from the artifact preview.',
+      'Read the Replica and SDK announcements. Write one use case for disposable prototyping and one for a programmable agent. Record how you would check licensing, setup, compatibility, and permissions before adopting either.',
+      'Choose just one proposal. Include owner, prerequisite, success signal, rollback, and a source link. Keep the Moderate role out of the enable-now list while its corrected source says it is not yet available; treat the infrastructure forecast and Octoverse report as context.',
+    ],
+    done: 'You have one scoped adoption proposal with an observable result and rollback, plus a short “not now” list with reasons.',
+    fallback: 'Without repository access, inspect a public workflow or use a written example. Label all unexecuted changes as proposals.',
+    question: 'Does keeping an action tag readable mean a locked workflow follows that tag whenever it moves?',
+    answer: 'No. The lockfile release describes execution pinned to exact locked commits. A readable tag is not permission to silently follow a changed reference; updates need review.',
+    reading: ['lockfiles', 'multiCloud', 'cloudLaunch', 'artifacts', 'prLimits', 'replica', 'sdk', 'moderate', 'architecture'],
+  },
+]
+
+/** @satisfies {Array<{
   name: string; group: string; status: string; detail: string; gate: string;
-  lesson: number; reading: Array<keyof typeof sources>;
+  lesson: number; reading: Array<keyof typeof sources>; addition?: string;
 }>} */
 export const releases = [
   { name: 'GitHub Copilot app', group: 'Agents', status: 'Available', detail: 'Agent-first workspace for projects, tools, context, and code. Do not infer one GA label for all app capabilities: projects and computer use have their own preview status.', gate: 'Check client availability, plan, and organization policy.', lesson: 1, reading: ['app', 'appLaunch', 'overview'] },
@@ -276,4 +366,6 @@ export const releases = [
   { name: 'Copilot code review approvals', group: 'Collaboration', status: 'GA', detail: 'Copilot can approve a PR after review; a separate release from Max effort’s public preview.', gate: 'Pro/Pro+/Max/Business/Enterprise and review policy. An AI approval does not replace required human/security checks or authorize merging.', lesson: 6, reading: ['approvals'] },
   { name: 'Microsoft Copilot SDK transition', group: 'Platform', status: 'Transition', detail: 'GitHub Copilot SDK is becoming Microsoft Copilot SDK: the programmable interface for the shared Microsoft/GitHub agent harness.', gate: 'Naming/foundation transition, not an unrelated brand-new SDK. Check migration and compatibility guidance before changing existing integrations.', lesson: 7, reading: ['sdk'] },
   { name: 'Flexible Actions compute entitlement', group: 'Platform', status: 'Available', detail: 'Included Actions compute becomes a shared dollar-based pool for standard hosted runners and cloud sandboxes; Team and Enterprise Cloud can also use it for larger hosted runners.', gate: 'Applies to Free, Pro, Free for organizations, Team, and Enterprise Cloud. Cloud sandbox billing begins November 2026. Published product rates and existing overage/budget rules apply; not unlimited compute.', lesson: 0, reading: ['cloudLaunch'] },
+  { name: 'Copilot assisted permissions', group: 'Clients', status: 'GA', addition: 'Release-week addition · 26 Oct · checked 2 Nov', detail: 'A model evaluates command, filesystem, and URL permission requests. Clearly safe requests proceed; others still need approval. Available in CLI, app, and VS Code.', gate: 'Enterprise policy can restrict modes and set defaults. Assisted is not allow-all and does not remove responsibility for reviewing risky actions. Do not change permission mode just to finish this guide.', lesson: 0, reading: ['assisted'] },
+  { name: 'Copilot server-to-server authentication', group: 'Platform', status: 'Public preview', addition: 'Release-week addition · 27 Oct · checked 2 Nov', detail: 'Organization-installed GitHub Apps can use short-lived installation tokens for Copilot SDK requests without a signed-in user. Usage is attributed and billed to the organization.', gate: 'Requires the read-only Copilot Requests organization permission and authorized installation. Organization model policies and budgets apply; never paste tokens into prompts. Creating access requires explicit consent.', lesson: 5, reading: ['serviceAuth'] },
 ]

@@ -1,12 +1,12 @@
-export {}
+import { downloadProgress, emptyProgress, importProgress, mergeProgress, progressKey, readStoredProgress, transferLimit } from '../data/universe-progress.mjs'
 const articles = [...document.querySelectorAll<HTMLElement>('[data-lesson]')]
 const checks = [...document.querySelectorAll<HTMLInputElement>('[data-complete]')]
 const progress = document.querySelector<HTMLProgressElement>('#guide-progress')!
 const progressLabel = document.querySelector<HTMLElement>('#progress-label')!
 const storageStatus = document.querySelector<HTMLElement>('#storage-status')!
 const reset = document.querySelector<HTMLButtonElement>('#reset-progress')!
-const storageKey = 'universe-2026-progress-v1'
-let completed: number[] = []
+const storageKey = progressKey
+let passport = emptyProgress()
 let canStore = true
 
 function storageError(message: string) {
@@ -15,21 +15,15 @@ function storageError(message: string) {
 }
 
 try {
-  const raw = localStorage.getItem(storageKey)
-  if (raw !== null) {
-    const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed) || !parsed.every((value) => Number.isInteger(value) && value >= 0 && value < articles.length)) {
-      throw new Error('Invalid progress data')
-    }
-    completed = [...new Set(parsed)]
-  }
+  passport = readStoredProgress(localStorage.getItem(storageKey), articles.length)
   // Test writes too: some browsers allow reads but reject storage writes.
-  localStorage.setItem(storageKey, JSON.stringify(completed))
+  localStorage.setItem(storageKey, JSON.stringify(passport))
 } catch {
   storageError('Saved progress is unavailable or unreadable.')
 }
 
 function updateProgress() {
+  const completed = Object.keys(passport.stamps).map(Number)
   checks.forEach((check) => { check.checked = completed.includes(Number(check.dataset.complete)) })
   document.querySelectorAll<HTMLElement>('.lesson-nav [data-lesson-link]').forEach((link) => {
     const marker = link.querySelector<HTMLElement>('.nav-done')!
@@ -42,7 +36,7 @@ function updateProgress() {
 
 function saveProgress() {
   if (canStore) {
-    try { localStorage.setItem(storageKey, JSON.stringify(completed)) }
+    try { localStorage.setItem(storageKey, JSON.stringify(passport)) }
     catch { storageError('This browser could not save progress.') }
   }
   updateProgress()
@@ -52,17 +46,51 @@ checks.forEach((check) => {
   check.disabled = false
   check.addEventListener('change', () => {
     const index = Number(check.dataset.complete)
-    completed = check.checked ? [...new Set([...completed, index])] : completed.filter((value) => value !== index)
+    if (check.checked) passport.stamps[index] = { route: 'recorded', at: new Date().toISOString() }
+    else delete passport.stamps[index]
     saveProgress()
   })
 })
 reset.addEventListener('click', () => {
   if (window.confirm('Reset the completed lessons in this browser?')) {
-    completed = []
+    passport = emptyProgress()
     saveProgress()
   }
 })
 updateProgress()
+
+window.addEventListener('storage', (event) => {
+  if (event.key !== storageKey || !canStore) return
+  try {
+    passport = readStoredProgress(event.newValue, articles.length)
+    updateProgress()
+  } catch { storageError('Another tab changed progress to an unreadable value.') }
+})
+
+const exportButton = document.querySelector<HTMLButtonElement>('#export-progress')!
+const importFile = document.querySelector<HTMLInputElement>('#import-progress')!
+const transferStatus = document.querySelector<HTMLElement>('#transfer-status')!
+exportButton.disabled = importFile.disabled = false
+exportButton.addEventListener('click', () => {
+  try {
+    downloadProgress(passport)
+    transferStatus.textContent = 'Export requested. Import the JSON file in the other surface.'
+  } catch (error) { transferStatus.textContent = `Export failed. ${error instanceof Error ? error.message : String(error)}` }
+})
+importFile.addEventListener('change', async () => {
+  const file = importFile.files?.[0]
+  if (!file) return
+  try {
+    if (file.size > transferLimit) throw new Error('Progress file is too large (maximum 16 KB).')
+    const incoming = importProgress(await file.text(), articles.length)
+    passport = mergeProgress(passport, incoming)
+    saveProgress()
+    transferStatus.textContent = canStore
+      ? 'Progress imported. Existing stamps were kept.'
+      : 'Imported in this tab only. Export before leaving; browser storage is unavailable.'
+  } catch (error) { transferStatus.textContent = `Import failed. ${error instanceof Error ? error.message : String(error)}` }
+  finally { importFile.value = '' }
+})
 
 function showLesson(focus = false) {
   const match = /^#lesson-(\d+)$/.exec(location.hash)
@@ -90,7 +118,16 @@ document.querySelectorAll<HTMLAnchorElement>('[data-lesson-link]').forEach((link
 })
 window.addEventListener('hashchange', () => {
   if (location.hash.startsWith('#lesson-')) showLesson(true)
+  openLinkedLab()
 })
+function openLinkedLab() {
+  const target = document.getElementById(location.hash.slice(1))
+  if (target instanceof HTMLDetailsElement && target.classList.contains('field-lab')) {
+    target.open = true
+    target.querySelector('summary')?.focus()
+  }
+}
+openLinkedLab()
 
 const copyStatus = document.querySelector<HTMLElement>('#copy-status')!
 document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => {

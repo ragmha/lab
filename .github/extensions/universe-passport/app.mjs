@@ -1,7 +1,11 @@
+import { applyProgress, downloadProgress, emptyProgress, importProgress, progressKey, readStoredProgress, roundSize, transferLimit } from '../../../src/data/universe-progress.mjs'
+import { labs, lessons, releases, scope, sources as sourceData, statusNote } from '../../../src/data/universe.mjs'
+
+const browserOnly = document.documentElement.dataset.storage === 'browser'
 const token = new URLSearchParams(location.search).get('token') ?? ''
 const $ = (selector) => document.querySelector(selector)
 const cx = (...names) => names.filter(Boolean).join(' ')
-const panels = { passport: $('#panel-passport'), round: $('#panel-round'), board: $('#panel-board') }
+const panels = { passport: $('#panel-passport'), round: $('#panel-round'), labs: $('#panel-labs'), board: $('#panel-board') }
 const tabs = [...document.querySelectorAll('[role="tab"]')]
 const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' })
 
@@ -19,6 +23,24 @@ let selected = 0
 let fresh = null
 let busy = false
 let round = null
+let browserProgress = emptyProgress()
+let browserCanStore = true
+let browserNotice = null
+
+function browserStorageError(error) {
+  browserCanStore = false
+  browserNotice = `Browser storage is unavailable or unreadable. Progress works in this tab only; export before leaving. ${error.message}`
+  if (data) $('#storage').textContent = browserNotice
+}
+
+window.addEventListener('storage', (event) => {
+  if (!browserOnly || !data || !browserCanStore || event.key !== progressKey) return
+  try {
+    data.progress = browserProgress = readStoredProgress(event.newValue, lessons.length)
+    renderPassport()
+    renderRound()
+  } catch (error) { browserStorageError(error) }
+})
 
 function h(tag, props = {}, ...children) {
   const element = document.createElement(tag)
@@ -32,6 +54,25 @@ function h(tag, props = {}, ...children) {
 }
 
 async function api(path, command) {
+  if (browserOnly) {
+    if (path === '/api/state') {
+      try {
+        browserProgress = readStoredProgress(localStorage.getItem(progressKey), lessons.length)
+        localStorage.setItem(progressKey, JSON.stringify(browserProgress))
+      } catch (error) { browserStorageError(error) }
+      return { labs, lessons, releases, scope, sources: sourceData, statusNote, roundSize, progress: browserProgress, storage: { notice: browserNotice } }
+    }
+    if (browserCanStore) {
+      try { browserProgress = readStoredProgress(localStorage.getItem(progressKey), lessons.length) }
+      catch (error) { browserStorageError(error) }
+    }
+    browserProgress = applyProgress(browserProgress, command, lessons.length)
+    if (browserCanStore) {
+      try { localStorage.setItem(progressKey, JSON.stringify(browserProgress)) }
+      catch (error) { browserStorageError(error) }
+    }
+    return { progress: browserProgress }
+  }
   const response = await fetch(path, {
     method: command ? 'POST' : 'GET',
     headers: { Authorization: `Bearer ${token}`, ...(command && { 'Content-Type': 'application/json' }) },
@@ -56,12 +97,15 @@ function showError(message) {
 
 // Every change is applied by the server first; the view only re-renders from what was actually saved.
 async function change(command, message) {
-  if (busy) return false
+  if (busy) {
+    showError('A progress save is still running. Wait for it to finish, then retry.')
+    return false
+  }
   busy = true
   try {
     data.progress = (await api('/api/progress', command)).progress
     showError('')
-    announce(message)
+    announce(`${message}${browserOnly && !browserCanStore ? ' This tab only; export before leaving.' : ''}`)
     return true
   } catch (error) {
     showError(`Not saved. ${error.message}`)
@@ -117,11 +161,15 @@ async function load() {
   }
   selected = nextStep() ?? 0
   $('.scope').textContent = data.scope
-  $('#storage').replaceChildren(`Progress is saved on this computer in ${data.storage.file}.`)
+  $('#storage').replaceChildren(browserOnly
+    ? 'Progress stays in this browser on this device. The guide and Passport share it here. Export/import to move it to another device; there is no shared team dashboard.'
+    : `Progress is saved on this computer in ${data.storage.file}.`)
   if (data.storage.notice) $('#storage').append(h('strong', {}, ` ${data.storage.notice}`))
   renderPassport()
   renderRound()
+  renderLabs()
   renderBoard()
+  $('#export-progress').disabled = $('#import-progress').disabled = false
 }
 
 function nextStep() {
@@ -129,7 +177,7 @@ function nextStep() {
   return step === -1 ? null : step
 }
 
-const routeLabel = (route) => route === 'practice' ? 'practice route' : 'exercise'
+const routeLabel = (route) => ({ practice: 'practice route', exercise: 'exercise', recorded: 'self-reported completion' })[route]
 
 function slot(lesson, step, next) {
   const stamp = data.progress.stamps[step]
@@ -146,7 +194,7 @@ function slot(lesson, step, next) {
     h('span', { class: 'slot-meta' }, `${lesson.minutes} min`),
     h('span', { class: 'sr-only' }, `, ${state}`),
     stamp
-      ? h('span', { class: 'slot-mark', 'aria-hidden': 'true' }, stamp.route === 'practice' ? 'Practice' : 'Done', h('small', {}, day.format(new Date(stamp.at))))
+      ? h('span', { class: 'slot-mark', 'aria-hidden': 'true' }, { practice: 'Practice', exercise: 'Done', recorded: 'Recorded' }[stamp.route], h('small', {}, day.format(new Date(stamp.at))))
       : step === next && h('span', { class: 'slot-next', 'aria-hidden': 'true' }, 'Next'))
 }
 
@@ -158,10 +206,11 @@ function completion() {
   return h('section', { class: 'complete', 'aria-labelledby': 'complete-title' },
     h('div', { class: 'seal', 'aria-hidden': 'true' }, h('span', {}, 'Universe'), h('strong', {}, '2026'), h('span', {}, day.format(last))),
     h('div', {},
-      h('h2', { id: 'complete-title', tabindex: '-1' }, 'Passport complete'),
+      h('h2', { id: 'complete-title', tabindex: '-1' }, 'Core passport complete'),
       h('p', {}, `All ${data.lessons.length} steps stamped${practice ? `, ${practice} by practice route` : ''}. `,
         best ? `Best status round: ${best.score} of ${best.total}.` : 'Status round not played yet.'),
-      h('p', { class: 'fine' }, 'A personal progress card, not a GitHub certification.')))
+      h('p', { class: 'fine' }, 'Self-reported progress, not verified mastery or a GitHub certification. The status round tests recall. Use the optional field labs to explain decisions and collect evidence.'),
+      h('button', { type: 'button', class: 'button', onclick: () => showTab('labs', true) }, 'Explore field labs')))
 }
 
 function stampRow(stamp) {
@@ -294,7 +343,7 @@ function cardView() {
     h('h2', { id: 'card-title', tabindex: '-1' }, card.name),
     h('p', { class: 'muted' }, card.group),
     h('fieldset', { class: 'choices' },
-      h('legend', {}, 'Status as of 1 Nov 2026'),
+      h('legend', {}, 'Status at the source check date'),
       buckets.map((bucket) => h('button', {
         type: 'button',
         class: cx('button', 'choice', answer && bucket === official && 'is-official', answer === bucket.id && bucket !== official && 'is-wrong'),
@@ -315,7 +364,7 @@ function cardView() {
       sources(card.reading, true),
       h('div', { class: 'button-row' },
         h('button', { class: 'button button-primary', type: 'button', onclick: last ? finishRound : nextCard }, last ? 'See results' : 'Next card'),
-        h('button', { class: 'button', type: 'button', onclick: () => practise(card.lesson) }, `Practise in step ${card.lesson}`))))
+        h('button', { class: 'button', type: 'button', onclick: () => practise(card.lesson) }, `Related core step ${card.lesson}`))))
 }
 
 function nextCard() {
@@ -342,7 +391,7 @@ function resultsView() {
     misses.length
       ? [h('h3', {}, 'Review these'), h('ul', { class: 'misses' }, misses.map(({ card, answer }) => h('li', {},
           h('strong', {}, card.name), `: you picked ${buckets.find((bucket) => bucket.id === answer).label}; official status is ${card.status}. `,
-          h('button', { class: 'link-button', type: 'button', onclick: () => practise(card.lesson) }, `Practise in step ${card.lesson}`))))]
+          h('button', { class: 'link-button', type: 'button', onclick: () => practise(card.lesson) }, `Related core step ${card.lesson}`))))]
       : h('p', {}, 'Every status read correctly.'),
     h('div', { class: 'button-row' }, h('button', { class: 'button button-primary', type: 'button', onclick: startRound }, 'Play another round')))
 }
@@ -361,16 +410,73 @@ function renderRound() {
 }
 
 function release(item) {
+  const lab = data.labs.find((lab) => item.reading[0] !== 'recap' && lab.reading.some((key) => key === item.reading[0]))
   return h('li', { class: 'release' },
     h('h3', {}, item.name),
     h('p', { class: 'release-meta' },
       h('span', { class: cx('status', `status-${bucketOf(item.status)?.id ?? 'other'}`) }, item.status),
       h('span', {}, item.group),
-      h('button', { class: 'link-button', type: 'button', onclick: () => practise(item.lesson) }, `Practise in step ${item.lesson}`)),
+      h('button', { class: 'link-button', type: 'button', onclick: () => practise(item.lesson) }, `Related core step ${item.lesson}`),
+      lab && h('button', { class: 'link-button', type: 'button', onclick: () => openLab(lab.id) }, `Field lab: ${lab.title}`)),
+    item.addition && h('p', { class: 'fine' }, item.addition),
     h('p', {}, item.detail),
     h('p', { class: 'gate-line' }, h('strong', {}, 'Gate: '), item.gate),
     sources(item.reading, true))
 }
+
+function openLab(id) {
+  showTab('labs')
+  const detail = $(`#lab-${id}`)
+  detail.open = true
+  detail.querySelector('summary').focus()
+}
+
+function renderLabs() {
+  panels.labs.replaceChildren(
+    h('h2', {}, 'Field labs'),
+    h('p', { class: 'scope-note' }, 'Optional after the eight core steps. Produce a small evidence sheet, answer the scenario in your own words, then compare with the explanation. Times are editorial estimates. Nothing is run, and these labs do not award verified credentials.'),
+    ...data.labs.map((lab) => h('details', { id: `lab-${lab.id}`, class: 'lab' },
+      h('summary', {}, `${lab.title} · about ${lab.minutes} min`),
+      h('div', { class: 'lesson' },
+        h('p', {}, lab.goal),
+        h('h3', {}, 'Before you start'), h('p', {}, lab.prerequisites),
+        h('div', { class: 'gate' }, h('h3', {}, 'Permission & credit gate'), h('p', {}, lab.warning)),
+        h('h3', {}, 'Do this in order'), h('ol', { class: 'steps' }, lab.steps.map((step) => h('li', {}, step))),
+        h('h3', {}, 'Evidence to keep'), h('p', {}, lab.done),
+        h('p', { class: 'fine' }, lab.fallback),
+        h('h3', {}, 'Explain your decision'), h('p', {}, lab.question),
+        h('details', {}, h('summary', {}, 'Compare your answer'), h('p', {}, lab.answer)),
+        sources(lab.reading)))))
+}
+
+$('#export-progress').addEventListener('click', () => {
+  try {
+    downloadProgress(data.progress)
+    $('#transfer-status').textContent = 'Export requested. If the panel blocks downloads, open this preview in your browser and retry.'
+  } catch (error) { $('#transfer-status').textContent = `Export failed. ${error.message}` }
+})
+
+$('#import-progress').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const status = $('#transfer-status')
+  status.textContent = ''
+  try {
+    if (file.size > transferLimit) throw new Error('Progress file is too large (maximum 16 KB).')
+    const text = await file.text()
+    importProgress(text, data.lessons.length)
+    if (!(await change({ type: 'import', text }, 'Progress imported. Existing stamps were kept.'))) {
+      status.textContent = 'Import was not saved. See the error above; retry after resolving it.'
+      return
+    }
+    renderPassport()
+    renderRound()
+    status.textContent = browserOnly && !browserCanStore
+      ? 'Imported in this tab only. Export before leaving; browser storage is unavailable.'
+      : 'Progress imported. Existing stamps were kept.'
+  } catch (error) { status.textContent = `Import failed. ${error.message}` }
+  finally { event.target.value = '' }
+})
 
 function renderBoard() {
   const unique = (key) => [...new Set(data.releases.map((item) => item[key]))].sort()

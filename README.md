@@ -1,142 +1,51 @@
-# Raghib’s Lab
+# Raghib's Lab
 
-Independent, browser-only experiments by [Raghib Hasan](https://raghib.io/).
-The canonical site is **https://lab.raghib.io**, hosted on free GitHub Pages.
-Pushes to `main` deploy the checked build once the repository's Pages settings
-and custom domain are configured.
+> Small, interactive experiments that run in your browser.
 
-| Path | Experiment |
+Visit **[lab.raghib.io](https://lab.raghib.io/)**.
+
+| Experiment | What it does |
 | --- | --- |
-| `/` | Experiment index |
-| `/chess/` | Stockfish chess, live search details, and context-window illustration |
-| `/context-autopsy/` | Local agent-session usage, cache, context, and cost analysis |
-| `/session-flame/` | Session replay, flame charts, recorded comparisons, evidence export |
-| `/token-diet/` | Two recorded token-use experiments and their reproduction kit |
-| `/universe/` | Universe 2026 learning path, local progress, and sourced announcement inventory |
+| [Universe Passport](https://lab.raghib.io/universe/passport/) | Learn the Universe 2026 releases, stamp lessons, and check your understanding |
+| [Universe field guide](https://lab.raghib.io/universe/) | Read the lessons, optional labs, release inventory, and download the slides |
+| [Chess](https://lab.raghib.io/chess/) | Play Stockfish locally |
+| [Context Autopsy](https://lab.raghib.io/context-autopsy/) | Inspect agent-session context and token use |
+| [Session Flame](https://lab.raghib.io/session-flame/) | Replay sessions as a flame chart |
+| [Token Diet](https://lab.raghib.io/token-diet/) | Compare recorded token-use experiments |
 
-## Develop and verify
+## Run locally
 
-Install Bun 1.3.5 and Node.js 22.12 or later:
+Requires Bun 1.3.5 and Node.js 22.12+.
 
 ```sh
 bun install --frozen-lockfile
 bun run dev
+```
+
+## Check
+
+```sh
 bun run test
 bun run build
 bunx playwright install chromium webkit
 bun run test:browser
 ```
 
-`build` runs Astro checking **and TypeScript checking**, including the
-reproduction scripts, before generating `dist/`. `test:browser` starts its
-own production preview on `127.0.0.1:4397`, runs all browser suites fail-fast,
-and stops the preview. Build first. Set `LAB_TEST_URL` to check an already
-running server instead. Browser suites use Node's native test runner with
-fail-fast cancellation; unit tests use Bun. CI installs browser OS dependencies and runs unit
-tests, the typechecked build, and the same browser checks.
+Pushes to `main` deploy to GitHub Pages after these checks pass.
 
-The browser checks cover the real Stockfish worker/WASM (including offline
-play), session replay and comparison downloads in Chromium and WebKit,
-all nine published fixture selections, offline context import through its
-worker, token-diet round switching, themes, small screens, and local links.
+## Progress
 
-The homepage uses a responsive showcase grid (three, two, or one column) with
-animated click-through previews (`public/previews/*.gif`) that fall back to
-static captures for reduced-motion preferences, and a pausable SVG flask that
-starts still for reduced-motion preferences. To re-record the previews, build,
-run `bun run preview`, then `node scripts/record-previews.mjs <preview URL>`
-(requires ffmpeg).
-Its language bar shows GitHub Linguist's source-byte breakdown, not usage or
-traffic. CI refreshes the data from GitHub on each main-branch deployment;
-local and PR builds use the checked-in `src/data/languages.json` snapshot,
-so building locally does not require network access or credentials. GitHub's
-language analysis can lag the latest commit. The browser makes no GitHub API calls.
+Universe progress stays on your device. The public Passport and field guide
+share progress in the same browser. Use **Export progress** and **Import**
+to move it between devices or the [Copilot canvas](.github/extensions/universe-passport/).
+There are no accounts, automatic cross-device sync, or team tracking.
+The canvas saves locally under `~/.copilot/extensions/universe-passport/artifacts/`
+(`COPILOT_HOME` overrides the base directory).
 
-## Privacy and source data
+> [!NOTE]
+> Release availability is a sourced snapshot: launch-day coverage checked
+> 1 November 2026, with two release-week additions checked 2 November.
+> Lessons never run agents, change permissions, or spend credits.
 
-The Universe field guide covers the official overview, recap, and 31 launch-day
-changelog posts (deduplicated), verified 1 November 2026, not an exhaustive
-changelog or every conference session.
-Its eight ordered lessons use editorial time estimates and separate access,
-permissions, and AI credit gates from practice. All instructions are inert:
-the site cannot run agents, scans, installs, or account changes. Progress is
-stored only in this browser; a visible warning reports blocked or corrupt
-storage. Without JavaScript all lessons and official links remain readable.
-
-The Universe Passport canvas in `.github/extensions/universe-passport/` shows
-the same content (`src/data/universe.mjs`) inside the GitHub Copilot app as
-lesson stamps, a GA-or-preview status round, and a searchable release board.
-Copilot loads it in sessions opened in this repository; ask Copilot to open the
-Universe Passport canvas. It serves only on a loopback address, runs nothing on
-your behalf, and saves progress outside the repository in
-`~/.copilot/extensions/universe-passport/artifacts/progress.json` (under
-`COPILOT_HOME` when set). `bun run test` covers its server and store;
-`bun run test:browser` covers its UI.
-
-Imported sessions are parsed on the device, not uploaded. There are no
-analytics, server handlers, accounts, databases, or third-party runtime
-requests. The theme choice alone is stored in local storage. Downloadable
-Copilot helpers copy local files or capture a new CLI invocation; inspect
-raw logs before sharing them.
-
-Only previously published experiment fixtures and measurements were
-imported. No private `.work/` trees, personal session logs, credentials,
-or local configuration were copied. Hash tests preserve the nine recorded
-TodoMVC fixtures and both unmodified Stockfish distribution files.
-
-See [source provenance and licenses](PROVENANCE.md) and the
-[token-diet reproduction kit](scripts/token-diet/README.md). The kit is
-optional: it requires separately authenticated agent tooling and may consume
-paid model credits. Normal installation, builds, and tests do not run it.
-Its seeded Python fixture intentionally contains bugs; it is not a passing
-application test suite.
-
-## Hosting: GitHub Pages
-
-This public repository uses GitHub Pages for free static hosting. The
-existing CI job installs from the lockfile, runs unit tests, typechecks and
-builds Astro, and runs the browser suites. Only a successful push to `main`
-uploads `dist/` as a Pages artifact and deploys that exact build. Pull requests
-run the checks but never deploy. Deployment uses GitHub's built-in token and
-OIDC permissions; no deployment secrets or external hosting account are needed.
-
-### One-time repository and domain setup
-
-1. In `ragmha/lab` → **Settings → Pages**, select **GitHub Actions** as the
-   build and deployment source.
-2. Set the custom domain to **lab.raghib.io** in those Pages settings.
-   `public/CNAME` also records this domain and is copied to `dist/CNAME`;
-   the file does not replace the custom-domain setting for Actions deployments.
-3. In **Namecheap → Advanced DNS**, add or update this record:
-
-   | Type | Host | Value |
-   | --- | --- | --- |
-   | CNAME | `lab` | `ragmha.github.io` |
-
-   Remove conflicting records for `lab` only. Do not include `https://` or
-   `/lab` in the value. Keep Namecheap nameservers and the blog's existing
-   apex/`www` DNS records unchanged. **raghib.io stays on GitHub Pages** in its
-   own repository; it does not move with the experiments.
-4. Wait for GitHub's domain check and certificate issuance, then enable
-   **Enforce HTTPS**. If the initial deployment ran before Pages was enabled,
-   rerun the workflow after completing the repository setup.
-
-The workflow publishes the site but does not configure Pages settings or DNS.
-Repository administrators handle the one-time setup above.
-
-The original blog’s `/experiments/` and `/experiments/<name>/` redirects
-belong in the **raghib.io repository**, not here. Old blog download URLs may
-remain there as compatibility copies.
-
-### If an experiment needs a backend later
-
-Today's experiments run entirely in the browser. GitHub Pages serves static
-files, not server-side functions, and that is all they currently need. Add
-a separate backend or move hosts only when an actual server-side feature
-requires it; no API endpoints, databases, or paid services are provisioned.
-
-The build remains portable: `dist/` can be served by another static host with
-directory indexes, JavaScript, JSONL, fonts, and `.wasm` (`application/wasm`).
-Keep the same asset paths and custom domain. If the domain changes, update
-`site` in `astro.config.mjs`, `public/CNAME`, and the canonical assertions in
-the tests, then rebuild.
+See [sources and licenses](PROVENANCE.md) and the optional
+[reproduction kit](scripts/token-diet/README.md), which can consume paid model credits.

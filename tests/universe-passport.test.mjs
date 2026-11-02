@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { lessons, releases } from '../src/data/universe.mjs'
 import { createStore } from '../.github/extensions/universe-passport/store.mjs'
+import { exportProgress } from '../src/data/universe-progress.mjs'
 import { startServer } from '../.github/extensions/universe-passport/server.mjs'
 
 let dir
@@ -43,7 +44,7 @@ function statusWithHost(host) {
 }
 
 test('serves the panel assets under a strict CSP', async () => {
-  for (const [path, type] of [['/', 'text/html'], ['/app.mjs', 'text/javascript'], ['/styles.css', 'text/css']]) {
+  for (const [path, type] of [['/', 'text/html'], ['/app.mjs', 'text/javascript'], ['/src/data/universe-progress.mjs', 'text/javascript'], ['/src/data/universe.mjs', 'text/javascript'], ['/styles.css', 'text/css']]) {
     const response = await fetch(`${server.origin}${path}`)
     assert.equal(response.status, 200, path)
     assert.match(response.headers.get('content-type'), new RegExp(type))
@@ -58,7 +59,7 @@ test('serves the corrected deck as an attachment', async () => {
   assert.equal(response.status, 200)
   assert.match(response.headers.get('content-disposition'), /^attachment; filename="universe-2026-starter\.pptx"$/)
   const hash = createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex')
-  assert.equal(hash, 'de012abe634ab7f21bdd18c3aef3c213cebebe818e7781ea66feffa948bddb32')
+  assert.equal(hash, 'd6b028ad04f0c9e9d20c0f223bbe2be48bcc623ee3840b61a47caf7d34924fa8')
 })
 
 test('state needs the panel token and exposes the shared content', async () => {
@@ -68,6 +69,7 @@ test('state needs the panel token and exposes the shared content', async () => {
   const body = await response.json()
   assert.equal(body.lessons.length, lessons.length)
   assert.equal(body.releases.length, releases.length)
+  assert.equal(body.labs.length, 4)
   assert.match(body.scope, /checked 1 Nov 2026/)
   assert.ok(body.releases.every((item) => body.lessons[item.lesson]), 'every release links to a real lesson')
   assert.deepEqual(body.progress, { stamps: {}, bestRound: null })
@@ -111,4 +113,20 @@ test('moves unreadable progress aside instead of overwriting it', async () => {
   assert.deepEqual(await store.read(), { stamps: {}, bestRound: null })
   const aside = store.notice.match(/moved to (\S+)\./)[1]
   assert.equal(await readFile(aside, 'utf8'), '{ not json')
+})
+
+test('imports progress through the authenticated route and rejects invalid imports atomically', async () => {
+  const at = '2026-11-02T06:00:00.000Z'
+  const previous = JSON.parse(await readFile(join(dir, 'progress.json'), 'utf8'))
+  const response = await post({ type: 'import', text: exportProgress({
+    stamps: { 0: { route: 'practice', at }, 2: { route: 'recorded', at } },
+    bestRound: { score: 8, total: 8, at },
+  }) })
+  assert.equal(response.status, 200)
+  const { progress } = await response.json()
+  assert.deepEqual(progress.stamps[0], previous.stamps[0])
+  assert.equal(progress.stamps[2].route, 'recorded')
+  assert.equal(progress.bestRound.score, 8)
+  assert.equal((await post({ type: 'import', text: '{"format":"not-passport"}' })).status, 400)
+  assert.deepEqual(JSON.parse(await readFile(join(dir, 'progress.json'), 'utf8')), progress)
 })

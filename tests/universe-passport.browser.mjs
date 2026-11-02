@@ -158,9 +158,18 @@ test('Universe Passport canvas: stamps, status round, board, fallbacks and narro
     await page.getByRole('button', { name: 'Clear filters' }).click()
     assert.equal(await page.locator('.release').count(), releases.length)
     assert.equal(await focusedId(), 'release-search')
+    await page.locator('#release-search').fill('GitHub Agentic Workflows')
+    await page.locator('.release').filter({ has: page.getByRole('heading', { name: 'GitHub Agentic Workflows', exact: true }) })
+      .getByRole('button', { name: 'Field lab: Automations, Actions & agent identity', exact: true }).click()
+    assert.equal(await page.getByRole('tab', { name: 'Field labs' }).getAttribute('aria-selected'), 'true')
+    assert.equal(await page.locator('#lab-automation').getAttribute('open'), '')
+    assert.match(await page.locator('#lab-automation').innerText(), /Markdown-to-Actions-YAML/)
+    await page.locator('#lab-automation details summary').click()
+    assert.match(await page.locator('#lab-automation details').innerText(), /separate controls/)
+    await shoot('labs-1100')
     for (const width of [700, 420, 320]) {
       await page.setViewportSize({ width, height: 900 })
-      for (const tab of ['Passport', 'Status round', 'Release board']) {
+      for (const tab of ['Passport', 'Status round', 'Field labs', 'Release board']) {
         await page.getByRole('tab', { name: tab }).click()
         const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
         assert.ok(scrollWidth <= width, `${tab} overflows to ${scrollWidth}px at ${width}px`)
@@ -168,6 +177,10 @@ test('Universe Passport canvas: stamps, status round, board, fallbacks and narro
     }
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.setViewportSize({ width: 420, height: 900 })
+    await page.getByRole('tab', { name: 'Field labs' }).click()
+    await shoot('labs-420-dark')
+    await page.getByRole('tab', { name: 'Release board' }).click()
+    await page.getByRole('button', { name: 'Clear', exact: true }).click()
     await shoot('board-420-dark')
     await page.emulateMedia({ colorScheme: 'light' })
     await page.setViewportSize({ width: 1100, height: 900 })
@@ -191,7 +204,7 @@ test('Universe Passport canvas: stamps, status round, board, fallbacks and narro
 
     const denied = await browser.newPage({ viewport: { width: 420, height: 900 } })
     await denied.goto(`${server.origin}/?token=wrong`, { waitUntil: 'networkidle' })
-    assert.equal(await denied.getByRole('button', { name: 'Try again', includeHidden: true }).count(), 3)
+    assert.equal(await denied.getByRole('button', { name: 'Try again', includeHidden: true }).count(), 4)
     assert.match(await denied.locator('#panel-passport').innerText(), /^Your passport did not load\./)
     await denied.close()
     assert.deepEqual(errors, [])

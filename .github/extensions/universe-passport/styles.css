@@ -39,7 +39,7 @@ a { color: var(--link); text-underline-offset: .15em; }
 .muted, .state { color: var(--muted); }
 .state { padding: 1.5rem 0; }
 
-.masthead, .tabs, .notice, main, .footer { width: min(100% - 2rem, 72rem); margin-inline: auto; }
+.masthead, .tabs, .notice, main, .footer, .public-nav { width: min(100% - 2rem, 72rem); margin-inline: auto; }
 .masthead {
   display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
   gap: 1rem 2rem; padding-block: 1.25rem 1rem;
@@ -193,6 +193,11 @@ input, select {
 
 .footer { padding-block: 1rem 2rem; border-top: 1px solid var(--line); font-size: .8125rem; color: var(--muted); overflow-wrap: anywhere; }
 .footer p { max-width: 80ch; margin: .3rem 0; }
+.transfer { max-width: 48rem; }
+.transfer label { display: block; margin-top: .75rem; }
+.public-nav { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; padding-block: .75rem; font-size: .875rem; }
+.lab { max-width: 75ch; }
+.lab > .lesson { padding-block: .5rem 1rem; }
 #storage strong { color: var(--ink); }
 
 @media (min-width: 36rem) and (max-width: 51.99rem) {
