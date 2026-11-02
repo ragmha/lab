@@ -1,0 +1,30 @@
+---
+import shell from '../../../.github/extensions/universe-passport/index.html?raw'
+import '../../../.github/extensions/universe-passport/styles.css'
+const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+// Reuse the canvas's body so public and in-app controls cannot drift.
+const body = shell.split('<body>')[1].split('</body>')[0]
+  .replace('href="/downloads/', `href="${base}/downloads/`)
+---
+<!doctype html>
+<html lang="en" data-storage="browser">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Learn GitHub Universe 2026 with eight lesson stamps, four optional field labs, a release-status game, and progress saved on your device." />
+    <title>Universe Passport · Raghib’s Lab</title>
+    <link rel="canonical" href={new URL(`${base}/universe/passport/`, Astro.site)} />
+  </head>
+  <body>
+    <nav class="public-nav" aria-label="Guide navigation">
+      <a href={`${base}/`}>Raghib’s Lab</a>
+      <a href={`${base}/universe/`}>Read the full field guide</a>
+    </nav>
+    <Fragment set:html={body} />
+    <noscript><p>This interactive Passport needs JavaScript. <a href={`${base}/universe/`}>Read all lessons and labs in the field guide without JavaScript.</a></p></noscript>
+    <script>
+      import '../../../.github/extensions/universe-passport/app.mjs'
+    </script>
+  </body>
+</html>

@@ -40,7 +40,7 @@ try {
   Object.assign(process.env, env)
   const controller = new AbortController()
   const tests = run({
-    files: ['tests/lab.browser.mjs', 'tests/chess.browser.mjs', 'tests/session-flame.browser.mjs'],
+    files: ['tests/lab.browser.mjs', 'tests/chess.browser.mjs', 'tests/session-flame.browser.mjs', 'tests/universe.browser.mjs', 'tests/universe-passport.browser.mjs'],
     concurrency: 1,
     timeout: 120_000,
     signal: controller.signal,
