@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { chromium } from 'playwright'
 
 const base = process.env.LAB_TEST_URL
-const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/token-diet/']
+const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/super-mona/', '/token-diet/']
 const recorded = JSON.parse(await readFile(new URL('../src/lib/session-flame-runs.json', import.meta.url), 'utf8'))
 const languages = JSON.parse(await readFile(new URL('../src/data/languages.json', import.meta.url), 'utf8'))
 
@@ -16,7 +16,7 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       await page.goto(base, { waitUntil: 'networkidle' })
       const panels = page.locator('.experiment-grid a')
       assert.deepEqual(await panels.evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
-        ['/session-flame/', '/context-autopsy/', '/token-diet/', '/chess/'])
+        ['/session-flame/', '/context-autopsy/', '/token-diet/', '/chess/', '/super-mona/'])
       assert.equal(await page.locator('h1').innerText(), 'Raghib’s Lab — Experiments')
       const total = languages.reduce((sum, language) => sum + language.size, 0)
       assert.deepEqual(await page.locator('.language-legend li').allTextContents(), languages.map(({ node, size }) => `${node.name} ${(size / total * 100).toFixed(1)}%`))
@@ -32,7 +32,7 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       })
       assert.ok(baselineGap < 1, `Visible flask and LAB baselines differ by ${baselineGap}px at ${width}px`)
       assert.equal(await page.locator('.experiment-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length), width > 1088 ? 3 : width > 672 ? 2 : 1)
-      assert.equal(await page.locator('.experiment-preview img').count(), 4)
+      assert.equal(await page.locator('.experiment-preview img').count(), 5)
       assert.doesNotMatch(await page.locator('.experiment-preview img').first().evaluate((img) => img.currentSrc), /\.gif$/)
       if (width > 1088) assert.equal(await panels.evaluateAll((links) => new Set(links.slice(0, 3).map((link) => link.getBoundingClientRect().height)).size), 1)
       assert.ok(await page.locator('.experiment-grid').evaluate((grid) => [...grid.querySelectorAll('a')].every((link) => link.getBoundingClientRect().height >= 44)))
@@ -48,7 +48,7 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
     const motion = await browser.newPage({ reducedMotion: 'no-preference' })
     await motion.goto(base, { waitUntil: 'networkidle' })
     assert.deepEqual(await motion.locator('.experiment-preview img').evaluateAll((images) => images.map((img) => new URL(img.currentSrc).pathname)),
-      ['/previews/session-flame.gif', '/previews/context-autopsy.gif', '/previews/token-diet.gif', '/previews/chess.gif'])
+      ['/previews/session-flame.gif', '/previews/context-autopsy.gif', '/previews/token-diet.gif', '/previews/chess.gif', '/previews/super-mona.gif'])
   } finally {
     await browser.close()
   }

@@ -1,0 +1,107 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ThemeToggle from '../components/ThemeToggle.astro'
+import '../styles/site.css'
+
+const description =
+  "Play Super Mona in your browser: a port of Martin Woodward's platformer for the GitHub Universe 2026 badge, with all 32 stages, two heroes, and keyboard or touch controls."
+---
+
+<BaseLayout
+  title="Super Mona: The Universe Badge Platformer in Your Browser"
+  description={description}
+  bodyClass="site-surface mona-body"
+  pageClass="mona-page"
+  defaultTheme="dark"
+>
+  <header class="app-bar">
+    <div class="app-title">
+      <a class="app-back" href="/"><span aria-hidden="true">←</span> Experiments</a>
+      <h1 id="page-title">Can Mona Reach the Last Flag?</h1>
+      <p class="intro">Super Mona, the GitHub Universe 2026 badge platformer, ported to the browser. 32 stages, two heroes, nothing to install.</p>
+    </div>
+    <div class="app-actions"><ThemeToggle /></div>
+  </header>
+  <main class="stage" aria-labelledby="page-title">
+    <div class="console">
+      <canvas id="mona-screen" width="640" height="480" role="img" aria-label="Super Mona game screen"></canvas>
+      <noscript><p>Enable JavaScript to play. The game runs entirely in your browser.</p></noscript>
+      <div class="pad">
+        <div class="dpad">
+          <button type="button" data-btn="up" aria-label="Up">▲</button>
+          <button type="button" data-btn="left" aria-label="Left">◀</button>
+          <button type="button" data-btn="right" aria-label="Right">▶</button>
+          <button type="button" data-btn="down" aria-label="Down">▼</button>
+        </div>
+        <button type="button" class="start" data-btn="menu">Start</button>
+        <div class="face">
+          <button type="button" data-btn="b" aria-label="B: run">B</button>
+          <button type="button" data-btn="a" aria-label="A: jump">A</button>
+        </div>
+      </div>
+      <p class="keys">
+        <span><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd> move</span>
+        <span><kbd>Z</kbd> or <kbd>Space</kbd> jump (A)</span>
+        <span><kbd>X</kbd> or <kbd>Shift</kbd> run (B)</span>
+        <span><kbd>Enter</kbd> start / pause</span>
+      </p>
+      <p class="credit">
+        Game by <a href="https://github.com/martinwoodward/super-mona">Martin Woodward</a>, Mona sprites from
+        <a href="https://github.com/badger/home">badger/home</a>, both <a href="/super-mona/LICENSE.txt">MIT</a>.
+        High score stays in this browser.
+      </p>
+    </div>
+  </main>
+</BaseLayout>
+
+<script>
+  import '../scripts/super-mona'
+</script>
+
+<style>
+  :global(html:has(.mona-body)), :global(.mona-body) { height: 100%; overflow: hidden; }
+  :global(.site-surface .mona-page) {
+    --app-gutter: clamp(0.75rem, 2.5vw, 2rem);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    width: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+  }
+  .app-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.5rem var(--app-gutter); border-bottom: 1px solid var(--theme-rule); }
+  .app-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75rem; min-width: 0; }
+  .app-back { color: var(--theme-muted); font-size: 0.75rem; text-decoration: none; }
+  .app-back:hover { color: var(--theme-text); text-decoration: underline; }
+  .app-bar h1 { margin: 0; font-size: 0.95rem; font-weight: 700; letter-spacing: 0; line-height: 1.4; }
+  .app-bar .intro { flex-basis: 100%; margin: 0; color: var(--theme-muted); font-size: 0.72rem; line-height: 1.5; }
+  .app-actions { flex: none; display: flex; justify-content: end; min-width: 4.5rem; min-height: 2.25rem; }
+  .app-actions :global(#theme-toggle) { min-height: 2.25rem; padding: 0.25rem 0.65rem; border: 1px solid var(--theme-rule-strong); border-radius: 0; background: none; color: var(--theme-text); font: inherit; font-size: 0.75rem; cursor: pointer; }
+  /* The screen keeps 4:3 and takes whichever is smaller: the width, or the height left after the text below it. */
+  .stage { min-height: 0; padding: 0.75rem var(--app-gutter); container-type: size; }
+  .console { --chrome: 4.5rem; width: min(100cqw, (100cqh - var(--chrome)) * 4 / 3); margin: 0 auto; display: grid; gap: 0.6rem; }
+  canvas { display: block; width: 100%; aspect-ratio: 4 / 3; background: #000; image-rendering: pixelated; }
+  .keys, .credit { margin: 0; color: var(--theme-muted); font-size: 0.72rem; line-height: 1.6; }
+  .keys { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
+  kbd { padding: 0 0.3rem; border: 1px solid var(--theme-rule-strong); font: inherit; color: var(--theme-text); }
+  kbd + kbd { margin-left: 0.2rem; }
+  .credit a { color: inherit; }
+  .pad { display: none; }
+  /* Touch screens get a badge-style pad instead of the key list. */
+  @media (hover: none) and (pointer: coarse) {
+    .console { --chrome: 13rem; }
+    .keys { display: none; }
+    .pad { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
+    .pad button { min-width: 3rem; min-height: 3rem; border: 2px solid var(--theme-rule-strong); border-radius: 0; background: var(--theme-surface); color: var(--theme-text); font: inherit; font-weight: 700; touch-action: none; }
+    .pad button:active { background: var(--theme-text); color: var(--theme-bg); }
+    .dpad { display: grid; grid-template-columns: repeat(3, 3rem); grid-template-areas: '. up .' 'left . right' '. down .'; }
+    .dpad [data-btn='up'] { grid-area: up; }
+    .dpad [data-btn='left'] { grid-area: left; }
+    .dpad [data-btn='right'] { grid-area: right; }
+    .dpad [data-btn='down'] { grid-area: down; }
+    .pad .start { justify-self: center; min-height: 2.25rem; font-size: 0.7rem; }
+    .face { display: flex; gap: 0.75rem; align-items: end; }
+    .face [data-btn='a'] { margin-bottom: 1.5rem; border-radius: 50%; }
+    .face [data-btn='b'] { border-radius: 50%; }
+  }
+</style>

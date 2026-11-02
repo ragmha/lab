@@ -1,5 +1,5 @@
 // Records a short click-through of each experiment and encodes it as a GIF.
-// Usage: bun run build && bun run preview, then `node scripts/record-previews.mjs [baseUrl]`. Needs ffmpeg.
+// Usage: bun run build && bun run preview, then `node scripts/record-previews.mjs [baseUrl] [slug...]`. Needs ffmpeg.
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { chromium } from 'playwright'
 
 const base = process.argv[2] ?? 'http://localhost:4321'
+const only = process.argv.slice(3)
 const out = new URL('../public/previews/', import.meta.url).pathname
 const size = { width: 1280, height: 800 }
 
@@ -40,11 +41,17 @@ const tours = {
       p.locator(`[data-square="${square}"]:not([disabled])`).click({ timeout: 60000 })),
     (p) => p.waitForTimeout(1500),
   ],
+  'super-mona': [
+    (p) => p.keyboard.press('Enter'),
+    (p) => p.keyboard.down('ArrowRight'),
+    ...Array.from({ length: 5 }, () => (p) => p.keyboard.press('z', { delay: 350 })),
+    (p) => p.keyboard.up('ArrowRight'),
+  ],
 }
 
 mkdirSync(out, { recursive: true })
 const browser = await chromium.launch({ channel: 'chrome' })
-for (const [slug, steps] of Object.entries(tours)) {
+for (const [slug, steps] of Object.entries(tours).filter(([slug]) => !only.length || only.includes(slug))) {
   const dir = mkdtempSync(join(tmpdir(), `preview-${slug}-`))
   const context = await browser.newContext({ viewport: size, colorScheme: 'dark', recordVideo: { dir, size } })
   const page = await context.newPage()

@@ -57,6 +57,13 @@ see [LICENSE](LICENSE). Third-party assets keep their own licenses:
 - **JetBrains Mono**: **SIL Open Font License 1.1**, retained in
   [`public/fonts/jetbrains-mono/OFL.txt`](public/fonts/jetbrains-mono/OFL.txt).
   Pinned upstream source is recorded in `src/styles/fonts.css`.
+- **Super Mona**: game logic and 32 stages in `src/lib/super-mona.ts` are a
+  TypeScript port of [martinwoodward/super-mona](https://github.com/martinwoodward/super-mona)
+  at commit `6d3100ea70e7b00509fad101c4520fb555dd2934`; the sprite sheets in
+  `public/super-mona/` are copied unmodified. **MIT**, copyright © 2026 Martin
+  Woodward; the Mona sprites derive from Flappy Mona in
+  [badger/home](https://github.com/badger/home) (MIT, Pimoroni and GitHub).
+  License: [`public/super-mona/LICENSE.txt`](public/super-mona/LICENSE.txt).
 - **chess.js 1.4.0**: BSD-2-Clause, distributed through Bun with its package
   license. Remaining npm dependencies retain their package licenses.
 - The reproduction kit refers to separately installed caveman, rtk, and
