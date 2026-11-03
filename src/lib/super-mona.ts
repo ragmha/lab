@@ -222,6 +222,9 @@ export class Item extends Body {
 export type Particle = { kind: 'debris' | 'star' | 'score' | 'sparkle'; x: number; y: number; vx: number; vy: number; age: number; data?: number }
 export type Bump = { tx: number; ty: number; tile: number; age: number }
 export type WorldState = 'play' | 'dying' | 'dead' | 'flag' | 'castle' | 'tally' | 'clear'
+export type GameEvent =
+  | 'star' | '1up' | 'switch' | 'jump' | 'kick' | 'shrink' | 'die' | 'grow' | 'stored'
+  | 'sparkle' | 'item' | 'break' | 'bump' | 'pickup' | 'stomp' | 'defeat' | 'flag'
 
 export class Session {
   score = 0
@@ -231,6 +234,8 @@ export class Session {
   character: Hero = 'mona'
   big = false
   inventory: ItemKind[] = []
+  /** What happened this frame, as in game.py; the app plays a sound for each, then clears it. */
+  events: GameEvent[] = []
   constructor(public high = 0) {}
 
   addScore(points: number) {
@@ -240,7 +245,8 @@ export class Session {
   addStar() {
     this.stars += 1
     this.addScore(200)
-    if (this.stars >= 100) { this.stars -= 100; this.lives += 1 }
+    this.events.push('star')
+    if (this.stars >= 100) { this.stars -= 100; this.lives += 1; this.events.push('1up') }
   }
   store(kind: ItemKind) {
     if (this.inventory.length >= INVENTORY_SIZE) return false
@@ -316,6 +322,7 @@ export class World {
     if (!this.level.canSwitch) return false
     const next = CHARACTER_ORDER[(CHARACTER_ORDER.indexOf(this.player.character) + 1) % CHARACTER_ORDER.length]
     this.player.character = this.session.character = next
+    this.session.events.push('switch')
     return true
   }
 
@@ -366,6 +373,7 @@ export class World {
       p.vy = -(Math.abs(p.vx) > s.walk + 6 ? s.runJump : s.jump)
       p.jumpBuffer = p.coyote = 0
       p.onGround = false
+      this.session.events.push('jump')
     }
 
     const gravity = c.jump && p.vy < 0 ? s.gravHold : s.grav
@@ -425,6 +433,7 @@ export class World {
       shell.x = p.x
       if (this.bodyInWall(shell)) this.defeatEnemy(shell, 200)
     }
+    this.session.events.push('kick')
   }
 
   bodyInWall(body: Body) {
@@ -443,6 +452,7 @@ export class World {
       p.y += BIG_H - SMALL_H
       p.invulnerable = 2
       this.session.big = false
+      this.session.events.push('shrink')
     } else this.killPlayer()
   }
 
@@ -457,6 +467,7 @@ export class World {
     this.session.big = false
     this.state = 'dying'
     this.stateTime = 0
+    this.session.events.push('die')
   }
 
   grow() {
@@ -465,16 +476,22 @@ export class World {
     p.big = true
     p.y -= BIG_H - SMALL_H
     this.session.big = true
+    this.session.events.push('grow')
   }
 
   applyItem(kind: ItemKind, fromInventory = false) {
     if (kind === 'chip') {
       if (!this.player.big) { this.grow(); this.session.addScore(1000) }
       else if (fromInventory || !this.session.store('chip')) this.session.addScore(1000)
+      else this.session.events.push('stored')
     } else if (kind === 'sparkle') {
       this.player.sparkle = 8
       this.session.addScore(1000)
-    } else this.session.lives += 1
+      this.session.events.push('sparkle')
+    } else {
+      this.session.lives += 1
+      this.session.events.push('1up')
+    }
   }
 
   bump(tx: number, ty: number) {
@@ -499,15 +516,25 @@ export class World {
         level.set(tx, ty, USED)
         this.bumps.push({ tx, ty, tile: USED, age: 0 })
         if (content === 'star') this.popStar(tx, ty)
-        else this.items.push(new Item(tx * TILE, ty * TILE, content as ItemKind))
+        else {
+          this.items.push(new Item(tx * TILE, ty * TILE, content as ItemKind))
+          this.session.events.push('item')
+        }
       }
     } else if (BREAKABLE.has(tile)) {
       if (this.player.big) {
         level.set(tx, ty, EMPTY)
         for (const [vx, vy] of [[-40, -150], [40, -150], [-30, -90], [30, -90]]) this.spawnParticle('debris', tx * TILE + 2, ty * TILE + 2, vx, vy)
         this.session.addScore(50)
-      } else this.bumps.push({ tx, ty, tile, age: 0 })
-    } else return
+        this.session.events.push('break')
+      } else {
+        this.bumps.push({ tx, ty, tile, age: 0 })
+        this.session.events.push('bump')
+      }
+    } else {
+      this.session.events.push('bump')
+      return
+    }
     this.hitFromBelow(tx, ty)
   }
 
@@ -632,12 +659,14 @@ export class World {
         e.state = 'carried'
         e.timer = 0
         p.carrying = e
+        this.session.events.push('pickup')
         return
       }
       e.state = 'kicked'
       e.vx = e.x + e.w / 2 >= p.x + p.w / 2 ? SHELL_SPEED : -SHELL_SPEED
       e.grace = 0.25
       this.session.addScore(400)
+      this.session.events.push('kick')
       if (fallingOnto) p.vy = -STOMP_BOUNCE
       return
     }
@@ -651,6 +680,7 @@ export class World {
       e.state = e.kind === 'bug' ? 'squashed' : 'shell'
       e.timer = 0
       if (e.kind !== 'bug') e.vx = 0
+      this.session.events.push('stomp')
       return
     }
     if (e.state === 'kicked' && e.grace > 0) return
@@ -663,6 +693,7 @@ export class World {
     e.vx = e.vx >= 0 ? 30 : -30
     this.session.addScore(points)
     this.spawnParticle('score', e.x, e.y - 4, 0, -30, points)
+    this.session.events.push('defeat')
   }
 
   spawnParticle(kind: Particle['kind'], x: number, y: number, vx: number, vy: number, data?: number) {
@@ -703,6 +734,7 @@ export class World {
     this.flagBonus = bonus
     this.session.addScore(bonus)
     this.spawnParticle('score', p.x + 8, p.y, 0, -20, bonus)
+    this.session.events.push('flag')
   }
 
   updateFlag(dt: number) {

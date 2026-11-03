@@ -35,6 +35,7 @@ test('holding jump goes higher, and stomping squashes a bug', () => {
     const ground = world.player.y
     const c = Object.assign(new Controls(), { jump: true, jumpPressed: true })
     world.step(DT, c)
+    assert.ok(world.session.events.includes('jump'))
     Object.assign(c, { jump: hold, jumpPressed: false })
     let peak = ground
     for (let i = 0; i < 60; i++) { world.step(DT, c); peak = Math.min(peak, world.player.y) }
@@ -49,4 +50,5 @@ test('holding jump goes higher, and stomping squashes a bug', () => {
   Object.assign(world.player, { x: bug.x, y: bug.y - 20, vy: 60 })
   for (let i = 0; i < 8; i++) world.step(DT, new Controls())
   assert.equal(bug.state, 'squashed')
+  assert.ok(world.session.events.includes('stomp'))
 })

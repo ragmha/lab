@@ -4,7 +4,7 @@ import ThemeToggle from '../components/ThemeToggle.astro'
 import '../styles/site.css'
 
 const description =
-  "Play Super Mona in your browser: a port of Martin Woodward's platformer for the GitHub Universe 2026 badge, with all 32 stages, two heroes, and keyboard or touch controls."
+  "Play Super Mona in your browser: a port of Martin Woodward's platformer for the GitHub Universe 2026 badge, with all 32 stages, two heroes, sound, and keyboard, touch or gamepad controls."
 ---
 
 <BaseLayout
@@ -20,7 +20,10 @@ const description =
       <h1 id="page-title">Can Mona Reach the Last Flag?</h1>
       <p class="intro">Super Mona, the GitHub Universe 2026 badge platformer, ported to the browser. 32 stages, two heroes, nothing to install.</p>
     </div>
-    <div class="app-actions"><ThemeToggle /></div>
+    <div class="app-actions">
+      <button id="sound-toggle" type="button" hidden>MUTE</button>
+      <ThemeToggle />
+    </div>
   </header>
   <main class="stage" aria-labelledby="page-title">
     <div class="console">
@@ -33,7 +36,10 @@ const description =
           <button type="button" data-btn="right" aria-label="Right">▶</button>
           <button type="button" data-btn="down" aria-label="Down">▼</button>
         </div>
-        <button type="button" class="start" data-btn="menu">Start</button>
+        <div class="menu">
+          <button type="button" data-btn="home" aria-label="Home: quit to title">Home</button>
+          <button type="button" data-btn="menu">Start</button>
+        </div>
         <div class="face">
           <button type="button" data-btn="b" aria-label="B: run">B</button>
           <button type="button" data-btn="a" aria-label="A: jump">A</button>
@@ -44,6 +50,9 @@ const description =
         <span><kbd>Z</kbd> or <kbd>Space</kbd> jump (A)</span>
         <span><kbd>X</kbd> or <kbd>Shift</kbd> run (B)</span>
         <span><kbd>Enter</kbd> start / pause</span>
+        <span><kbd>Home</kbd> quit</span>
+        <span><kbd>M</kbd> sound</span>
+        <span>Gamepads work too</span>
       </p>
       <p class="credit">
         Game by <a href="https://github.com/martinwoodward/super-mona">Martin Woodward</a>, Mona sprites from
@@ -75,8 +84,8 @@ const description =
   .app-back:hover { color: var(--theme-text); text-decoration: underline; }
   .app-bar h1 { margin: 0; font-size: 0.95rem; font-weight: 700; letter-spacing: 0; line-height: 1.4; }
   .app-bar .intro { flex-basis: 100%; margin: 0; color: var(--theme-muted); font-size: 0.72rem; line-height: 1.5; }
-  .app-actions { flex: none; display: flex; justify-content: end; min-width: 4.5rem; min-height: 2.25rem; }
-  .app-actions :global(#theme-toggle) { min-height: 2.25rem; padding: 0.25rem 0.65rem; border: 1px solid var(--theme-rule-strong); border-radius: 0; background: none; color: var(--theme-text); font: inherit; font-size: 0.75rem; cursor: pointer; }
+  .app-actions { flex: none; display: flex; justify-content: end; gap: 0.5rem; min-width: 4.5rem; min-height: 2.25rem; }
+  .app-actions :global(button) { min-height: 2.25rem; padding: 0.25rem 0.65rem; border: 1px solid var(--theme-rule-strong); border-radius: 0; background: none; color: var(--theme-text); font: inherit; font-size: 0.75rem; cursor: pointer; }
   /* The screen keeps 4:3 and takes whichever is smaller: the width, or the height left after the text below it. */
   .stage { min-height: 0; padding: 0.75rem var(--app-gutter); container-type: size; }
   .console { --chrome: 4.5rem; width: min(100cqw, (100cqh - var(--chrome)) * 4 / 3); margin: 0 auto; display: grid; gap: 0.6rem; }
@@ -99,9 +108,29 @@ const description =
     .dpad [data-btn='left'] { grid-area: left; }
     .dpad [data-btn='right'] { grid-area: right; }
     .dpad [data-btn='down'] { grid-area: down; }
-    .pad .start { justify-self: center; min-height: 2.25rem; font-size: 0.7rem; }
+    .menu { display: grid; gap: 0.5rem; justify-items: center; }
+    .menu button { min-height: 2.25rem; font-size: 0.7rem; }
     .face { display: flex; gap: 0.75rem; align-items: end; }
     .face [data-btn='a'] { margin-bottom: 1.5rem; border-radius: 50%; }
     .face [data-btn='b'] { border-radius: 50%; }
+  }
+  /* The narrowest phones need a smaller pad, and the room the intro took. */
+  @media (hover: none) and (pointer: coarse) and (max-width: 22rem) {
+    .app-bar .intro { display: none; }
+    .pad, .face { gap: 0.5rem; }
+    .pad button { min-width: 2.5rem; min-height: 2.5rem; }
+    .dpad { grid-template-columns: repeat(3, 2.5rem); }
+    .face [data-btn='a'] { margin-bottom: 1.25rem; }
+  }
+  /* A phone on its side has no room under the screen, so the pad goes either side of it. */
+  @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 32rem) {
+    .app-bar .intro, .credit { display: none; }
+    .console { width: 100%; grid-template-columns: 1fr min(100cqh * 4 / 3, 100cqw - 20rem) 1fr; grid-template-areas: 'dpad screen menu' 'dpad screen face'; align-items: center; justify-items: center; }
+    canvas { grid-area: screen; }
+    .pad { display: contents; }
+    .pad > * { touch-action: none; }
+    .dpad { grid-area: dpad; }
+    .menu { grid-area: menu; grid-auto-flow: column; }
+    .face { grid-area: face; }
   }
 </style>

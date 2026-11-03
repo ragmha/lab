@@ -1,8 +1,8 @@
 // Canvas front end for the Super Mona port: render.py and __init__.py from
-// martinwoodward/super-mona (MIT), with keyboard and touch in place of badge buttons.
+// martinwoodward/super-mona (MIT), with keyboard, touch and gamepad in place of badge buttons.
 import {
   CHARACTER_ORDER, CHARACTERS, Controls, EMPTY, ITEM_NAMES, LEVELS, POLE, ROWS, Session, TILE, VIEW_H, VIEW_W, World, autopilot,
-  type Hero, type Level,
+  type GameEvent, type Hero, type Level,
 } from '../lib/super-mona'
 
 const SKY = { day: '#5c94fc', cave: '#000000', dusk: '#342c6e', cloud: '#96c8ff', castle: '#280814' }
@@ -213,32 +213,161 @@ class View {
   }
 }
 
-// Input: A = jump/confirm, B = run/back, menu = start/pause, like the badge.
-type Button = 'left' | 'right' | 'up' | 'down' | 'a' | 'b' | 'menu'
+// Sound: the badge has no speaker, so these synth blips are new. They voice the events game.py
+// already records, plus a few app screens. Browsers only start audio after a click, tap or key.
+type Sound = GameEvent | 'pause' | 'over' | 'win' | 'tick'
+const SOUND_KEY = 'super-mona-sound'
+const soundButton = document.getElementById('sound-toggle')
+let audio: AudioContext | undefined
+let out: GainNode
+let soundOn = true
+try { soundOn = localStorage.getItem(SOUND_KEY) !== 'off' } catch {}
+
+function unlockAudio() {
+  if (!soundOn || audio?.state === 'running') return
+  if (!audio) {
+    audio = new AudioContext()
+    out = new GainNode(audio, { gain: 0.25 })
+    out.connect(audio.destination)
+  }
+  audio.resume().catch(() => {})
+}
+
+function setSound(on: boolean) {
+  soundOn = on
+  try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off') } catch {}
+  paintSound()
+  if (on) unlockAudio()
+  // Closing drops notes already scheduled; a suspended context would play them on unmute.
+  else { audio?.close(); audio = undefined }
+}
+
+function paintSound() {
+  if (!soundButton) return
+  soundButton.textContent = soundOn ? 'MUTE' : 'UNMUTE'
+  soundButton.title = `${soundOn ? 'Mute' : 'Unmute'} sound (M)`
+  soundButton.hidden = false
+}
+
+function voice(source: AudioScheduledSourceNode, at: number, length: number, volume: number) {
+  const gain = new GainNode(audio!)
+  gain.gain.setValueAtTime(volume, at)
+  gain.gain.exponentialRampToValueAtTime(0.001, at + length)
+  source.connect(gain).connect(out)
+  source.start(at)
+  source.stop(at + length)
+}
+
+function note(from: number, to: number, length: number, delay = 0, type: OscillatorType = 'square', volume = 0.5) {
+  const at = audio!.currentTime + delay
+  const osc = new OscillatorNode(audio!, { type })
+  osc.frequency.setValueAtTime(from, at)
+  osc.frequency.exponentialRampToValueAtTime(to, at + length)
+  voice(osc, at, length, volume)
+}
+
+const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12)
+const tune = (notes: number[], step: number, type?: OscillatorType, volume?: number) =>
+  notes.forEach((m, i) => note(hz(m), hz(m), step * 2, i * step, type, volume))
+
+function noise(length: number, volume = 0.5) {
+  const a = audio!
+  const buffer = a.createBuffer(1, Math.ceil(a.sampleRate * length), a.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+  voice(new AudioBufferSourceNode(a, { buffer }), a.currentTime, length, volume)
+}
+
+const SOUNDS: Record<Sound, () => void> = {
+  jump: () => note(260, 620, 0.14, 0, 'square', 0.35),
+  star: () => tune([84, 91], 0.06),
+  '1up': () => tune([79, 84, 88, 91, 96], 0.07),
+  switch: () => tune([74, 79, 86], 0.05, 'triangle', 0.8),
+  kick: () => note(330, 140, 0.09, 0, 'square', 0.4),
+  shrink: () => tune([79, 75, 72, 67, 63], 0.07, 'square', 0.35),
+  die: () => tune([72, 67, 64, 60, 55, 48], 0.15, 'triangle', 0.8),
+  grow: () => tune([60, 64, 67, 72, 76, 79, 84], 0.045),
+  stored: () => tune([88, 91], 0.08, 'triangle', 0.7),
+  sparkle: () => tune([84, 88, 91, 96, 100, 103, 108], 0.035, 'triangle', 0.7),
+  item: () => note(200, 800, 0.3, 0, 'triangle', 0.8),
+  break: () => { noise(0.2); note(180, 50, 0.18, 0, 'square', 0.3) },
+  bump: () => note(150, 90, 0.08, 0, 'triangle', 0.9),
+  pickup: () => tune([69, 76], 0.04, 'square', 0.35),
+  stomp: () => note(520, 140, 0.1, 0, 'square', 0.45),
+  defeat: () => note(700, 110, 0.22, 0, 'square', 0.4),
+  flag: () => tune([67, 72, 76, 79, 84, 88], 0.08),
+  pause: () => tune([81, 76], 0.06, 'square', 0.35),
+  over: () => tune([67, 64, 60, 55], 0.25, 'triangle', 0.8),
+  win: () => tune([72, 76, 79, 84, 79, 84, 88, 91, 96], 0.1),
+  tick: () => note(1500, 1500, 0.03, 0, 'square', 0.15),
+}
+const sfx = (name: Sound) => { if (soundOn && audio?.state === 'running') SOUNDS[name]() }
+
+paintSound()
+soundButton?.addEventListener('click', () => setSound(!soundOn))
+for (const type of ['keydown', 'pointerdown', 'pointerup', 'touchend']) window.addEventListener(type, unlockAudio)
+// A clicked header button would keep focus and take Space and Enter away from the game.
+document.querySelector('.app-actions')?.addEventListener('mousedown', (e) => e.preventDefault())
+
+// Input: A = jump/confirm, B = run/back, menu = start/pause, home = quit to title, like the badge.
+type Button = 'left' | 'right' | 'up' | 'down' | 'a' | 'b' | 'menu' | 'home'
 const KEYS: Record<string, Button> = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
   KeyZ: 'a', Space: 'a', KeyK: 'a', KeyX: 'b', ShiftLeft: 'b', ShiftRight: 'b', KeyJ: 'b', Enter: 'menu', Escape: 'menu', KeyP: 'menu',
+  Home: 'home',
 }
-const held = new Set<Button>()
+// Standard-mapping gamepads: d-pad or left stick, A jump, B or X run, Start, Back or Guide for home.
+const PAD_BUTTONS: [number, Button][] = [[12, 'up'], [13, 'down'], [14, 'left'], [15, 'right'], [0, 'a'], [1, 'b'], [2, 'b'], [9, 'menu'], [8, 'home'], [16, 'home']]
+// Holds are kept per key or pointer, so letting go of one of two keys for a button keeps it down.
+const held = new Map<string, Button>()
 const pressed = new Set<Button>()
+let padHeld = new Set<Button>()
+let padSeen = false
 const hit = (b: Button) => pressed.has(b)
-const down = (b: Button) => held.has(b) || pressed.has(b)
-const press = (b: Button) => { pressed.add(b); held.add(b) }
+const down = (b: Button) => pressed.has(b) || padHeld.has(b) || [...held.values()].includes(b)
+const press = (source: string, b: Button) => { if (!down(b)) pressed.add(b); held.set(source, b) }
+
+// Browsers expose a pad only after one of its buttons is pressed on this page.
+window.addEventListener('gamepadconnected', () => { padSeen = true })
+function pollPads() {
+  if (!padSeen) return
+  const now = new Set<Button>()
+  for (const gp of navigator.getGamepads()) {
+    if (!gp) continue
+    for (const [i, b] of PAD_BUTTONS) if (gp.buttons[i]?.pressed) now.add(b)
+    const [x = 0, y = 0] = gp.axes
+    if (x < -0.5) now.add('left')
+    if (x > 0.5) now.add('right')
+    if (y < -0.5) now.add('up')
+    if (y > 0.5) now.add('down')
+  }
+  for (const b of now) if (!down(b)) pressed.add(b)
+  padHeld = now
+}
 
 window.addEventListener('keydown', (e) => {
-  const b = KEYS[e.code]
-  if (!b || e.metaKey || e.ctrlKey || e.altKey) return
-  // Let Space/Enter still activate a focused link or button.
-  if ((e.code === 'Space' || e.code === 'Enter') && (e.target as Element).closest?.('a, button, input, select, textarea')) return
+  if (e.metaKey || e.ctrlKey || e.altKey) return
+  if (e.code === 'KeyM' && !e.repeat) return setSound(!soundOn)
+  const el = e.target as HTMLElement
+  let b = KEYS[e.code]
+  // Space/Enter press a focused on-screen button, and still activate any other link or button.
+  if (e.code === 'Space' || e.code === 'Enter') {
+    if (el.dataset?.btn) b = el.dataset.btn as Button
+    else if (el.closest?.('a, button, input, select, textarea')) return
+  }
+  if (!b) return
   e.preventDefault()
-  if (!e.repeat) press(b)
+  if (!e.repeat) press(e.code, b)
 })
-window.addEventListener('keyup', (e) => { const b = KEYS[e.code]; if (b) held.delete(b) })
-window.addEventListener('blur', () => held.clear())
+window.addEventListener('keyup', (e) => held.delete(e.code))
+// Keys let go while the page is in the background never report it, so drop everything.
+const release = () => { held.clear(); pressed.clear() }
+window.addEventListener('blur', release)
+document.addEventListener('visibilitychange', release)
 for (const el of document.querySelectorAll<HTMLElement>('[data-btn]')) {
   const b = el.dataset.btn as Button
-  el.addEventListener('pointerdown', (e) => { e.preventDefault(); press(b) })
-  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(type, () => held.delete(b))
+  el.addEventListener('pointerdown', (e) => { e.preventDefault(); press(`pointer${e.pointerId}`, b) })
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave'] as const) el.addEventListener(type, (e) => held.delete(`pointer${e.pointerId}`))
 }
 
 const controls = new Controls()
@@ -270,13 +399,19 @@ let demoPlayed = 0
 let page = 0
 let cursor = 0
 
-function setMode(next: Mode) { mode = next; modeTime = 0 }
+function setMode(next: Mode) {
+  if (next === 'pause' || next === 'over' || next === 'win') sfx(next)
+  mode = next
+  modeTime = 0
+}
 
 function saveHigh() {
   if (session.high <= high) return
   high = session.high
   try { localStorage.setItem(HIGH_KEY, String(high)) } catch {}
 }
+// The badge saves on exit; leaving the page mid-level is the browser's exit.
+window.addEventListener('pagehide', saveHigh)
 
 function newGame() {
   session = new Session(high)
@@ -347,6 +482,8 @@ function play(dt: number, t: number) {
   world.step(dt, readControls())
   view.draw(world, t)
   view.hud(world)
+  // The time bonus counts down with a tick, about 15 a second at any frame rate.
+  if (world.state === 'tally' && world.timeLeft > 0 && int(t * 15) !== int((t - dt) * 15)) sfx('tick')
   if (world.state === 'dead') {
     session.lives -= 1
     saveHigh()
@@ -378,6 +515,7 @@ function drawPaused(t: number) {
     centre(world.level.name, 36)
     centre(`SCORE ${pad(session.score)}`, 50)
     centre(`HIGH  ${pad(Math.max(session.high, high))}`, 62)
+    centre('HOME TO QUIT', 80, GOLD)
   } else if (name === 'MAP') {
     centre(world.level.name, 34)
     view.map(world, 12, 50, 136, 45)
@@ -432,12 +570,24 @@ function frame(now: number) {
   modeTime += dt
   const t = now / 1000
   ctx.setTransform(scale, 0, 0, scale, 0, 0)
+  pollPads()
+  // HOME leaves the badge app (saving the high score); here it returns to the title screen.
+  if (hit('home') && mode !== 'title') {
+    saveHigh()
+    setMode('title')
+  }
   if (mode === 'title') drawTitle(t)
   else if (mode === 'intro') drawIntro(modeTime)
   else if (mode === 'play') play(dt, t)
   else if (mode === 'pause') drawPaused(t)
   else if (mode === 'demo') drawDemo(dt, t)
   else drawEnd(modeTime, mode === 'over' ? 'GAME OVER' : 'YOU WIN!')
+  // Play this frame's game events; the demo stays silent.
+  const events = world?.session.events
+  if (events?.length) {
+    if (!world.demo) events.forEach(sfx)
+    events.length = 0
+  }
   pressed.clear()
   requestAnimationFrame(frame)
 }

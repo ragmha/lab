@@ -14,6 +14,46 @@ const size = { width: 1280, height: 800 }
 const button = (page, name) => page.getByRole('button', { name, exact: true })
 const label = (page, name) => page.locator('label', { hasText: name }).first()
 
+// Super Mona's showcase run: jump presses and holds in seconds of play, checked against the engine to take 1-1's
+// opening big with two stars and four stomps at 50 to 240 fps. It pauses before the next bug reaches Mona.
+const monaRun = {
+  jumps: [[1.631, 0.05], [2.774, 0.05], [4.815, 0.12], [5.398, 0.3], [6.315, 0.3], [6.748, 0.05], [8.456, 0.45], [9.057, 0.3]],
+  pause: 9.95,
+}
+
+// In the page: start a game holding right, play the jumps on game time so a slow recorded frame shifts nothing,
+// then pause. Resolves with the last lives text the HUD drew.
+function playMona({ jumps, pause }) {
+  const key = (type, code) => dispatchEvent(new KeyboardEvent(type, { code }))
+  const proto = CanvasRenderingContext2D.prototype
+  const { fillText } = proto
+  let hud = ''
+  proto.fillText = function (text, ...rest) {
+    if (text.startsWith('MONA x')) hud = text
+    return fillText.call(this, text, ...rest)
+  }
+  const keys = jumps.flatMap(([at, hold]) => [[at, 'keydown'], [at + hold, 'keyup']])
+  key('keydown', 'Enter')
+  key('keyup', 'Enter')
+  key('keydown', 'ArrowRight')
+  let last = 0
+  let t = 0
+  return new Promise((resolve) => requestAnimationFrame(function tick(now) {
+    // This runs after the game's frame, the same dt the game used; a key sent now counts from its next frame.
+    const dt = last ? Math.min(now - last, 50) / 1000 : 0
+    last = now
+    if (hud) t += dt
+    const next = t + Math.min(dt || 1 / 60, 1 / 60)
+    while (hud && keys.length && keys[0][0] <= next) key(keys.shift()[1], 'KeyZ')
+    if (!hud || next < pause) return requestAnimationFrame(tick)
+    key('keyup', 'ArrowRight')
+    key('keydown', 'Enter')
+    key('keyup', 'Enter')
+    proto.fillText = fillText
+    resolve(hud)
+  }))
+}
+
 const tours = {
   'session-flame': [
     (p) => p.locator('#replay-play').click(),
@@ -42,10 +82,10 @@ const tours = {
     (p) => p.waitForTimeout(1500),
   ],
   'super-mona': [
-    (p) => p.keyboard.press('Enter'),
-    (p) => p.keyboard.down('ArrowRight'),
-    ...Array.from({ length: 5 }, () => (p) => p.keyboard.press('z', { delay: 350 })),
-    (p) => p.keyboard.up('ArrowRight'),
+    async (p) => {
+      const hud = await p.evaluate(playMona, monaRun)
+      if (hud !== 'MONA x3') throw new Error(`Mona lost a life on the recorded run (${hud})`)
+    },
   ],
 }
 
