@@ -57,6 +57,15 @@ see [LICENSE](LICENSE). Third-party assets keep their own licenses:
 - **JetBrains Mono**: **SIL Open Font License 1.1**, retained in
   [`public/fonts/jetbrains-mono/OFL.txt`](public/fonts/jetbrains-mono/OFL.txt).
   Pinned upstream source is recorded in `src/styles/fonts.css`.
+- **Pixel platformer**: game logic and 32 stages in `src/lib/platformer.ts` are
+  a TypeScript port of `martinwoodward/super-mona` at commit `6d3100e` (MIT).
+  `tiles.png` and `mobs.png` in
+  `public/platformer/` are copied unmodified; `players.png` is original
+  geometric explorer artwork replacing the upstream branded characters.
+  The homepage still and GIF are captures of this modified game.
+  **MIT**: the copyright and
+  permission notices for the game and its sprites are kept in
+  [`public/platformer/LICENSE.txt`](public/platformer/LICENSE.txt).
 - **chess.js 1.4.0**: BSD-2-Clause, distributed through Bun with its package
   license. Remaining npm dependencies retain their package licenses.
 - The reproduction kit refers to separately installed caveman, rtk, and

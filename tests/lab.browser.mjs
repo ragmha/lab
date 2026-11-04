@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { chromium } from 'playwright'
 
 const base = process.env.LAB_TEST_URL
-const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/token-diet/']
+const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/platformer/', '/token-diet/']
 const recorded = JSON.parse(await readFile(new URL('../src/lib/session-flame-runs.json', import.meta.url), 'utf8'))
 const languages = JSON.parse(await readFile(new URL('../src/data/languages.json', import.meta.url), 'utf8'))
 
@@ -16,7 +16,7 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       await page.goto(base, { waitUntil: 'networkidle' })
       const panels = page.locator('.experiment-grid a')
       assert.deepEqual(await panels.evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
-        ['/session-flame/', '/context-autopsy/', '/token-diet/', '/chess/'])
+        ['/session-flame/', '/context-autopsy/', '/token-diet/', '/chess/', '/platformer/'])
       assert.equal(await page.locator('h1').innerText(), 'Raghib’s Lab — Experiments')
       const total = languages.reduce((sum, language) => sum + language.size, 0)
       assert.deepEqual(await page.locator('.language-legend li').allTextContents(), languages.map(({ node, size }) => `${node.name} ${(size / total * 100).toFixed(1)}%`))
@@ -32,7 +32,7 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       })
       assert.ok(baselineGap < 1, `Visible flask and LAB baselines differ by ${baselineGap}px at ${width}px`)
       assert.equal(await page.locator('.experiment-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length), width > 1088 ? 3 : width > 672 ? 2 : 1)
-      assert.equal(await page.locator('.experiment-preview img').count(), 4)
+      assert.equal(await page.locator('.experiment-preview img').count(), 5)
       assert.doesNotMatch(await page.locator('.experiment-preview img').first().evaluate((img) => img.currentSrc), /\.gif$/)
       if (width > 1088) assert.equal(await panels.evaluateAll((links) => new Set(links.slice(0, 3).map((link) => link.getBoundingClientRect().height)).size), 1)
       assert.ok(await page.locator('.experiment-grid').evaluate((grid) => [...grid.querySelectorAll('a')].every((link) => link.getBoundingClientRect().height >= 44)))
@@ -48,7 +48,114 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
     const motion = await browser.newPage({ reducedMotion: 'no-preference' })
     await motion.goto(base, { waitUntil: 'networkidle' })
     assert.deepEqual(await motion.locator('.experiment-preview img').evaluateAll((images) => images.map((img) => new URL(img.currentSrc).pathname)),
-      ['/previews/session-flame.gif', '/previews/context-autopsy.gif', '/previews/token-diet.gif', '/previews/chess.gif'])
+      ['/previews/session-flame.gif', '/previews/context-autopsy.gif', '/previews/token-diet.gif', '/previews/chess.gif', '/previews/platformer.gif'])
+  } finally {
+    await browser.close()
+  }
+})
+
+test('pixel platformer presentation is generic and keeps its controls discoverable', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage()
+    await page.goto(new URL('/platformer/', base).href, { waitUntil: 'networkidle' })
+    assert.equal(await page.title(), 'Pixel Platformer: A 32-Stage Browser Game — Raghib’s Lab')
+    assert.equal(await page.locator('h1').innerText(), 'Can You Reach the Last Flag?')
+    assert.equal(await page.locator('#game-screen').getAttribute('aria-label'), 'Pixel platformer game screen')
+    const copy = await page.locator('body').innerText()
+    assert.doesNotMatch(copy, /GitHub|Mona|Woodward|Pimoroni|badger/i)
+    assert.match(copy, /Gamepads work too/)
+    assert.equal(await page.locator('#sound-toggle').innerText(), 'ENABLE SOUND')
+    await page.locator('#sound-toggle').click()
+    await page.waitForFunction(() => document.querySelector('#sound-toggle').textContent === 'MUTE')
+    await page.keyboard.press('m')
+    assert.equal(await page.locator('#sound-toggle').innerText(), 'UNMUTE')
+    await page.close()
+  } finally {
+    await browser.close()
+  }
+})
+
+test('pixel platformer gamepad play exposes audio activation and basic pause/title controls', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.pad = { mapping: 'standard', axes: [0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false })) }
+      navigator.getGamepads = () => [window.pad]
+      window.gameText = []
+      const { setTransform, fillText } = CanvasRenderingContext2D.prototype
+      CanvasRenderingContext2D.prototype.setTransform = function (...args) {
+        if (this.canvas.id === 'game-screen') window.gameText = []
+        return setTransform.apply(this, args)
+      }
+      CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+        if (this.canvas.id === 'game-screen') window.gameText.push(text)
+        return fillText.call(this, text, ...args)
+      }
+      const NativeAudioContext = window.AudioContext
+      window.AudioContext = class extends NativeAudioContext {
+        constructor(...args) { super(...args); window.gameAudio = this }
+      }
+    })
+    await page.goto(new URL('/platformer/', base).href, { waitUntil: 'networkidle' })
+    await page.waitForFunction(() => window.gameText.includes('PIXEL PLATFORMER'))
+    await page.waitForTimeout(10_500)
+    assert.equal(await page.evaluate(() => window.gameText.includes('PIXEL PLATFORMER')), true)
+    const pressPad = async (button) => {
+      await page.evaluate((i) => { window.pad.buttons[i].pressed = true }, button)
+      await page.waitForTimeout(100)
+      await page.evaluate((i) => { window.pad.buttons[i].pressed = false }, button)
+      await page.waitForTimeout(100)
+    }
+    await page.evaluate(() => dispatchEvent(new Event('gamepadconnected')))
+    await pressPad(9)
+    await page.waitForFunction(() => window.gameText.includes('PLAYER 1 x3'))
+    assert.equal(await page.locator('#sound-toggle').innerText(), 'ENABLE SOUND')
+    assert.equal(await page.evaluate(() => window.gameAudio === undefined), true)
+    await page.locator('#sound-toggle').click()
+    await page.waitForFunction(() => window.gameAudio?.state === 'running' && document.querySelector('#sound-toggle').textContent === 'MUTE')
+    await page.locator('#sound-toggle').click()
+    assert.equal(await page.locator('#sound-toggle').innerText(), 'UNMUTE')
+    await page.keyboard.press('m')
+    await page.waitForFunction(() => document.querySelector('#sound-toggle').textContent === 'MUTE')
+    await page.evaluate(() => window.gameAudio.suspend())
+    await page.waitForFunction(() => document.querySelector('#sound-toggle').textContent === 'ENABLE SOUND')
+    await page.keyboard.press('m')
+    await page.waitForFunction(() => window.gameAudio.state === 'running' && document.querySelector('#sound-toggle').textContent === 'MUTE')
+    await pressPad(9)
+    await page.waitForFunction(() => window.gameText.includes('PAUSED'))
+    await pressPad(15)
+    assert.equal(await page.evaluate(() => window.gameText.includes('PAUSED')), true)
+    await pressPad(1)
+    await page.waitForFunction(() => !window.gameText.includes('PAUSED') && window.gameText.includes('PLAYER 1 x3'))
+    await pressPad(8)
+    await page.waitForFunction(() => window.gameText.includes('PIXEL PLATFORMER'))
+    await page.close()
+  } finally {
+    await browser.close()
+  }
+})
+
+test('pixel platformer touch controls fit narrow portrait and landscape screens', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }]) {
+      const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true })
+      const page = await context.newPage()
+      await page.goto(new URL('/platformer/', base).href, { waitUntil: 'networkidle' })
+      const buttons = await page.locator('.pad button').evaluateAll((els) => els.map((el) => {
+        const { left, top, right, bottom } = el.getBoundingClientRect()
+        return { visible: getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).display !== 'none', left, top, right, bottom }
+      }))
+      assert.equal(buttons.length, 8)
+      for (const button of buttons) {
+        assert.equal(button.visible, true)
+        assert.ok(button.left >= 0 && button.top >= 0 && button.right <= viewport.width && button.bottom <= viewport.height, `${JSON.stringify({ viewport, button })}`)
+      }
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+      await context.close()
+    }
   } finally {
     await browser.close()
   }
