@@ -1,4 +1,4 @@
-// Super Mona rules and stages, ported from the original game.py and levels.py (MIT).
+// Pixel platformer rules and stages.
 // Pure logic: no DOM, so tests run it headless.
 
 export const TILE = 8
@@ -31,14 +31,14 @@ const SOLID = new Set([GROUND_TOP, GROUND, BRICK, QUESTION, USED, HARD, PIPE_TL,
 const BREAKABLE = new Set([BRICK, CAVE_BRICK])
 
 export type Theme = 'day' | 'cave' | 'dusk' | 'cloud' | 'castle'
-export type Hero = 'mona' | 'ducky'
+export type Hero = 'player1' | 'player2'
 export type ItemKind = 'chip' | 'sparkle' | '1up'
 
 export const CHARACTERS = {
-  mona: { name: 'MONA', walk: 50, run: 82, accel: 190, decel: 170, skid: 420, jump: 152, runJump: 168, gravHold: 300, grav: 900, about: 'Balanced grip' },
-  ducky: { name: 'DUCKY', walk: 50, run: 78, accel: 150, decel: 100, skid: 300, jump: 166, runJump: 180, gravHold: 280, grav: 820, about: 'Floaty jumps, slippery' },
+  player1: { name: 'PLAYER 1', walk: 50, run: 82, accel: 190, decel: 170, skid: 420, jump: 152, runJump: 168, gravHold: 300, grav: 900, about: 'Balanced grip' },
+  player2: { name: 'PLAYER 2', walk: 50, run: 78, accel: 150, decel: 100, skid: 300, jump: 166, runJump: 180, gravHold: 280, grav: 820, about: 'Floaty jumps, slippery' },
 }
-export const CHARACTER_ORDER: Hero[] = ['mona', 'ducky']
+export const CHARACTER_ORDER: Hero[] = ['player1', 'player2']
 const MAX_FALL = 210
 const SMALL_H = 11
 const BIG_H = 15
@@ -231,10 +231,10 @@ export class Session {
   stars = 0
   lives = 3
   level = 0
-  character: Hero = 'mona'
+  character: Hero = 'player1'
   big = false
   inventory: ItemKind[] = []
-  /** What happened this frame, as in game.py; the app plays a sound for each, then clears it. */
+  /** Events the app can play sounds for, then clear. */
   events: GameEvent[] = []
   constructor(public high = 0) {}
 

@@ -1,9 +1,8 @@
-// Canvas front end for the Super Mona port: the original render.py and __init__.py (MIT),
-// with keyboard, touch and gamepad in place of the original's hardware buttons.
+// Canvas front end for the pixel platformer, with keyboard, touch, and gamepad controls.
 import {
   CHARACTER_ORDER, CHARACTERS, Controls, EMPTY, ITEM_NAMES, LEVELS, POLE, ROWS, Session, TILE, VIEW_H, VIEW_W, World, autopilot,
   type GameEvent, type Hero, type Level,
-} from '../lib/super-mona'
+} from '../lib/platformer'
 
 const SKY = { day: '#5c94fc', cave: '#000000', dusk: '#342c6e', cloud: '#96c8ff', castle: '#280814' }
 const BLACK = '#000000'
@@ -21,13 +20,13 @@ const [STAND, WALK1, WALK2, JUMP, SKID, CROUCH, DEAD, CLIMB] = [0, 1, 2, 3, 4, 5
 const PAGES = ['PAUSED', 'MAP', 'ITEMS', 'HERO']
 const DEMO_IDLE = 10
 const DEMO_STAGES = 2
-const HIGH_KEY = 'super-mona-high'
+const HIGH_KEY = 'platformer-high'
 
-const canvas = document.getElementById('mona-screen') as HTMLCanvasElement
+const canvas = document.getElementById('game-screen') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!
 let scale = 4
 
-const sheet = (name: string) => Object.assign(new Image(), { src: `/super-mona/${name}.png` })
+const sheet = (name: string) => Object.assign(new Image(), { src: `/platformer/${name}.png` })
 const TILES = sheet('tiles')
 const PLAYERS = sheet('players')
 const MOBS = sheet('mobs')
@@ -43,10 +42,10 @@ function blit(img: HTMLImageElement, size: number, col: number, row: number, x: 
 const tile = (id: number, x: number, y: number, g = ctx) => blit(TILES, TILE, id % 16, id >> 4, x, y, false, false, g)
 const mob = (i: number, x: number, y: number, flipX = false, flipY = false) => blit(MOBS, TILE, i % 8, i >> 3, x, y, flipX, flipY)
 const hero = (who: Hero, big: boolean, x: number, y: number, col = STAND, glow = false, mirror = false) =>
-  blit(PLAYERS, 16, col, (who === 'ducky' ? 2 : 0) + (big ? 1 : 0) + (glow ? 4 : 0), x, y, mirror)
+  blit(PLAYERS, 16, col, (who === 'player2' ? 2 : 0) + (big ? 1 : 0) + (glow ? 4 : 0), x, y, mirror)
 const int = Math.trunc
 const pad = (n: number, width = 6) => String(int(n)).padStart(width, '0')
-const font = (size: number) => `700 ${size}px "Super Mona HUD", ui-monospace, monospace`
+const font = (size: number) => `700 ${size}px "Pixel Game HUD", ui-monospace, monospace`
 
 function text(msg: string, x: number, y: number, pen = WHITE, size = HUD) {
   ctx.font = font(size)
@@ -213,10 +212,9 @@ class View {
   }
 }
 
-// Sound: the original hardware has no speaker, so these synth blips are new. They voice the events game.py
-// already records, plus a few app screens. Browsers only start audio after a click, tap or key.
+// Synthesized effects follow game events and a few app screens.
 type Sound = GameEvent | 'pause' | 'over' | 'win' | 'tick'
-const SOUND_KEY = 'super-mona-sound'
+const SOUND_KEY = 'platformer-sound'
 const soundButton = document.getElementById('sound-toggle')
 let audio: AudioContext | undefined
 let out: GainNode
@@ -309,7 +307,7 @@ for (const type of ['keydown', 'pointerdown', 'pointerup', 'touchend']) window.a
 // A clicked header button would keep focus and take Space and Enter away from the game.
 document.querySelector('.app-actions')?.addEventListener('mousedown', (e) => e.preventDefault())
 
-// Input: A = jump/confirm, B = run/back, menu = start/pause, home = quit to title, like the original.
+// A jumps/confirms, B runs/goes back, menu starts/pauses, and home returns to title.
 type Button = 'left' | 'right' | 'up' | 'down' | 'a' | 'b' | 'menu' | 'home'
 const KEYS: Record<string, Button> = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
@@ -412,7 +410,7 @@ function saveHigh() {
   high = session.high
   try { localStorage.setItem(HIGH_KEY, String(high)) } catch {}
 }
-// The original saves on exit; leaving the page mid-level is the browser's exit.
+// Save the high score when leaving the page.
 window.addEventListener('pagehide', saveHigh)
 
 function newGame() {
@@ -440,7 +438,7 @@ const start = () => hit('a') || hit('menu')
 
 function drawTitle(t: number) {
   titleView.draw(titleWorld, t)
-  centre('SUPER MONA', 22, GOLD, BIG)
+  centre('PIXEL PLATFORMER', 22, GOLD, BIG)
   centre(`HIGH ${pad(high)}`, 44)
   if (int(t * 2) % 2) centre('PRESS START', 84)
   if (start()) newGame()
@@ -517,7 +515,7 @@ function drawPaused(t: number) {
     centre(world.level.name, 36)
     centre(`SCORE ${pad(session.score)}`, 50)
     centre(`HIGH  ${pad(Math.max(session.high, high))}`, 62)
-    centre('HOME TO QUIT', 80, GOLD)
+    centre('HOME TO TITLE', 80, GOLD)
   } else if (name === 'MAP') {
     centre(world.level.name, 34)
     view.map(world, 12, 50, 136, 45)
@@ -573,7 +571,7 @@ function frame(now: number) {
   const t = now / 1000
   ctx.setTransform(scale, 0, 0, scale, 0, 0)
   pollPads()
-  // HOME leaves the original app (saving the high score); here it returns to the title screen.
+  // Home saves the high score and returns to the title screen.
   if (hit('home') && mode !== 'title') {
     saveHigh()
     setMode('title')
@@ -604,7 +602,7 @@ new ResizeObserver(() => {
 }).observe(canvas)
 
 // The site face uses font-display: optional, which a cold canvas load can miss for the whole page.
-const hudFont = new FontFace('Super Mona HUD', 'url(/fonts/jetbrains-mono/JetBrainsMono-Bold.woff2)', { weight: '700' })
+const hudFont = new FontFace('Pixel Game HUD', 'url(/fonts/jetbrains-mono/JetBrainsMono-Bold.woff2)', { weight: '700' })
 document.fonts.add(hudFont)
 Promise.all([hudFont.load().catch(() => null), ...[TILES, PLAYERS, MOBS].map((img) => img.decode())]).then(() => {
   const level = LEVELS[0]()

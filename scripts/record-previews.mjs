@@ -14,22 +14,21 @@ const size = { width: 1280, height: 800 }
 const button = (page, name) => page.getByRole('button', { name, exact: true })
 const label = (page, name) => page.locator('label', { hasText: name }).first()
 
-// Super Mona's showcase run: jump presses and holds in seconds of play, checked against the engine to take 1-1's
-// opening big with two stars and four stomps at 50 to 240 fps. It pauses before the next bug reaches Mona.
-const monaRun = {
+// The showcase run follows the opening stage's route with jumps, stars, and enemy stomps.
+const platformerRun = {
   jumps: [[1.631, 0.05], [2.774, 0.05], [4.815, 0.12], [5.398, 0.3], [6.315, 0.3], [6.748, 0.05], [8.456, 0.45], [9.057, 0.3]],
   pause: 9.95,
 }
 
 // In the page: start a game holding right, play the jumps on game time so a slow recorded frame shifts nothing,
 // then pause. Resolves with the last lives text the HUD drew.
-function playMona({ jumps, pause }) {
+function playPlatformer({ jumps, pause }) {
   const key = (type, code) => dispatchEvent(new KeyboardEvent(type, { code }))
   const proto = CanvasRenderingContext2D.prototype
   const { fillText } = proto
   let hud = ''
   proto.fillText = function (text, ...rest) {
-    if (text.startsWith('MONA x')) hud = text
+    if (text.startsWith('PLAYER 1 x')) hud = text
     return fillText.call(this, text, ...rest)
   }
   const keys = jumps.flatMap(([at, hold]) => [[at, 'keydown'], [at + hold, 'keyup']])
@@ -81,10 +80,10 @@ const tours = {
       p.locator(`[data-square="${square}"]:not([disabled])`).click({ timeout: 60000 })),
     (p) => p.waitForTimeout(1500),
   ],
-  'super-mona': [
+  platformer: [
     async (p) => {
-      const hud = await p.evaluate(playMona, monaRun)
-      if (hud !== 'MONA x3') throw new Error(`Mona lost a life on the recorded run (${hud})`)
+      const hud = await p.evaluate(playPlatformer, platformerRun)
+      if (hud !== 'PLAYER 1 x3') throw new Error(`The player lost a life on the recorded run (${hud})`)
     },
   ],
 }

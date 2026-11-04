@@ -11,7 +11,7 @@ Visit **[lab.raghib.io](https://lab.raghib.io/)**.
 | [Chess](https://lab.raghib.io/chess/) | Play Stockfish locally |
 | [Context Autopsy](https://lab.raghib.io/context-autopsy/) | Inspect agent-session context and token use |
 | [Session Flame](https://lab.raghib.io/session-flame/) | Replay sessions as a flame chart |
-| [Super Mona](https://lab.raghib.io/super-mona/) | Play a 32-stage pixel platformer in the browser |
+| [Pixel Platformer](https://lab.raghib.io/platformer/) | Play a 32-stage pixel platformer in the browser |
 | [Token Diet](https://lab.raghib.io/token-diet/) | Compare recorded token-use experiments |
 
 ## Run locally

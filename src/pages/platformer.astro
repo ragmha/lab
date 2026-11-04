@@ -4,21 +4,21 @@ import ThemeToggle from '../components/ThemeToggle.astro'
 import '../styles/site.css'
 
 const description =
-  'Play Super Mona in your browser: a 32-stage pixel platformer with two heroes, sound, and keyboard, touch or gamepad controls.'
+  'Play a 32-stage pixel platformer with sound, keyboard, touch, or gamepad controls.'
 ---
 
 <BaseLayout
-  title="Super Mona: A 32-Stage Platformer in Your Browser"
+  title="Pixel Platformer: A 32-Stage Browser Game"
   description={description}
-  bodyClass="site-surface mona-body"
-  pageClass="mona-page"
+  bodyClass="site-surface platformer-body"
+  pageClass="platformer-page"
   defaultTheme="dark"
 >
   <header class="app-bar">
     <div class="app-title">
       <a class="app-back" href="/"><span aria-hidden="true">←</span> Experiments</a>
-      <h1 id="page-title">Can Mona Reach the Last Flag?</h1>
-      <p class="intro">Super Mona, a pixel platformer ported to the browser. 32 stages, two heroes, nothing to install.</p>
+      <h1 id="page-title">Can You Reach the Last Flag?</h1>
+      <p class="intro">A 32-stage pixel platformer with sound and keyboard, touch, or gamepad controls.</p>
     </div>
     <div class="app-actions">
       <button id="sound-toggle" type="button" hidden>MUTE</button>
@@ -27,7 +27,7 @@ const description =
   </header>
   <main class="stage" aria-labelledby="page-title">
     <div class="console">
-      <canvas id="mona-screen" width="640" height="480" role="img" aria-label="Super Mona game screen"></canvas>
+      <canvas id="game-screen" width="640" height="480" role="img" aria-label="Pixel platformer game screen"></canvas>
       <noscript><p>Enable JavaScript to play. The game runs entirely in your browser.</p></noscript>
       <div class="pad">
         <div class="dpad">
@@ -37,7 +37,7 @@ const description =
           <button type="button" data-btn="down" aria-label="Down">▼</button>
         </div>
         <div class="menu">
-          <button type="button" data-btn="home" aria-label="Home: quit to title">Home</button>
+          <button type="button" data-btn="home" aria-label="Home: return to title">Home</button>
           <button type="button" data-btn="menu">Start</button>
         </div>
         <div class="face">
@@ -50,24 +50,24 @@ const description =
         <span><kbd>Z</kbd> or <kbd>Space</kbd> jump (A)</span>
         <span><kbd>X</kbd> or <kbd>Shift</kbd> run (B)</span>
         <span><kbd>Enter</kbd> start / pause</span>
-        <span><kbd>Home</kbd> quit</span>
+        <span><kbd>Home</kbd> title</span>
         <span><kbd>M</kbd> sound</span>
         <span>Gamepads work too</span>
       </p>
       <p class="credit">
-        Game and sprites under the <a href="/super-mona/LICENSE.txt">MIT License</a>. High score stays in this browser.
+        <a href="/platformer/LICENSE.txt">License</a>. High score stays in this browser.
       </p>
     </div>
   </main>
 </BaseLayout>
 
 <script>
-  import '../scripts/super-mona'
+  import '../scripts/platformer'
 </script>
 
 <style>
-  :global(html:has(.mona-body)), :global(.mona-body) { height: 100%; overflow: hidden; }
-  :global(.site-surface .mona-page) {
+  :global(html:has(.platformer-body)), :global(.platformer-body) { height: 100%; overflow: hidden; }
+  :global(.site-surface .platformer-page) {
     --app-gutter: clamp(0.75rem, 2.5vw, 2rem);
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);

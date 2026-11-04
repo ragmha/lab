@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { Controls, Level, LEVELS, Session, TILE, World, autopilot } from '../src/lib/super-mona'
+import { Controls, Level, LEVELS, Session, TILE, World, autopilot } from '../src/lib/platformer'
 
 const DT = 1 / 30
 

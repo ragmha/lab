@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { chromium } from 'playwright'
 
 const base = process.env.LAB_TEST_URL
-const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/super-mona/', '/token-diet/']
+const paths = ['/', '/chess/', '/context-autopsy/', '/session-flame/', '/platformer/', '/token-diet/']
 const recorded = JSON.parse(await readFile(new URL('../src/lib/session-flame-runs.json', import.meta.url), 'utf8'))
 const languages = JSON.parse(await readFile(new URL('../src/data/languages.json', import.meta.url), 'utf8'))
 
@@ -16,7 +16,7 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
       await page.goto(base, { waitUntil: 'networkidle' })
       const panels = page.locator('.experiment-grid a')
       assert.deepEqual(await panels.evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
-        ['/session-flame/', '/context-autopsy/', '/token-diet/', '/chess/', '/super-mona/'])
+        ['/session-flame/', '/context-autopsy/', '/token-diet/', '/chess/', '/platformer/'])
       assert.equal(await page.locator('h1').innerText(), 'Raghib’s Lab — Experiments')
       const total = languages.reduce((sum, language) => sum + language.size, 0)
       assert.deepEqual(await page.locator('.language-legend li').allTextContents(), languages.map(({ node, size }) => `${node.name} ${(size / total * 100).toFixed(1)}%`))
@@ -48,7 +48,50 @@ test('homepage terminal grid keeps native keyboard links and works without JavaS
     const motion = await browser.newPage({ reducedMotion: 'no-preference' })
     await motion.goto(base, { waitUntil: 'networkidle' })
     assert.deepEqual(await motion.locator('.experiment-preview img').evaluateAll((images) => images.map((img) => new URL(img.currentSrc).pathname)),
-      ['/previews/session-flame.gif', '/previews/context-autopsy.gif', '/previews/token-diet.gif', '/previews/chess.gif', '/previews/super-mona.gif'])
+      ['/previews/session-flame.gif', '/previews/context-autopsy.gif', '/previews/token-diet.gif', '/previews/chess.gif', '/previews/platformer.gif'])
+  } finally {
+    await browser.close()
+  }
+})
+
+test('pixel platformer presentation is generic and keeps its controls discoverable', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage()
+    await page.goto(new URL('/platformer/', base).href, { waitUntil: 'networkidle' })
+    assert.equal(await page.title(), 'Pixel Platformer: A 32-Stage Browser Game — Raghib’s Lab')
+    assert.equal(await page.locator('h1').innerText(), 'Can You Reach the Last Flag?')
+    assert.equal(await page.locator('#game-screen').getAttribute('aria-label'), 'Pixel platformer game screen')
+    const copy = await page.locator('body').innerText()
+    assert.doesNotMatch(copy, /GitHub|Mona|Woodward|Pimoroni|badger/i)
+    assert.match(copy, /Gamepads work too/)
+    await page.keyboard.press('m')
+    assert.equal(await page.locator('#sound-toggle').innerText(), 'UNMUTE')
+    await page.close()
+  } finally {
+    await browser.close()
+  }
+})
+
+test('pixel platformer touch controls fit narrow portrait and landscape screens', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }]) {
+      const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true })
+      const page = await context.newPage()
+      await page.goto(new URL('/platformer/', base).href, { waitUntil: 'networkidle' })
+      const buttons = await page.locator('.pad button').evaluateAll((els) => els.map((el) => {
+        const { left, top, right, bottom } = el.getBoundingClientRect()
+        return { visible: getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).display !== 'none', left, top, right, bottom }
+      }))
+      assert.equal(buttons.length, 8)
+      for (const button of buttons) {
+        assert.equal(button.visible, true)
+        assert.ok(button.left >= 0 && button.top >= 0 && button.right <= viewport.width && button.bottom <= viewport.height, `${JSON.stringify({ viewport, button })}`)
+      }
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+      await context.close()
+    }
   } finally {
     await browser.close()
   }
