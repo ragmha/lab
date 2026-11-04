@@ -58,7 +58,8 @@ see [LICENSE](LICENSE). Third-party assets keep their own licenses:
   [`public/fonts/jetbrains-mono/OFL.txt`](public/fonts/jetbrains-mono/OFL.txt).
   Pinned upstream source is recorded in `src/styles/fonts.css`.
 - **Pixel platformer**: game logic and 32 stages in `src/lib/platformer.ts` are
-  a TypeScript port of an MIT-licensed original. `tiles.png` and `mobs.png` in
+  a TypeScript port of `martinwoodward/super-mona` at commit `6d3100e` (MIT).
+  `tiles.png` and `mobs.png` in
   `public/platformer/` are copied unmodified; `players.png` is original
   geometric explorer artwork replacing the upstream branded characters.
   The homepage still and GIF are captures of this modified game.
