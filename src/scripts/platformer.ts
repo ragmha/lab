@@ -1,7 +1,7 @@
 // Canvas front end for the pixel platformer, with keyboard, touch, and gamepad controls.
 import {
-  CHARACTER_ORDER, CHARACTERS, Controls, EMPTY, ITEM_NAMES, LEVELS, POLE, ROWS, Session, TILE, VIEW_H, VIEW_W, World, autopilot,
-  type GameEvent, type Hero, type Level,
+  Controls, EMPTY, LEVELS, ROWS, Session, TILE, VIEW_H, VIEW_W, World,
+  type GameEvent, type Level,
 } from '../lib/platformer'
 
 const SKY = { day: '#5c94fc', cave: '#000000', dusk: '#342c6e', cloud: '#96c8ff', castle: '#280814' }
@@ -10,17 +10,10 @@ const WHITE = '#ffffff'
 const GOLD = '#ffd64a'
 const DIM = 'rgba(0, 0, 0, 0.67)'
 const PANEL = 'rgba(16, 12, 40, 0.88)'
-const MAP_SOLID = '#c8783c'
-const MAP_PLAYER = '#ff50c8'
-const MAP_FLAG = '#50ff78'
 const HUD = 7
 const BIG = 13
 const ITEM_SPRITES = { chip: 7, sparkle: 12, '1up': 11 }
 const [STAND, WALK1, WALK2, JUMP, SKID, CROUCH, DEAD, CLIMB] = [0, 1, 2, 3, 4, 5, 6, 7]
-const PAGES = ['PAUSED', 'MAP', 'ITEMS', 'HERO']
-const DEMO_IDLE = 10
-const DEMO_STAGES = 2
-const HIGH_KEY = 'platformer-high'
 
 const canvas = document.getElementById('game-screen') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!
@@ -41,8 +34,8 @@ function blit(img: HTMLImageElement, size: number, col: number, row: number, x: 
 }
 const tile = (id: number, x: number, y: number, g = ctx) => blit(TILES, TILE, id % 16, id >> 4, x, y, false, false, g)
 const mob = (i: number, x: number, y: number, flipX = false, flipY = false) => blit(MOBS, TILE, i % 8, i >> 3, x, y, flipX, flipY)
-const hero = (who: Hero, big: boolean, x: number, y: number, col = STAND, glow = false, mirror = false) =>
-  blit(PLAYERS, 16, col, (who === 'player2' ? 2 : 0) + (big ? 1 : 0) + (glow ? 4 : 0), x, y, mirror)
+const hero = (big: boolean, x: number, y: number, col = STAND, glow = false, mirror = false) =>
+  blit(PLAYERS, 16, col, (big ? 1 : 0) + (glow ? 2 : 0), x, y, mirror)
 const int = Math.trunc
 const pad = (n: number, width = 6) => String(int(n)).padStart(width, '0')
 const font = (size: number) => `700 ${size}px "Pixel Game HUD", ui-monospace, monospace`
@@ -73,7 +66,6 @@ class View {
   stage = document.createElement('canvas')
   g: CanvasRenderingContext2D
   sky: string
-  minimap: HTMLCanvasElement | null = null
 
   constructor(public level: Level) {
     this.sky = SKY[level.theme]
@@ -101,7 +93,6 @@ class View {
     if (level.dirty.length) {
       for (const i of level.dirty) this.cell(i)
       level.dirty.length = 0
-      this.minimap = null
     }
     const cam = int(world.camX)
     ctx.drawImage(this.stage, cam, 0, VIEW_W, VIEW_H, 0, 0, VIEW_W, VIEW_H)
@@ -173,43 +164,18 @@ class View {
       : Math.abs(p.vx) > 1 || state === 'castle' ? (int(p.walkPhase / 6) % 2 ? WALK1 : WALK2)
       : STAND
     const glow = p.sparkle > 0 && int(t * 12) % 2 === 1
-    hero(p.character, p.big, int(p.x) - 5 - cam, int(p.y + p.h) - 16, col, glow, p.facing < 0)
+    hero(p.big, int(p.x) - 5 - cam, int(p.y + p.h) - 16, col, glow, p.facing < 0)
   }
 
   hud(world: World) {
     const s = world.session
-    text(`${CHARACTERS[world.player.character].name} x${s.lives}`, 2, 0)
+    text(`PLAYER 1 x${s.lives}`, 2, 0)
     mob(8, 52, 2)
     text(`x${pad(s.stars, 2)}`, 61, 0, GOLD)
     text(pad(s.score), 84, 0)
     text(String(int(world.timeLeft + 0.99)).padStart(3), 138, 0)
   }
 
-  map(world: World, x: number, y: number, w: number, h: number) {
-    const level = this.level
-    if (!this.minimap) {
-      const m = Object.assign(document.createElement('canvas'), { width: level.width, height: ROWS })
-      const g = m.getContext('2d')!
-      g.fillStyle = this.sky
-      g.fillRect(0, 0, level.width, ROWS)
-      g.fillStyle = MAP_SOLID
-      level.tiles.forEach((id, i) => { if (id !== EMPTY && id !== POLE) g.fillRect(i % level.width, Math.floor(i / level.width), 1, 1) })
-      this.minimap = m
-    }
-    ctx.drawImage(this.minimap, x, y, w, h)
-    const sx = w / level.width
-    const sy = h / ROWS
-    ctx.fillStyle = WHITE
-    ctx.fillRect(x + int((world.camX / TILE) * sx), y, 1, h)
-    ctx.fillRect(x + int(((world.camX + VIEW_W) / TILE) * sx), y, 1, h)
-    if (level.flagX !== null) {
-      ctx.fillStyle = MAP_FLAG
-      ctx.fillRect(x + int(level.flagX * sx), y + int(3 * sy), 2, int(9 * sy))
-    }
-    const p = world.player
-    ctx.fillStyle = MAP_PLAYER
-    ctx.fillRect(x + int((p.x / TILE) * sx) - 1, y + int((p.y / TILE) * sy) - 1, 3, 3)
-  }
 }
 
 // Synthesized effects follow game events and a few app screens.
@@ -225,25 +191,28 @@ function unlockAudio() {
   if (!soundOn || audio?.state === 'running') return
   if (!audio) {
     audio = new AudioContext()
+    audio.addEventListener('statechange', paintSound)
     out = new GainNode(audio, { gain: 0.25 })
     out.connect(audio.destination)
   }
-  audio.resume().catch(() => {})
+  audio.resume().catch((error: unknown) => console.error('Unable to enable game audio', error))
 }
 
 function setSound(on: boolean) {
   soundOn = on
   try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off') } catch {}
-  paintSound()
   if (on) unlockAudio()
   // Closing drops notes already scheduled; a suspended context would play them on unmute.
   else { audio?.close(); audio = undefined }
+  paintSound()
 }
 
 function paintSound() {
   if (!soundButton) return
-  soundButton.textContent = soundOn ? 'MUTE' : 'UNMUTE'
-  soundButton.title = `${soundOn ? 'Mute' : 'Unmute'} sound (M)`
+  const active = soundOn && audio?.state === 'running'
+  const label = !soundOn ? 'Unmute' : active ? 'Mute' : 'Enable'
+  soundButton.textContent = `${label.toUpperCase()}${label === 'Enable' ? ' SOUND' : ''}`
+  soundButton.title = `${label} sound (M)${label === 'Enable' ? ' — click or press M to activate audio' : ''}`
   soundButton.hidden = false
 }
 
@@ -280,12 +249,10 @@ const SOUNDS: Record<Sound, () => void> = {
   jump: () => note(260, 620, 0.14, 0, 'square', 0.35),
   star: () => tune([84, 91], 0.06),
   '1up': () => tune([79, 84, 88, 91, 96], 0.07),
-  switch: () => tune([74, 79, 86], 0.05, 'triangle', 0.8),
   kick: () => note(330, 140, 0.09, 0, 'square', 0.4),
   shrink: () => tune([79, 75, 72, 67, 63], 0.07, 'square', 0.35),
   die: () => tune([72, 67, 64, 60, 55, 48], 0.15, 'triangle', 0.8),
   grow: () => tune([60, 64, 67, 72, 76, 79, 84], 0.045),
-  stored: () => tune([88, 91], 0.08, 'triangle', 0.7),
   sparkle: () => tune([84, 88, 91, 96, 100, 103, 108], 0.035, 'triangle', 0.7),
   item: () => note(200, 800, 0.3, 0, 'triangle', 0.8),
   break: () => { noise(0.2); note(180, 50, 0.18, 0, 'square', 0.3) },
@@ -302,8 +269,12 @@ const SOUNDS: Record<Sound, () => void> = {
 const sfx = (name: Sound) => { if (soundOn && audio?.state === 'running') SOUNDS[name]() }
 
 paintSound()
-soundButton?.addEventListener('click', () => setSound(!soundOn))
-for (const type of ['keydown', 'pointerdown', 'pointerup', 'touchend']) window.addEventListener(type, unlockAudio)
+const toggleSound = () => setSound(!soundOn || audio?.state !== 'running')
+soundButton?.addEventListener('click', toggleSound)
+for (const type of ['keydown', 'pointerdown', 'pointerup', 'touchend']) window.addEventListener(type, (e) => {
+  if ((e.target instanceof Element && e.target.closest('#sound-toggle')) || (e instanceof KeyboardEvent && e.code === 'KeyM')) return
+  unlockAudio()
+})
 // A clicked header button would keep focus and take Space and Enter away from the game.
 document.querySelector('.app-actions')?.addEventListener('mousedown', (e) => e.preventDefault())
 
@@ -347,7 +318,7 @@ function pollPads() {
 
 window.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return
-  if (e.code === 'KeyM' && !e.repeat) return setSound(!soundOn)
+  if (e.code === 'KeyM' && !e.repeat) return toggleSound()
   const el = e.target as HTMLElement
   let b = KEYS[e.code]
   // Space/Enter press a focused on-screen button, and still activate any other link or button.
@@ -382,22 +353,14 @@ function readControls() {
   return controls
 }
 
-// App states, as in __init__.py.
-type Mode = 'title' | 'intro' | 'play' | 'pause' | 'over' | 'win' | 'demo'
+type Mode = 'title' | 'intro' | 'play' | 'pause' | 'over' | 'win'
 let mode: Mode = 'title'
 let modeTime = 0
-let high = 0
-try { high = Number(localStorage.getItem(HIGH_KEY)) || 0 } catch {}
-let session = new Session(high)
+let session = new Session()
 let world: World
 let view: View
 let titleWorld: World
 let titleView: View
-let demoControls = new Controls()
-let demoNext = 0
-let demoPlayed = 0
-let page = 0
-let cursor = 0
 
 function setMode(next: Mode) {
   if (next === 'pause' || next === 'over' || next === 'win') sfx(next)
@@ -405,16 +368,8 @@ function setMode(next: Mode) {
   modeTime = 0
 }
 
-function saveHigh() {
-  if (session.high <= high) return
-  high = session.high
-  try { localStorage.setItem(HIGH_KEY, String(high)) } catch {}
-}
-// Save the high score when leaving the page.
-window.addEventListener('pagehide', saveHigh)
-
 function newGame() {
-  session = new Session(high)
+  session = new Session()
   startLevel()
 }
 
@@ -425,57 +380,26 @@ function startLevel() {
   setMode('intro')
 }
 
-function startDemo() {
-  const level = LEVELS[demoNext++ % LEVELS.length]()
-  view = new View(level)
-  world = new World(level, new Session())
-  world.demo = true
-  demoControls = new Controls()
-  setMode('demo')
-}
-
 const start = () => hit('a') || hit('menu')
 
 function drawTitle(t: number) {
   titleView.draw(titleWorld, t)
   centre('PIXEL PLATFORMER', 22, GOLD, BIG)
-  centre(`HIGH ${pad(high)}`, 44)
   if (int(t * 2) % 2) centre('PRESS START', 84)
   if (start()) newGame()
-  else if (pressed.size) setMode('title')
-  else if (modeTime > DEMO_IDLE) { demoPlayed = 0; startDemo() }
-}
-
-function drawDemo(dt: number, t: number) {
-  if (pressed.size) {
-    if (start()) newGame()
-    else { setMode('title'); drawTitle(t) }
-    return
-  }
-  world.step(dt, autopilot(world, demoControls))
-  view.draw(world, t)
-  view.hud(world)
-  if (modeTime < 2) centre(world.level.name, 30, WHITE, BIG)
-  if (int(t * 2) % 2) centre('PRESS START', 84)
-  if (world.state === 'clear' || world.state === 'dead' || modeTime > 60) {
-    if (++demoPlayed < DEMO_STAGES) startDemo()
-    else setMode('title')
-  }
 }
 
 function drawIntro(t: number) {
   view.draw(world, t)
-  panel(26, world.level.canSwitch ? 76 : 56)
+  panel(26, 56)
   centre(world.level.name, 34, WHITE, BIG)
-  hero(session.character, session.big, 62, 58)
+  hero(session.big, 62, 58)
   text(`x ${session.lives}`, 84, 62)
-  if (world.level.canSwitch) centre('SWAP HERO IN PAUSE MENU', 92, GOLD)
   if (t > 2 || (t > 0.4 && hit('a'))) setMode('play')
 }
 
 function play(dt: number, t: number) {
   if (hit('menu') && world.state === 'play') {
-    page = cursor = 0
     setMode('pause')
     return drawPaused(t)
   }
@@ -486,11 +410,9 @@ function play(dt: number, t: number) {
   if (world.state === 'tally' && world.timeLeft > 0 && int(t * 15) !== int((t - dt) * 15)) sfx('tick')
   if (world.state === 'dead') {
     session.lives -= 1
-    saveHigh()
     if (session.lives > 0) startLevel()
     else setMode('over')
   } else if (world.state === 'clear') {
-    saveHigh()
     session.level += 1
     if (session.level >= LEVELS.length) setMode('win')
     else startLevel()
@@ -502,53 +424,12 @@ function drawPaused(t: number) {
   view.hud(world)
   ctx.fillStyle = DIM
   ctx.fillRect(0, 10, VIEW_W, VIEW_H - 10)
-  if (hit('left')) page = (page + PAGES.length - 1) % PAGES.length
-  if (hit('right')) page = (page + 1) % PAGES.length
-  let x = 6
-  PAGES.forEach((name, i) => {
-    text(name, x, 14, i === page ? GOLD : WHITE)
-    x += ctx.measureText(name).width + 10
-  })
+  centre('PAUSED', 14, GOLD)
   panel(30, 70)
-  const name = PAGES[page]
-  if (name === 'PAUSED') {
-    centre(world.level.name, 36)
-    centre(`SCORE ${pad(session.score)}`, 50)
-    centre(`HIGH  ${pad(Math.max(session.high, high))}`, 62)
-    centre('HOME TO TITLE', 80, GOLD)
-  } else if (name === 'MAP') {
-    centre(world.level.name, 34)
-    view.map(world, 12, 50, 136, 45)
-  } else if (name === 'ITEMS') {
-    const inv = session.inventory
-    if (!inv.length) {
-      centre('NO ITEMS YET', 50)
-      centre('SPARE CHIPS GO HERE', 66)
-    } else {
-      if (hit('up')) cursor = (cursor + inv.length - 1) % inv.length
-      if (hit('down')) cursor = (cursor + 1) % inv.length
-      cursor = Math.min(cursor, inv.length - 1)
-      inv.forEach((kind, i) => {
-        const y = 36 + i * 16
-        mob(ITEM_SPRITES[kind], 30, y + 2)
-        text(ITEM_NAMES[kind], 44, y, i === cursor ? GOLD : WHITE)
-        if (i === cursor) text('>', 20, y, GOLD)
-      })
-      if (hit('a') && world.useItem(cursor)) return setMode('play')
-    }
-  } else {
-    CHARACTER_ORDER.forEach((who, i) => {
-      const hx = 34 + i * 60
-      hero(who, session.big, hx + 8, 38)
-      text(CHARACTERS[who].name, hx + 4, 56, who === world.player.character ? GOLD : WHITE)
-    })
-    centre(CHARACTERS[world.player.character].about, 70)
-    if (world.level.canSwitch) {
-      centre('A: SWAP HERO', 84, GOLD)
-      if (hit('a')) world.switchCharacter()
-    } else centre('NO SWAP ON THIS STAGE', 84)
-  }
-  centre('< > PAGE   START/B RESUME', 108, GOLD)
+  centre(world.level.name, 36)
+  centre(`SCORE ${pad(session.score)}`, 50)
+  centre('HOME TO TITLE', 80, GOLD)
+  centre('START/B RESUME', 108, GOLD)
   // modeTime is 0 on the frame Start opened the pause screen; ignore that press.
   if (modeTime > 0 && (hit('menu') || hit('b'))) setMode('play')
 }
@@ -558,7 +439,6 @@ function drawEnd(t: number, title: string) {
   ctx.fillRect(0, 0, VIEW_W, VIEW_H)
   centre(title, 30, GOLD, BIG)
   centre(`SCORE ${pad(session.score)}`, 56)
-  centre(`HIGH  ${pad(high)}`, 68)
   if (t > 1 && int(t * 2) % 2) centre('PRESS START', 92)
   if (t > 1 && start()) setMode('title')
 }
@@ -571,21 +451,17 @@ function frame(now: number) {
   const t = now / 1000
   ctx.setTransform(scale, 0, 0, scale, 0, 0)
   pollPads()
-  // Home saves the high score and returns to the title screen.
   if (hit('home') && mode !== 'title') {
-    saveHigh()
     setMode('title')
   }
   if (mode === 'title') drawTitle(t)
   else if (mode === 'intro') drawIntro(modeTime)
   else if (mode === 'play') play(dt, t)
   else if (mode === 'pause') drawPaused(t)
-  else if (mode === 'demo') drawDemo(dt, t)
   else drawEnd(modeTime, mode === 'over' ? 'GAME OVER' : 'YOU WIN!')
-  // Play this frame's game events; the demo stays silent.
   const events = world?.session.events
   if (events?.length) {
-    if (!world.demo) events.forEach(sfx)
+    events.forEach(sfx)
     events.length = 0
   }
   pressed.clear()

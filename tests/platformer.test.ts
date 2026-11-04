@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { Controls, Level, LEVELS, Session, TILE, World, autopilot } from '../src/lib/platformer'
+import { Controls, Level, LEVELS, Session, TILE, World } from '../src/lib/platformer'
 
 const DT = 1 / 30
 
-test('every stage builds, starts on ground and can be finished by the demo autopilot', () => {
+test('all 32 stages start safely and their flags finish a run', () => {
   const names = new Set<string>()
   for (const factory of LEVELS) {
     const level = factory()
@@ -13,13 +13,39 @@ test('every stage builds, starts on ground and can be finished by the demo autop
     assert.ok(level.flagX !== null && level.castleDoor! / TILE < level.width, level.name)
     assert.ok(level.solid(level.start[0], level.start[1] + 1), level.name)
     const world = new World(level, new Session())
-    world.demo = true
     const c = new Controls()
-    for (let i = 0; i < 120 / DT && world.state !== 'clear'; i++) world.step(DT, autopilot(world, c))
+    for (let i = 0; i < 30; i++) world.step(DT, c)
+    assert.equal(world.state, 'play', level.name)
+    assert.equal(world.player.onGround, true, level.name)
+    world.player.x = level.flagX! * TILE
+    world.player.y = 70
+    for (let i = 0; i < 30 / DT && world.state !== 'clear'; i++) world.step(DT, c)
     assert.equal(world.state, 'clear', level.name)
     assert.ok(world.session.score > 0, level.name)
   }
   assert.equal(names.size, 32)
+})
+
+test('power-ups apply immediately, including spare chips', () => {
+  const world = new World(LEVELS[0](), new Session())
+  const feet = world.player.y + world.player.h
+  world.applyItem('chip')
+  assert.equal(world.player.big, true)
+  assert.equal(world.session.big, true)
+  assert.equal(world.player.y + world.player.h, feet)
+  world.applyItem('chip')
+  assert.equal(world.session.score, 2000)
+  assert.equal(world.player.y + world.player.h, feet)
+  world.hurtPlayer()
+  assert.equal(world.player.big, false)
+  assert.equal(world.session.big, false)
+  world.player.invulnerable = 0
+  world.applyItem('sparkle')
+  world.hurtPlayer()
+  assert.equal(world.state, 'play')
+  assert.equal(world.player.sparkle, 8)
+  world.applyItem('1up')
+  assert.equal(world.session.lives, 4)
 })
 
 test('holding jump goes higher, and stomping squashes a bug', () => {

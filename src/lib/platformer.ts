@@ -31,21 +31,14 @@ const SOLID = new Set([GROUND_TOP, GROUND, BRICK, QUESTION, USED, HARD, PIPE_TL,
 const BREAKABLE = new Set([BRICK, CAVE_BRICK])
 
 export type Theme = 'day' | 'cave' | 'dusk' | 'cloud' | 'castle'
-export type Hero = 'player1' | 'player2'
 export type ItemKind = 'chip' | 'sparkle' | '1up'
 
-export const CHARACTERS = {
-  player1: { name: 'PLAYER 1', walk: 50, run: 82, accel: 190, decel: 170, skid: 420, jump: 152, runJump: 168, gravHold: 300, grav: 900, about: 'Balanced grip' },
-  player2: { name: 'PLAYER 2', walk: 50, run: 78, accel: 150, decel: 100, skid: 300, jump: 166, runJump: 180, gravHold: 280, grav: 820, about: 'Floaty jumps, slippery' },
-}
-export const CHARACTER_ORDER: Hero[] = ['player1', 'player2']
+const MOVEMENT = { walk: 50, run: 82, accel: 190, decel: 170, skid: 420, jump: 152, runJump: 168, gravHold: 300, grav: 900 }
 const MAX_FALL = 210
 const SMALL_H = 11
 const BIG_H = 15
 const STOMP_BOUNCE = 120
 const SHELL_SPEED = 135
-const INVENTORY_SIZE = 3
-export const ITEM_NAMES: Record<ItemKind, string> = { chip: 'POWER CHIP', sparkle: 'SPARKLE', '1up': '1-UP' }
 
 const tileOf = (value: number) => Math.floor(value / TILE)
 const overlap = (ax: number, ay: number, aw: number, ah: number, bx: number, by: number, bw: number, bh: number) =>
@@ -68,7 +61,7 @@ export class Level {
   castleDoor: number | null = null
   dirty: number[] = []
 
-  constructor(public name: string, public width: number, public theme: Theme = 'day', public time = 300, public canSwitch = false) {
+  constructor(public name: string, public width: number, public theme: Theme = 'day', public time = 300) {
     this.tiles = new Uint8Array(width * ROWS)
   }
 
@@ -194,9 +187,8 @@ export class Player extends Body {
   walkPhase = 0
   skidding = false
   dead = false
-  constructor(x: number, y: number, public character: Hero, public big = false) { super(x, y) }
+  constructor(x: number, y: number, public big = false) { super(x, y) }
   get h() { return this.big ? BIG_H : SMALL_H }
-  stats() { return CHARACTERS[this.character] }
 }
 
 export type EnemyState = 'walk' | 'shell' | 'kicked' | 'carried' | 'squashed' | 'dead'
@@ -223,7 +215,7 @@ export type Particle = { kind: 'debris' | 'star' | 'score' | 'sparkle'; x: numbe
 export type Bump = { tx: number; ty: number; tile: number; age: number }
 export type WorldState = 'play' | 'dying' | 'dead' | 'flag' | 'castle' | 'tally' | 'clear'
 export type GameEvent =
-  | 'star' | '1up' | 'switch' | 'jump' | 'kick' | 'shrink' | 'die' | 'grow' | 'stored'
+  | 'star' | '1up' | 'jump' | 'kick' | 'shrink' | 'die' | 'grow'
   | 'sparkle' | 'item' | 'break' | 'bump' | 'pickup' | 'stomp' | 'defeat' | 'flag'
 
 export class Session {
@@ -231,27 +223,17 @@ export class Session {
   stars = 0
   lives = 3
   level = 0
-  character: Hero = 'player1'
   big = false
-  inventory: ItemKind[] = []
   /** Events the app can play sounds for, then clear. */
   events: GameEvent[] = []
-  constructor(public high = 0) {}
-
   addScore(points: number) {
     this.score += points
-    if (this.score > this.high) this.high = this.score
   }
   addStar() {
     this.stars += 1
     this.addScore(200)
     this.events.push('star')
     if (this.stars >= 100) { this.stars -= 100; this.lives += 1; this.events.push('1up') }
-  }
-  store(kind: ItemKind) {
-    if (this.inventory.length >= INVENTORY_SIZE) return false
-    this.inventory.push(kind)
-    return true
   }
 }
 
@@ -269,13 +251,12 @@ export class World {
   flagY: number | null
   flagBonus = 0
   maxCam: number
-  demo = false
   controlsRun = false
   controlsJump = false
 
   constructor(public level: Level, public session: Session) {
     const [sx, sy] = level.start
-    this.player = new Player(sx * TILE + 1, 0, session.character, session.big)
+    this.player = new Player(sx * TILE + 1, 0, session.big)
     this.player.y = (sy + 1) * TILE - this.player.h
     this.enemies = level.spawns.map(([x, y, kind]) => new Enemy(x * TILE + 1, (y + 1) * TILE - 7, kind))
     this.timeLeft = level.time
@@ -321,27 +302,9 @@ export class World {
     else if (this.state === 'tally') this.updateTally(dt)
   }
 
-  switchCharacter() {
-    if (!this.level.canSwitch) return false
-    const next = CHARACTER_ORDER[(CHARACTER_ORDER.indexOf(this.player.character) + 1) % CHARACTER_ORDER.length]
-    this.player.character = this.session.character = next
-    this.session.events.push('switch')
-    return true
-  }
-
-  useItem(slot: number) {
-    const inv = this.session.inventory
-    if (slot >= inv.length || this.state !== 'play') return false
-    const kind = inv[slot]
-    if (kind === 'chip' && this.player.big) return false
-    inv.splice(slot, 1)
-    this.applyItem(kind, true)
-    return true
-  }
-
   updatePlayer(dt: number, c: Controls) {
     const p = this.player
-    const s = p.stats()
+    const s = MOVEMENT
     if (p.invulnerable > 0) p.invulnerable -= dt
     if (p.sparkle > 0) p.sparkle -= dt
 
@@ -448,7 +411,7 @@ export class World {
 
   hurtPlayer() {
     const p = this.player
-    if (p.invulnerable > 0 || p.sparkle > 0 || this.demo || this.state !== 'play') return
+    if (p.invulnerable > 0 || p.sparkle > 0 || this.state !== 'play') return
     if (p.carrying) { p.carrying.state = 'shell'; p.carrying.timer = 0; p.carrying = null }
     if (p.big) {
       p.big = false
@@ -482,11 +445,10 @@ export class World {
     this.session.events.push('grow')
   }
 
-  applyItem(kind: ItemKind, fromInventory = false) {
+  applyItem(kind: ItemKind) {
     if (kind === 'chip') {
-      if (!this.player.big) { this.grow(); this.session.addScore(1000) }
-      else if (fromInventory || !this.session.store('chip')) this.session.addScore(1000)
-      else this.session.events.push('stored')
+      this.grow()
+      this.session.addScore(1000)
     } else if (kind === 'sparkle') {
       this.player.sparkle = 8
       this.session.addScore(1000)
@@ -655,7 +617,7 @@ export class World {
     const p = this.player
     if (this.state !== 'play' || e.state === 'dead' || e.state === 'squashed' || e.state === 'carried') return
     if (!overlap(p.x, p.y, p.w, p.h, e.x, e.y, e.w, e.h)) return
-    if (p.sparkle > 0 || this.demo) { this.defeatEnemy(e, 200); return }
+    if (p.sparkle > 0) { this.defeatEnemy(e, 200); return }
     const fallingOnto = p.vy > 0 && p.y + p.h - e.y <= 5
     if (e.state === 'shell') {
       if (!fallingOnto && !p.carrying && this.controlsRun) {
@@ -678,7 +640,7 @@ export class World {
       const points = Math.min(100 * 2 ** (p.stompChain - 1), 8000)
       this.session.addScore(points)
       this.spawnParticle('score', e.x, e.y - 4, 0, -30, points)
-      p.vy = -(this.controlsJump ? p.stats().jump : STOMP_BOUNCE)
+      p.vy = -(this.controlsJump ? MOVEMENT.jump : STOMP_BOUNCE)
       p.y = e.y - p.h
       e.state = e.kind === 'bug' ? 'squashed' : 'shell'
       e.timer = 0
@@ -778,22 +740,6 @@ export class World {
   }
 }
 
-/** Cheap attract-mode driver: run right, hop walls and gaps. */
-export function autopilot(world: World, c: Controls) {
-  const p = world.player, lv = world.level
-  c.left = c.up = c.down = false
-  c.right = c.run = true
-  const rows = range(tileOf(p.y), tileOf(p.y + p.h - 0.01) + 1)
-  const wall = [1, 10].some((d) => rows.some((ty) => lv.solid(tileOf(p.x + p.w + d), ty)))
-  const front = tileOf(p.x + p.w + 10)
-  const feet = tileOf(p.y + p.h + 1)
-  const gap = ![0, 1].some((k) => range(feet, ROWS).some((y) => lv.solid(front + k, y)))
-  const want = (wall || gap) && p.onGround
-  c.jumpPressed = want && !c.jump
-  c.jump = want || (c.jump && p.vy < 0)
-  return c
-}
-
 // Stages ---------------------------------------------------------------------
 // Rows run 0 (top) to 14; ground tops sit on row 13.
 
@@ -804,7 +750,7 @@ function scenery(lv: Level, hills: number[], bushes: number[], clouds: [number, 
 }
 
 function helloWorld() {
-  const lv = new Level('1-1 HELLO WORLD', 190, 'day', 300, false)
+  const lv = new Level('1-1 HELLO WORLD', 190, 'day')
   lv.ground(0, 68); lv.ground(71, 85); lv.ground(89, 150); lv.ground(153, 189)
   scenery(lv, [0, 40, 92, 140, 178], [9, 33, 60, 104, 130, 157],
     [[6, 3], [24, 2], [47, 4], [70, 3], [96, 2], [118, 4], [146, 3], [166, 2]])
@@ -825,7 +771,7 @@ function helloWorld() {
 }
 
 function serverRoom() {
-  const lv = new Level('1-2 SERVER ROOM', 165, 'cave', 300, true)
+  const lv = new Level('1-2 SERVER ROOM', 165, 'cave')
   lv.ground(0, 39); lv.ground(43, 77); lv.ground(81, 103); lv.ground(107, 164); lv.ceiling(0, 150)
   lv.row(10, 9, 'QQQ'); lv.block(13, 9, 'chip'); lv.enemy(18); lv.enemy(20)
   for (const y of [10, 11, 12]) lv.row(26, y, 'BB')
@@ -841,7 +787,7 @@ function serverRoom() {
 }
 
 function skyBridge() {
-  const lv = new Level('1-3 SKY BRIDGE', 175, 'dusk', 300, true)
+  const lv = new Level('1-3 SKY BRIDGE', 175, 'dusk')
   lv.ground(0, 20); lv.ground(33, 50); lv.ground(72, 95); lv.ground(100, 120); lv.ground(127, 174)
   scenery(lv, [2, 36, 76, 130, 165], [12, 45, 88, 110, 140],
     [[8, 3], [28, 2], [52, 4], [80, 2], [108, 3], [136, 2], [156, 4]])
@@ -858,7 +804,7 @@ function skyBridge() {
 
 /** World 1 castle: low ceiling, pits bridged by girders, dense blocks. */
 function firewall() {
-  const lv = new Level('1-4 FIREWALL', 150, 'castle', 300, true)
+  const lv = new Level('1-4 FIREWALL', 150, 'castle')
   lv.ground(0, 14, 10); lv.ground(15, 30); lv.ground(34, 52); lv.ground(57, 80); lv.ground(84, 110); lv.ground(114, 149)
   lv.ceiling(0, 134, [1, 2])
   lv.start = [2, 9]
@@ -873,7 +819,7 @@ function firewall() {
 
 /** World 2 overworld: pipes in pairs, long block rows and stair pits. */
 function pullRequest() {
-  const lv = new Level('2-1 PULL REQUEST', 185, 'day', 300, true)
+  const lv = new Level('2-1 PULL REQUEST', 185, 'day')
   lv.ground(0, 45); lv.ground(48, 98); lv.ground(102, 132); lv.ground(135, 184)
   scenery(lv, [0, 50, 104, 150], [14, 38, 66, 90, 120, 168],
     [[8, 2], [30, 4], [58, 2], [84, 3], [112, 2], [140, 4], [164, 3]])
@@ -890,7 +836,7 @@ function pullRequest() {
 
 /** World 2 underground: brick towers, tight corridors and a pipe maze. */
 function stackOverflow() {
-  const lv = new Level('2-2 OVERFLOW', 160, 'cave', 300, true)
+  const lv = new Level('2-2 OVERFLOW', 160, 'cave')
   lv.ground(0, 34); lv.ground(38, 70); lv.ground(74, 112); lv.ground(116, 159); lv.ceiling(0, 145)
   lv.row(8, 9, 'QQQQ'); lv.block(9, 9, 'chip'); lv.enemy(14)
   ;[1, 2, 3, 4].forEach((h, i) => { for (let y = 13 - h; y < 13; y++) lv.row(18 + i * 3, y, 'B') })
@@ -905,7 +851,7 @@ function stackOverflow() {
 
 /** World 2 athletic stage: girder hops high above the clouds. */
 function cloudDeploy() {
-  const lv = new Level('2-3 CLOUD DEPLOY', 175, 'cloud', 300, true)
+  const lv = new Level('2-3 CLOUD DEPLOY', 175, 'cloud')
   lv.ground(0, 14); lv.ground(46, 56); lv.ground(98, 108); lv.ground(135, 174)
   scenery(lv, [2, 144], [8, 50, 102, 156],
     [[10, 8], [22, 3], [36, 10], [60, 2], [76, 9], [92, 3], [116, 10], [130, 4]])
@@ -921,7 +867,7 @@ function cloudDeploy() {
 
 /** World 2 castle: longer pits and more shellbots. */
 function mergeConflict() {
-  const lv = new Level('2-4 CONFLICT', 165, 'castle', 300, true)
+  const lv = new Level('2-4 CONFLICT', 165, 'castle')
   lv.ground(0, 14, 10); lv.ground(15, 28); lv.ground(32, 46); lv.ground(51, 66); lv.ground(71, 92); lv.ground(96, 120); lv.ground(125, 164)
   lv.ceiling(0, 150, [1, 2])
   lv.start = [2, 9]
@@ -1012,7 +958,7 @@ const SEGMENTS: Record<string, Segment> = {
 }
 
 function build(name: string, theme: Theme, plan: string, k: number, seed: number, width: number): [Level, number] {
-  const lv = new Level(name, width, theme, 300, true)
+  const lv = new Level(name, width, theme)
   const r = makeRand(seed)
   lv.ground(0, 9)
   lv.row(5, 9, 'Q', 'chip')

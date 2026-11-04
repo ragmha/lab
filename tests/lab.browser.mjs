@@ -65,8 +65,72 @@ test('pixel platformer presentation is generic and keeps its controls discoverab
     const copy = await page.locator('body').innerText()
     assert.doesNotMatch(copy, /GitHub|Mona|Woodward|Pimoroni|badger/i)
     assert.match(copy, /Gamepads work too/)
+    assert.equal(await page.locator('#sound-toggle').innerText(), 'ENABLE SOUND')
+    await page.locator('#sound-toggle').click()
+    await page.waitForFunction(() => document.querySelector('#sound-toggle').textContent === 'MUTE')
     await page.keyboard.press('m')
     assert.equal(await page.locator('#sound-toggle').innerText(), 'UNMUTE')
+    await page.close()
+  } finally {
+    await browser.close()
+  }
+})
+
+test('pixel platformer gamepad play exposes audio activation and basic pause/title controls', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.pad = { mapping: 'standard', axes: [0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false })) }
+      navigator.getGamepads = () => [window.pad]
+      window.gameText = []
+      const { setTransform, fillText } = CanvasRenderingContext2D.prototype
+      CanvasRenderingContext2D.prototype.setTransform = function (...args) {
+        if (this.canvas.id === 'game-screen') window.gameText = []
+        return setTransform.apply(this, args)
+      }
+      CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+        if (this.canvas.id === 'game-screen') window.gameText.push(text)
+        return fillText.call(this, text, ...args)
+      }
+      const NativeAudioContext = window.AudioContext
+      window.AudioContext = class extends NativeAudioContext {
+        constructor(...args) { super(...args); window.gameAudio = this }
+      }
+    })
+    await page.goto(new URL('/platformer/', base).href, { waitUntil: 'networkidle' })
+    await page.waitForFunction(() => window.gameText.includes('PIXEL PLATFORMER'))
+    await page.waitForTimeout(10_500)
+    assert.equal(await page.evaluate(() => window.gameText.includes('PIXEL PLATFORMER')), true)
+    const pressPad = async (button) => {
+      await page.evaluate((i) => { window.pad.buttons[i].pressed = true }, button)
+      await page.waitForTimeout(100)
+      await page.evaluate((i) => { window.pad.buttons[i].pressed = false }, button)
+      await page.waitForTimeout(100)
+    }
+    await page.evaluate(() => dispatchEvent(new Event('gamepadconnected')))
+    await pressPad(9)
+    await page.waitForFunction(() => window.gameText.includes('PLAYER 1 x3'))
+    assert.equal(await page.locator('#sound-toggle').innerText(), 'ENABLE SOUND')
+    assert.equal(await page.evaluate(() => window.gameAudio === undefined), true)
+    await page.locator('#sound-toggle').click()
+    await page.waitForFunction(() => window.gameAudio?.state === 'running' && document.querySelector('#sound-toggle').textContent === 'MUTE')
+    await page.locator('#sound-toggle').click()
+    assert.equal(await page.locator('#sound-toggle').innerText(), 'UNMUTE')
+    await page.keyboard.press('m')
+    await page.waitForFunction(() => document.querySelector('#sound-toggle').textContent === 'MUTE')
+    await page.evaluate(() => window.gameAudio.suspend())
+    await page.waitForFunction(() => document.querySelector('#sound-toggle').textContent === 'ENABLE SOUND')
+    await page.keyboard.press('m')
+    await page.waitForFunction(() => window.gameAudio.state === 'running' && document.querySelector('#sound-toggle').textContent === 'MUTE')
+    await pressPad(9)
+    await page.waitForFunction(() => window.gameText.includes('PAUSED'))
+    await pressPad(15)
+    assert.equal(await page.evaluate(() => window.gameText.includes('PAUSED')), true)
+    await pressPad(1)
+    await page.waitForFunction(() => !window.gameText.includes('PAUSED') && window.gameText.includes('PLAYER 1 x3'))
+    await pressPad(8)
+    await page.waitForFunction(() => window.gameText.includes('PIXEL PLATFORMER'))
     await page.close()
   } finally {
     await browser.close()

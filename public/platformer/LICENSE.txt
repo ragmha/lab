@@ -22,7 +22,10 @@ SOFTWARE.
 
 ---
 
-The Mona sprites are derived from artwork released under this notice:
+The upstream Mona sprites have been replaced with original geometric explorer
+artwork in players.png (MIT, Copyright (c) 2026 Raghib Hasan).
+The game logic is modified from the original; tiles.png and mobs.png are
+retained unmodified. The upstream sprite notice is preserved below for provenance:
 
 MIT License
 
