@@ -19,7 +19,7 @@ test('all 32 stages start safely and their flags finish a run', () => {
     assert.equal(world.player.onGround, true, level.name)
     world.player.x = level.flagX! * TILE
     world.player.y = 70
-    for (let i = 0; i < 30 / DT && world.state !== 'clear'; i++) world.step(DT, c)
+    for (let i = 0; i < 30 / DT; i++) world.step(DT, c)
     assert.equal(world.state, 'clear', level.name)
     assert.ok(world.session.score > 0, level.name)
   }
