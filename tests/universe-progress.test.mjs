@@ -40,8 +40,8 @@ test('rejects malformed, oversized, foreign, and unsupported progress without ac
 
 test('coverage keeps adjacent releases distinct and every lab has a sourced exercise and check', () => {
   assert.equal(lessons.length, 8)
-  assert.equal(releases.length, 56)
-  assert.equal(releases.filter((release) => release.addition).length, 2)
+  assert.equal(releases.length, 57)
+  assert.equal(releases.filter((release) => release.addition).length, 3)
   assert.equal(new Set(releases.map((release) => release.name)).size, releases.length)
   assert.equal(labs.length, 4)
   for (const lab of labs) {

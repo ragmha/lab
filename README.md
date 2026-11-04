@@ -45,7 +45,7 @@ The canvas saves locally under `~/.copilot/extensions/universe-passport/artifact
 
 > [!NOTE]
 > Release availability is a sourced snapshot: launch-day coverage checked
-> 1 November 2026, with two release-week additions checked 2 November.
+> 1 November 2026, with three release-week additions checked 2–4 November.
 > Lessons never run agents, change permissions, or spend credits.
 
 See [sources and licenses](PROVENANCE.md) and the optional
