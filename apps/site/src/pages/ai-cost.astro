@@ -1,0 +1,1955 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro'
+import json from '../data/ai-cost.json'
+import type { AiCost } from '../../scripts/ai-cost/aggregate'
+import { combine, niceScale, topN, windowDelta } from '../lib/ai-cost'
+
+const data: AiCost = json
+const { billing, days, users, phases, features, thirdPartySessions } = data
+const { start, end } = data.window
+type Month = AiCost['billing'][number]
+type Day = AiCost['days'][number]
+type Usage = Day['cli']
+type Kpi = {
+  label: string
+  value: string
+  tag: 'measured' | 'derived'
+  note?: string
+  pill?: { text: string; tone: 'good' | 'bad' | 'warn' | 'flat' }
+  spark?: string
+}
+type Line = { key: 'dau' | 'wau' | 'mau' | 'cliDau' | 'appDau'; name: string; color: string }
+
+// The month toggle and its CSS are written out for up to three billing months.
+if (billing.length > 3) throw new Error('/ai-cost/ lays out at most three billing months')
+
+const number = new Intl.NumberFormat('en-US')
+const dollars = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+const dollarsShort = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 })
+const cents = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+const percent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 0 })
+const finePercent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 })
+const whole = (value: number) => number.format(Math.round(value))
+const sum = (values: number[]) => values.reduce((total, value) => total + value, 0)
+const date = (day: string, options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }) =>
+  new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { ...options, timeZone: 'UTC' })
+const lastDayOf = (month: string) => {
+  const [year, index] = month.split('-').map(Number)
+  return new Date(Date.UTC(year, index, 0)).toISOString().slice(0, 10)
+}
+const points = (change: number) => Math.round(change * 100)
+const arrow = (change: number) => (points(change) > 0 ? '▲ ' : points(change) < 0 ? '▼ ' : '')
+const pp = (change: number) => `${arrow(change)}${Math.abs(points(change))} pp`
+const pct = (change: number) => `${arrow(change)}${Math.abs(points(change))}%`
+
+const latest = billing.at(-1)!
+const partial = latest.month === end.slice(0, 7)
+const monthLabel = (month: string, style: 'long' | 'short' = 'long') =>
+  `${date(`${month}-01`, { month: style })}${partial && month === latest.month ? ' to date' : ''}`
+const net = sum(billing.map((month) => month.net))
+// Use reported month-end MAU without assuming a calendar-month or trailing-window definition.
+const closed = billing.flatMap((month) => {
+  const day = days.find((d) => d.day === lastDayOf(month.month))
+  return day ? [{ ...month, mau: day.mau }] : []
+})[0]
+if (!closed) throw new Error('/ai-cost/ needs one billing month that ends inside the usage window')
+const closedName = date(`${closed.month}-01`, { month: 'short' })
+const closedAt = billing.findIndex((month) => month.month === closed.month)
+const latestAt = billing.length - 1
+const trending = latest.month !== closed.month
+const price = latest.pricePerUnit
+const costScale = niceScale(Math.max(...billing.map((month) => month.gross)))
+// Billing labels models picked by auto model selection as "Auto: <model>".
+const autoShare = (month: Month) =>
+  finePercent.format(month.byModel.filter((row) => row.name.startsWith('Auto: ')).reduce((total, row) => total + row.credits, 0) / month.credits)
+
+// Colors 0-4 follow the five largest names across all months; everything else shares color 5.
+const groups = [
+  { id: 'model', label: 'Model', noun: 'models', pick: (month: Month) => month.byModel },
+  { id: 'sku', label: 'SKU', noun: 'SKUs', pick: (month: Month) => month.bySku },
+].map((group) => {
+  const overall = combine(...billing.map(group.pick)).filter((row) => row.credits > 0)
+  const tracked = overall.slice(0, 5).map((row) => row.name)
+  const hidden = overall.length - tracked.length
+  const colorOf = (name: string) => (tracked.includes(name) ? tracked.indexOf(name) : 5)
+  const credit = (month: Month, name: string) => group.pick(month).find((row) => row.name === name)?.credits ?? 0
+  const line = (month: Month, credits: number) =>
+    `${monthLabel(month.month, 'short')}: ${whole(credits)} credits · ${dollars.format(credits * month.pricePerUnit)} · ${finePercent.format(credits / month.credits)}`
+
+  const scopes = [
+    { id: 'all', label: 'All months', months: billing },
+    ...billing.map((month, i) => ({ id: `m${i}`, label: monthLabel(month.month), months: [month] })),
+  ].map((scope) => {
+    const total = sum(scope.months.map((month) => month.credits))
+    const { top, hidden: more } = topN(combine(...scope.months.map(group.pick)), 6)
+    const named = top.map((row) => ({ name: row.name, by: billing.map((month) => credit(month, row.name)) }))
+    const item = (name: string, k: number, by: number[]) => {
+      const share = (i: number) => by[i] / billing[i].credits
+      return {
+        name,
+        k,
+        value: sum(scope.months.map((month) => by[billing.indexOf(month)] * month.pricePerUnit)),
+        share: sum(scope.months.map((month) => by[billing.indexOf(month)])) / total,
+        shift: scope.id === 'all' && trending ? share(latestAt) - share(closedAt) : undefined,
+        tip: [name, ...billing.map((month, i) => line(month, by[i]))].join('\n'),
+      }
+    }
+    const rest = billing.map((month, i) => Math.max(0, month.credits - sum(named.map((row) => row.by[i]))))
+    return {
+      ...scope,
+      total,
+      value: sum(scope.months.map((month) => month.gross)),
+      items: [
+        ...named.map((row) => item(row.name, colorOf(row.name), row.by)),
+        ...(more > 0 ? [item(`${more} other ${group.noun}`, 5, rest)] : []),
+      ],
+    }
+  })
+
+  const columns = billing.map((month, i) => {
+    const segs = tracked.map((name, k) => ({ name, k, credits: credit(month, name) }))
+    if (hidden > 0) segs.push({ name: `Other ${group.noun}`, k: 5, credits: Math.max(0, month.credits - sum(segs.map((seg) => seg.credits))) })
+    return {
+      id: `m${i}`,
+      month,
+      height: (month.gross / costScale.max) * 100,
+      segs: segs
+        .filter((seg) => seg.credits > 0)
+        .map((seg) => ({
+          ...seg,
+          label: seg.credits / month.credits >= 0.07 ? finePercent.format(seg.credits / month.credits) : '',
+          tip: [seg.name, line(month, seg.credits)].join('\n'),
+        })),
+    }
+  })
+
+  return {
+    id: group.id,
+    label: group.label,
+    scopes,
+    columns,
+    top: tracked[0],
+    legend: [...tracked.map((name, k) => ({ name, k })), ...(hidden > 0 ? [{ name: `${hidden} other ${group.noun}`, k: 5 }] : [])],
+  }
+})
+const topModel = groups[0].top
+const modelShare = (month: Month) => (month.byModel.find((row) => row.name === topModel)?.credits ?? 0) / month.credits
+
+const userMonths = users.byMonth.map((row) => ({
+  ...row,
+  from: row.month === start.slice(0, 7) ? start : `${row.month}-01`,
+  to: row.month === end.slice(0, 7) ? end : lastDayOf(row.month),
+  billed: billing.find((month) => month.month === row.month)?.credits,
+}))
+
+const xLine = (i: number) => (i / (days.length - 1)) * 100
+const xBar = (i: number) => ((i + 0.5) / days.length) * 100
+const xLabels = (at: (i: number) => number) =>
+  days.flatMap((day, i) => (i === 0 || i === days.length - 1 || day.day.endsWith('-01') ? [{ day: day.day, left: at(i) }] : []))
+const sparkline = (values: number[]) => {
+  const low = Math.min(...values)
+  const span = Math.max(...values) - low || 1
+  return values.map((value, i) => `${xLine(i)},${92 - ((value - low) / span) * 84}`).join(' ')
+}
+const cliPeak = days.reduce((peak, day) => (day.cliDau > peak.cliDau ? day : peak))
+
+const trend = (label: string, pick: (day: Day) => number): Kpi => {
+  const values = days.map(pick)
+  const { current, change } = windowDelta(values)!
+  return {
+    label,
+    value: whole(current),
+    tag: 'derived',
+    note: '7-day average',
+    pill: change === undefined ? undefined : { text: `${pct(change)} vs prior 7d`, tone: change >= 0 ? 'good' : 'bad' },
+    spark: sparkline(values),
+  }
+}
+
+const lineCharts = [
+  {
+    id: 'daily',
+    title: 'Daily active users',
+    lines: [
+      { key: 'dau', name: 'Daily active', color: 'var(--theme-text)' },
+      { key: 'cliDau', name: 'CLI daily', color: 'var(--c0)' },
+      { key: 'appDau', name: 'App daily', color: 'var(--c1)' },
+    ] satisfies Line[],
+    marks: false,
+    foot: `CLI daily users peak at ${number.format(cliPeak.cliDau)} on ${date(cliPeak.day)}; the export doesn’t say why.`,
+  },
+  {
+    id: 'rolling',
+    title: 'Weekly and monthly active users',
+    lines: [
+      { key: 'wau', name: 'Weekly active', color: 'var(--c2)' },
+      { key: 'mau', name: 'Monthly active', color: 'var(--c3)' },
+    ] satisfies Line[],
+    marks: true,
+    foot: 'Weekly counts drop back every seven days and monthly counts restart on the 1st (dashed), so they behave as week- and month-to-date counts.',
+  },
+].map((chart) => {
+  const scale = niceScale(Math.max(...days.flatMap((day) => chart.lines.map((line) => day[line.key]))))
+  const y = (value: number) => 100 - (value / scale.max) * 100
+  const half = 50 / (days.length - 1)
+  return {
+    ...chart,
+    scale,
+    y,
+    resets: chart.marks ? days.flatMap((day, i) => (i > 0 && day.day.endsWith('-01') ? [xLine(i)] : [])) : [],
+    series: chart.lines.map((line) => ({
+      ...line,
+      path: days.map((day, i) => `${xLine(i)},${y(day[line.key])}`).join(' '),
+      endAt: (days.at(-1)![line.key] / scale.max) * 100,
+    })),
+    hits: days.map((day, i) => {
+      const left = Math.max(0, xLine(i) - half)
+      return {
+        x: left,
+        width: Math.min(100, xLine(i) + half) - left,
+        tip: [date(day.day), ...chart.lines.map((line) => `${line.name}: ${number.format(day[line.key])}`)].join('\n'),
+      }
+    }),
+  }
+})
+
+const fields = ['requests', 'prompts', 'promptTokens', 'outputTokens'] as const
+const plus = (a: Usage, b: Usage) => Object.fromEntries(fields.map((field) => [field, a[field] + b[field]])) as Usage
+const total = (pick: (day: Day) => Usage) => days.map(pick).reduce(plus)
+const surfaces = [
+  { id: 'cli', name: 'Copilot CLI', short: 'CLI', color: 'var(--c0)', ...total((day) => day.cli) },
+  { id: 'app', name: 'Copilot app', short: 'App', color: 'var(--c1)', ...total((day) => day.app) },
+  { id: 'both', name: 'Both', short: 'Both', color: 'var(--theme-text)', ...total((day) => plus(day.cli, day.app)) },
+].map((row) => ({
+  ...row,
+  tokens: row.promptTokens + row.outputTokens,
+  perRequest: (row.promptTokens + row.outputTokens) / row.requests,
+  outputShare: row.outputTokens / (row.promptTokens + row.outputTokens),
+  perPrompt: row.requests / row.prompts,
+}))
+const both = surfaces[2]
+const surfaceRows = [
+  { label: 'Tokens', pick: (row: (typeof surfaces)[number]) => compact.format(row.tokens) },
+  { label: 'Requests', pick: (row: (typeof surfaces)[number]) => compact.format(row.requests) },
+  { label: 'Tokens / request', pick: (row: (typeof surfaces)[number]) => compact.format(row.perRequest) },
+  { label: 'Requests / prompt', pick: (row: (typeof surfaces)[number]) => row.perPrompt.toFixed(1) },
+]
+const tokenCharts = surfaces.slice(0, 2).map((surface) => {
+  const pick = (day: Day) => (surface.id === 'cli' ? day.cli : day.app)
+  const values = days.map((day) => pick(day).promptTokens + pick(day).outputTokens)
+  const scale = niceScale(Math.max(...values))
+  return {
+    ...surface,
+    scale,
+    bars: days.map((day, i) => ({
+      height: (values[i] / scale.max) * 100,
+      tip: [
+        date(day.day),
+        `${compact.format(values[i])} tokens (${compact.format(pick(day).promptTokens)} prompt + ${compact.format(pick(day).outputTokens)} output)`,
+        `${compact.format(pick(day).requests)} requests`,
+      ].join('\n'),
+    })),
+  }
+})
+
+const topFeature = features.engaged[0]
+const costKpis: Kpi[] = [
+  ...billing.map((month): Kpi => ({
+    label: `${monthLabel(month.month, 'short')} list value`,
+    value: dollars.format(month.gross),
+    tag: 'measured',
+    note: `${whole(month.credits)} credits × ${cents.format(month.pricePerUnit)}`,
+    pill:
+      month.month === latest.month && trending
+        ? { text: `${pct(latest.credits / closed.credits - 1)} vs full ${closedName}`, tone: 'warn' }
+        : undefined,
+  })),
+  { label: 'Billed after discounts', value: dollars.format(net), tag: 'measured', note: 'all months' },
+  {
+    label: 'Per monthly active user',
+    value: cents.format(closed.gross / closed.mau),
+    tag: 'derived',
+    note: `${closedName} list value ÷ ${number.format(closed.mau)} users (MAU on ${date(lastDayOf(closed.month))})`,
+  },
+  {
+    label: `${topModel} share`,
+    value: percent.format(modelShare(latest)),
+    tag: 'derived',
+    note: `of ${monthLabel(latest.month, 'short')} credits`,
+    pill: trending ? { text: `${pp(modelShare(latest) - modelShare(closed))} vs ${closedName}`, tone: 'flat' } : undefined,
+  },
+]
+const adoptionKpis: Kpi[] = [
+  trend('Daily active users', (day) => day.dau),
+  trend('CLI daily users', (day) => day.cliDau),
+  trend('App daily users', (day) => day.appDau),
+  { label: 'Active users, 28 days', value: number.format(features.activeUsers), tag: 'measured', note: `${date(start)}–${date(end)}` },
+  {
+    label: `Engaged with ${topFeature.feature}`,
+    value: percent.format(topFeature.users / features.activeUsers),
+    tag: 'derived',
+    note: `${number.format(topFeature.users)} of ${number.format(features.activeUsers)} users`,
+  },
+]
+const tokenKpis: Kpi[] = [
+  { label: 'Tokens, 28 days', value: compact.format(both.tokens), tag: 'measured', note: 'prompt + output, CLI + app' },
+  { label: 'Model requests', value: compact.format(both.requests), tag: 'measured', note: 'CLI + app' },
+  { label: 'Output share', value: finePercent.format(both.outputShare), tag: 'derived', note: 'of all tokens' },
+  { label: 'Tokens per request', value: compact.format(both.perRequest), tag: 'derived', note: 'prompt + output' },
+  { label: 'Requests per prompt', value: both.perPrompt.toFixed(1), tag: 'derived', note: 'model requests per recorded prompt' },
+]
+const range = `${date(start)}–${date(end)}`
+const limitsKpis: Kpi[] = [
+  { label: 'Usage window', value: `${days.length} days`, tag: 'measured', note: range },
+  { label: 'Billing months', value: String(billing.length), tag: 'measured', note: billing.map((month) => monthLabel(month.month, 'short')).join(' · ') },
+  { label: 'Users with credits', value: number.format(users.withCredits), tag: 'measured', note: `of ${number.format(users.count)} in the per-user report` },
+  { label: 'Third-party sessions', value: number.format(thirdPartySessions), tag: 'measured', note: 'agent sessions inside GitHub; other vendors out of scope' },
+]
+const kpiSets = [
+  { id: 'cost', label: 'Cost', items: costKpis },
+  { id: 'adoption', label: 'Adoption', items: adoptionKpis },
+  { id: 'tokens', label: 'Tokens', items: tokenKpis },
+  { id: 'limits', label: 'Limits', items: limitsKpis },
+]
+const tabs = [
+  { id: 'cost', label: 'Cost' },
+  { id: 'adoption', label: 'Adoption' },
+  { id: 'tokens', label: 'Tokens' },
+  { id: 'guidance', label: 'Guidance' },
+  { id: 'limits', label: 'Limits' },
+  { id: 'data', label: 'Data' },
+]
+const phaseColor = [5, 2, 0, 1]
+const dayTokens = (usage: Usage) => usage.promptTokens + usage.outputTokens
+
+// partial: these exports answer part of it. gap: they answer none of it.
+const guidance = [
+  {
+    title: 'Attribute cost by user, model, and cost center',
+    status: 'partial',
+    stat: 'Model only',
+    shows: 'Monthly credits by SKU and model. The per-user report doesn’t reconcile with billing and has no cost center.',
+    need: ['AI usage report', 'Credits per user, model, and day', 'Input, output, and cache tokens'],
+  },
+  {
+    title: 'Govern included and metered usage separately',
+    status: 'gap',
+    stat: `${dollars.format(net)} net billed`,
+    shows: 'After discounts. These exports don’t establish the enterprise included-pool balance or when it ran out.',
+    need: ['License entitlements', 'Included pool size', 'Complete enterprise daily usage'],
+  },
+  {
+    title: 'Size user-level budgets from consumption percentiles',
+    status: 'gap',
+    stat: `${number.format(users.withCredits)} of ${number.format(users.count)} users`,
+    shows: 'Only these have per-user credits. That report is too sparse and doesn’t reconcile with billing.',
+    need: ['Private per-user billing history', 'Disclosure checks before publishing'],
+  },
+  {
+    title: 'Tie model tier to task; prefer auto model selection',
+    status: 'partial',
+    stat: `${autoShare(closed)} → ${autoShare(latest)}`,
+    shows: `Share of credits on “Auto:” billing rows, ${monthLabel(closed.month, 'short')} → ${monthLabel(latest.month, 'short')}.`,
+    need: ['Per-model token mix', 'Model pricing'],
+  },
+  {
+    title: 'Budgets, alerts, and CLI session limits',
+    status: 'gap',
+    stat: 'Not exported',
+    shows: 'No budget, hard-stop, or CLI limit settings in these exports.',
+    need: ['Budget settings', 'Cost center assignments', 'Hard-stop choices', 'CLI limit --max-ai-credits'],
+  },
+  {
+    title: 'Assign alert owners and a review cadence',
+    status: 'gap',
+    stat: 'Not exported',
+    shows: 'No alert delivery, budget breaches, or responses in these exports.',
+    need: ['Owners for 75/90/100% alerts', 'Daily anomaly checks', 'Weekly, then monthly reviews', 'Continuity check before hard stops'],
+  },
+]
+
+const description = `One GitHub organization’s AI-credit billing beside its Copilot usage metrics: ${dollars.format(closed.gross)} of credits in ${monthLabel(closed.month)}, who used what, and what the token counts can and cannot tell you.`
+---
+
+<SiteLayout fit title="What AI Costs One GitHub Organization" description={description}>
+  <Fragment slot="heading">What Does AI Cost an Organization?</Fragment>
+  <div class="cost">
+    <div class="top">
+      <div class="tabs" role="radiogroup" aria-label="Dashboard section">
+        {tabs.map((tab, i) => (
+          <>
+            <input class="sr" type="radio" name="tab" id={`tab-${tab.id}`} value={tab.id} checked={i === 0} />
+            <label for={`tab-${tab.id}`}>{tab.label}</label>
+          </>
+        ))}
+      </div>
+
+      <div class="ctl" data-for="cost">
+        <span class="field">
+          <span class="lbl" id="grp-label">Group by</span>
+          <span class="seg-ctl" role="radiogroup" aria-labelledby="grp-label">
+            <input class="sr" type="radio" name="grp" id="grp-model" checked />
+            <label for="grp-model">Model</label>
+            <input class="sr" type="radio" name="grp" id="grp-sku" />
+            <label for="grp-sku">SKU</label>
+            {['Tool', 'Mode', 'User'].map((name) => (
+              <>
+                <input class="sr" type="radio" name="grp" id={`grp-${name.toLowerCase()}`} disabled />
+                <label class="na" for={`grp-${name.toLowerCase()}`} data-tip="Not in the billing export">
+                  {name}<span class="sr"> (not in the billing export)</span>
+                </label>
+              </>
+            ))}
+          </span>
+        </span>
+        <span class="field">
+          <span class="lbl" id="view-label">Month</span>
+          <span class="seg-ctl" role="radiogroup" aria-labelledby="view-label">
+            {groups[0].scopes.map((scope, i) => (
+              <>
+                <input class="sr" type="radio" name="view" id={`view-${scope.id}`} checked={i === 0} />
+                <label for={`view-${scope.id}`}>{scope.id === 'all' ? 'All' : monthLabel(scope.months[0].month, 'short')}</label>
+              </>
+            ))}
+          </span>
+        </span>
+      </div>
+
+      <p class="ctx" data-for="cost">Billing · {billing.map((month) => monthLabel(month.month, 'short')).join(', ')} · list value = credits × {cents.format(price)}</p>
+      <p class="ctx" data-for="adoption">Usage metrics · {range} · {number.format(features.activeUsers)} active users</p>
+      <p class="ctx" data-for="tokens">CLI and app only · {range} · not priced</p>
+      <p class="ctx" data-for="guidance">
+        <a href="https://learn.github.com/well-architected/governance/recommendations/managing-ai-credits">GitHub guidance: managing AI credits ↗</a>
+      </p>
+      <p class="ctx" data-for="limits">One organization · not named</p>
+      <p class="ctx" data-for="data">Measured values · raw exports stay private</p>
+    </div>
+
+    {kpiSets.map((set) => (
+      <ul class="kpis" data-for={set.id} aria-label={`${set.label} key figures`}>
+        {set.items.map((kpi) => (
+          <li class="kpi" title={kpi.note}>
+            <div class="k-top">
+              <span class="k-label">{kpi.label}</span>
+              <i class={`tag ${kpi.tag}`}>{kpi.tag}</i>
+            </div>
+            <div class="k-main">
+              <b class="k-value">{kpi.value}</b>
+              {kpi.pill && <span class={`pill ${kpi.pill.tone}`}>{kpi.pill.text}</span>}
+            </div>
+            <div class="k-foot">
+              {kpi.note && <p class="k-note">{kpi.note}</p>}
+              {kpi.spark && (
+                <svg class="spark" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                  <polyline points={kpi.spark} />
+                </svg>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    ))}
+
+    <div class="panel with-kpis p-cost" data-for="cost">
+      <article class="card">
+        <header>
+          <h2>Where the credits went</h2>
+          <span class="sub">credits <i class="tag measured">measured</i> · $ = credits × {cents.format(price)}</span>
+        </header>
+        {groups.flatMap((group) =>
+          group.scopes.map((scope) => (
+            <div class={`ranked g-${group.id} v-${scope.id}`}>
+              <p class="scope">
+                <b>{scope.label}</b>
+                <span>{dollars.format(scope.value)} · {whole(scope.total)} credits</span>
+              </p>
+              <ol class="rows" aria-label={`${group.label} ranking, ${scope.label}`}>
+                {scope.items.map((item) => (
+                  <li data-k={item.k} data-tip={item.tip}>
+                    <span class="nm"><i class="dot" style={`background:var(--c${item.k})`}></i>{item.name}</span>
+                    <b class="val">{dollars.format(item.value)}</b>
+                    <span class="meter">
+                      <span class="track"><i class="fill" style={`width:${item.share * 100}%;background:var(--c${item.k})`}></i></span>
+                      <span class="share">{finePercent.format(item.share)}</span>
+                      {item.shift !== undefined && <span class="pill flat">{pp(item.shift)}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )),
+        )}
+        <p class="foot">
+          Share = credits ÷ the view’s total. {trending && <>Pill: share change from {closedName} to {monthLabel(latest.month, 'short')}, in percentage points <i class="tag derived">derived</i>.</>}
+        </p>
+      </article>
+
+      <article class="card chart">
+        <header>
+          <h2>Monthly list value</h2>
+          {groups.map((group) => (
+            <ul class={`legend g-${group.id}`} aria-hidden="true">
+              {group.legend.map((entry) => (
+                <li data-k={entry.k}><i class="dot" style={`background:var(--c${entry.k})`}></i>{entry.name}</li>
+              ))}
+            </ul>
+          ))}
+        </header>
+        <div class="area" aria-hidden="true">
+          <div class="plot">
+            {costScale.ticks.map((tick) => <i class="gl" style={`bottom:${(tick / costScale.max) * 100}%`}></i>)}
+            {groups.map((group) => (
+              <div class={`cols g-${group.id}`}>
+                {group.columns.map((column) => (
+                  <div class="cell">
+                    <div class={`col mo v-${column.id}`} style={`height:${column.height}%`}>
+                      <span class="total">{dollars.format(column.month.gross)}</span>
+                      {column.segs.map((seg) => (
+                        <span class="seg" data-k={seg.k} data-tip={seg.tip} style={`flex-grow:${seg.credits};background:var(--c${seg.k})`}>{seg.label}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+            {costScale.ticks.map((tick) => <span class="y" style={`bottom:${(tick / costScale.max) * 100}%`}>{dollarsShort.format(tick)}</span>)}
+          </div>
+          <div class="months">
+            {billing.map((month, i) => <span class={`mo v-m${i}`}>{monthLabel(month.month, 'short')}</span>)}
+          </div>
+        </div>
+        <p class="foot">Column height is list value; segments split it by credits. Billing has no daily, user, tool or mode dimension.</p>
+      </article>
+    </div>
+
+    <div class="panel with-kpis p-adoption" data-for="adoption">
+      {lineCharts.map((chart) => (
+        <article class="card chart">
+          <header>
+            <h2>{chart.title}</h2>
+            <ul class="legend" aria-hidden="true">
+              {chart.series.map((line) => <li><i class="dot" style={`background:${line.color}`}></i>{line.name}</li>)}
+            </ul>
+          </header>
+          <div class="area" aria-hidden="true">
+            <div class="plot">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                {chart.scale.ticks.map((tick) => <line class="grid" x1="0" x2="100" y1={chart.y(tick)} y2={chart.y(tick)} />)}
+                {chart.resets.map((left) => <line class="reset" x1={left} x2={left} y1="0" y2="100" />)}
+                {chart.hits.map((hit) => <rect class="hit" x={hit.x} y="0" width={hit.width} height="100" data-tip={hit.tip} />)}
+                {chart.series.map((line) => <polyline points={line.path} style={`stroke:${line.color}`} />)}
+              </svg>
+              {chart.scale.ticks.map((tick) => <span class="y" style={`bottom:${(tick / chart.scale.max) * 100}%`}>{number.format(tick)}</span>)}
+              {chart.series.map((line) => <i class="end" style={`bottom:${line.endAt}%;background:${line.color}`}></i>)}
+            </div>
+            <div class="x">
+              {xLabels(xLine).map((label) => <span style={`left:${label.left}%;translate:${-label.left}% 0`}>{date(label.day)}</span>)}
+            </div>
+          </div>
+          <p class="foot">{chart.foot}</p>
+        </article>
+      ))}
+
+      <article class="card">
+        <header>
+          <h2>Feature engagement</h2>
+          <span class="sub"><i class="tag measured">measured</i> users over 28 days, of {number.format(features.activeUsers)}</span>
+        </header>
+        <ol class="bars">
+          {features.engaged.map((row) => (
+            <li>
+              <code>{row.feature}</code>
+              <span class="track"><i class="fill" style={`width:${(row.users / features.activeUsers) * 100}%`}></i></span>
+              <b>{number.format(row.users)}</b>
+            </li>
+          ))}
+        </ol>
+      </article>
+
+      <article class="card">
+        <header>
+          <h2>AI adoption phase</h2>
+          <span class="sub"><i class="tag measured">measured</i> users on {date(end)}</span>
+        </header>
+        <div class="phase-bar" aria-hidden="true">
+          {phases.map((row, i) => (
+            <i
+              style={`flex-grow:${row.users};background:var(--c${phaseColor[i] ?? 5})`}
+              data-tip={`${row.phase}\n${number.format(row.users)} users · ${finePercent.format(row.users / features.activeUsers)}`}
+            ></i>
+          ))}
+        </div>
+        <ul class="phase-list">
+          {phases.map((row, i) => (
+            <li>
+              <span class="nm"><i class="dot" style={`background:var(--c${phaseColor[i] ?? 5})`}></i>{row.phase}</span>
+              <b>{number.format(row.users)}</b>
+              <span class="share">{finePercent.format(row.users / features.activeUsers)}</span>
+            </li>
+          ))}
+        </ul>
+        <p class="foot">GitHub’s export doesn’t define the phases.</p>
+      </article>
+    </div>
+
+    <div class="panel with-kpis p-tokens" data-for="tokens">
+      <div class="stack">
+        {tokenCharts.map((chart) => (
+          <article class="card chart">
+            <header>
+              <h2><i class="dot" style={`background:${chart.color}`}></i>{chart.name}</h2>
+              <span class="sub"><i class="tag measured">measured</i> tokens per day, prompt + output</span>
+            </header>
+            <div class="area" aria-hidden="true">
+              <div class="plot">
+                {chart.scale.ticks.map((tick) => <i class="gl" style={`bottom:${(tick / chart.scale.max) * 100}%`}></i>)}
+                <div class="days">
+                  {chart.bars.map((bar) => (
+                    <span class="day" data-tip={bar.tip}><i style={`height:${bar.height}%;background:${chart.color}`}></i></span>
+                  ))}
+                </div>
+                {chart.scale.ticks.map((tick) => <span class="y" style={`bottom:${(tick / chart.scale.max) * 100}%`}>{compact.format(tick)}</span>)}
+              </div>
+              <div class="x">
+                {xLabels(xBar).map((label) => <span style={`left:${label.left}%;translate:${-label.left}% 0`}>{date(label.day)}</span>)}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div class="stack side">
+        <article class="card">
+          <header>
+            <h2>By surface</h2>
+            <span class="sub"><i class="tag measured">measured</i> counts · <i class="tag derived">derived</i> ratios</span>
+          </header>
+          <table class="cmp">
+            <thead>
+              <tr>
+                <td></td>
+                {surfaces.slice(0, 2).map((surface) => (
+                  <th scope="col"><i class="dot" style={`background:${surface.color}`}></i>{surface.short}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {surfaceRows.map((row) => (
+                <tr>
+                  <th scope="row">{row.label}</th>
+                  {surfaces.slice(0, 2).map((surface) => <td>{row.pick(surface)}</td>)}
+                </tr>
+              ))}
+              <tr>
+                <th scope="row">Output share</th>
+                {surfaces.slice(0, 2).map((surface) => (
+                  <td>
+                    <span class="share-cell">
+                      {finePercent.format(surface.outputShare)}
+                      <span class="split" aria-hidden="true" data-tip={`${surface.name}\n${compact.format(surface.promptTokens)} prompt tokens\n${compact.format(surface.outputTokens)} output tokens`}>
+                        <i style={`flex-grow:${surface.promptTokens};background:${surface.color};opacity:.45`}></i>
+                        <i style={`flex-grow:${surface.outputTokens};background:${surface.color}`}></i>
+                      </span>
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </article>
+        <article class="card">
+          <header><h2>Read with care</h2></header>
+          <ul class="marks care">
+            <li><span>Credits aren’t split by surface, so these tokens can’t be priced from these files.</span></li>
+            <li><span>CLI and app only: no IDE, code review, or cloud agent tokens.</span></li>
+            <li><span>Unclear whether prompt tokens include cached input. Token types needn’t cost the same, so totals aren’t a price.</span></li>
+          </ul>
+        </article>
+      </div>
+    </div>
+
+    <div class="panel p-guidance" data-for="guidance">
+      <p class="key">
+        <span>GitHub’s guidance vs these exports · <i class="chip partial">partial</i> answerable in part · <i class="chip gap">gap</i> not answerable from these files</span>
+        <a href="https://docs.github.com/billing/reference/billing-reports#ai-usage-report">AI usage report ↗</a>
+      </p>
+
+      {guidance.map((item, i) => (
+        <article class={`card guide ${item.status}`}>
+          <h2><span class="n">{i + 1}</span>{item.title}</h2>
+          <div class="verdict">
+            <i class={`chip ${item.status}`}>{item.status}</i>
+            <p class="stat">{item.stat}</p>
+          </div>
+          <p class="shows">{item.shows}</p>
+          <div class="need">
+            <span class="need-h">Needed</span>
+            <ul>{item.need.map((need) => <li>{need}</li>)}</ul>
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <div class="panel with-kpis p-limits" data-for="limits">
+      <article class="card">
+        <header><h2>Covered</h2></header>
+        <ul class="marks ok">
+          <li><span>One organization, not named. Usage {range}; billing {billing.map((month) => monthLabel(month.month, 'short')).join(' and ')}.</span></li>
+          <li><span><i class="tag measured">measured</i> Credits by SKU and model, net billed, daily active users, CLI and app tokens, feature and phase counts.</span></li>
+          <li><span><i class="tag derived">derived</i> Shares, ratios, per-user figures, 7-day averages.</span></li>
+          <li><span>List value = credits × {cents.format(price)}. Net billed was {dollars.format(net)} after discounts.</span></li>
+        </ul>
+      </article>
+      <article class="card">
+        <header><h2>Not covered</h2></header>
+        <ul class="marks no">
+          {partial && <li><span>{monthLabel(latest.month)} is incomplete; the export time isn’t recorded.</span></li>}
+          <li><span>No Copilot seat licence charges.</span></li>
+          <li><span>No cost by user, tool, mode, team, or cost center.</span></li>
+          <li><span>Tokens cover the CLI and app only; cached input is unknown.</span></li>
+          <li><span>Other vendors are out of scope; third-party agents inside GitHub logged {number.format(thirdPartySessions)} sessions.</span></li>
+          <li><span>No productivity, savings, ROI, or AI-assisted PR attribution.</span></li>
+        </ul>
+      </article>
+      <article class="card">
+        <header><h2>Read with care</h2></header>
+        <ul class="marks care">
+          <li><span>Per monthly active user is a cross-source ratio, not a per-person bill.</span></li>
+          <li><span>Weekly and monthly active counts behave as week- and month-to-date counts.</span></li>
+          <li><span>Per-user credits cover {number.format(users.withCredits)} of {number.format(users.count)} users and don’t reconcile with billing; GitHub calls the field consumption analysis, not invoicing.</span></li>
+          <li><span>CLI daily users reach {number.format(cliPeak.cliDau)} on {date(cliPeak.day)}; the export doesn’t say why.</span></li>
+        </ul>
+      </article>
+      <div class="private">
+        <span><b>Published</b>daily organization totals, monthly credit totals, public product and model names</span>
+        <span><b>Kept private</b>raw exports, user identifiers</span>
+      </div>
+    </div>
+
+    <div class="panel p-data" data-for="data">
+      <div class="stack tall">
+        <article class="card">
+          <header>
+            <h2>Billing and the per-user report</h2>
+            <span class="sub"><i class="tag measured">measured</i> both sources</span>
+          </header>
+          <div class="scroll wide">
+            <table>
+              <thead>
+                <tr><th scope="col">Month</th><th scope="col">Billing</th><th scope="col">Users report</th><th scope="col">Report days</th><th scope="col">Users</th></tr>
+              </thead>
+              <tbody>
+                {userMonths.map((row) => (
+                  <tr>
+                    <th scope="row">{monthLabel(row.month, 'short')}</th>
+                    <td>{row.billed === undefined ? '—' : whole(row.billed)}</td>
+                    <td>{whole(row.credits)}</td>
+                    <td>{date(row.from)}–{date(row.to)}</td>
+                    <td>{number.format(row.users)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p class="foot">
+            Credits per source. The windows differ, so the columns aren’t expected to match. Only {number.format(users.withCredits)} of {number.format(users.count)} users ever had a non-zero <code>ai_credits_used</code>; the page shows monthly totals only, and the script refuses months where fewer than five users had credits.
+          </p>
+        </article>
+        <article class="card">
+          <header><h2>Reproduce with your organization</h2></header>
+          <ol class="steps">
+            <li><span>Save each month of <code>GET /organizations/&#123;org&#125;/settings/billing/ai_credit/usage?year=&amp;month=</code> as <code>ai-credit-YYYY-MM.json</code>.</span></li>
+            <li><span>Save the reports from <code>GET /orgs/&#123;org&#125;/copilot/metrics/reports/organization-28-day/latest</code> and <code>…/users-28-day/latest</code> as <code>organization-28-day.ndjson</code> and <code>users-28-day.ndjson</code>.</span></li>
+            <li><span>Keep that folder outside the repository and run <code>bun scripts/ai-cost/aggregate.ts &lt;folder&gt;</code>. It writes <code>src/data/ai-cost.json</code> and fails on raw identifiers, monthly credit cohorts of one to four users, or CLI/app days with requests from fewer than five users.</span></li>
+          </ol>
+        </article>
+      </div>
+      <article class="card">
+        <header>
+          <h2>Daily numbers</h2>
+          <span class="sub"><i class="tag measured">measured</i> {range}</span>
+        </header>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th scope="col">Day</th><th scope="col">Daily</th><th scope="col">Weekly</th><th scope="col">Monthly</th><th scope="col">CLI daily</th><th scope="col">App daily</th><th scope="col">CLI tokens</th><th scope="col">App tokens</th></tr>
+            </thead>
+            <tbody>
+              {days.map((day) => (
+                <tr>
+                  <th scope="row">{date(day.day)}</th>
+                  <td>{number.format(day.dau)}</td>
+                  <td>{number.format(day.wau)}</td>
+                  <td>{number.format(day.mau)}</td>
+                  <td>{number.format(day.cliDau)}</td>
+                  <td>{number.format(day.appDau)}</td>
+                  <td>{compact.format(dayTokens(day.cli))}</td>
+                  <td>{compact.format(dayTokens(day.app))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+
+    <div class="tip" role="tooltip" hidden></div>
+  </div>
+</SiteLayout>
+
+<style>
+  .cost {
+    --c0: var(--theme-blue);
+    --c1: var(--theme-green);
+    --c2: #f5b85b;
+    --c3: #b58cff;
+    --c4: #5fd0d8;
+    --c5: var(--theme-faint);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 0.4rem;
+    min-height: 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  :global(:root[data-theme='light']) .cost {
+    --c2: #b7791f;
+    --c3: #7c4dcc;
+    --c4: #12828c;
+  }
+
+  /* The shared stylesheet pads and spaces bare lists, paragraphs and headings. Paragraph classes below set their own size. */
+  .cost :where(p, ul, ol, dl, dd, h2, h3, li) {
+    margin: 0;
+  }
+
+  .cost :where(ul, ol) {
+    padding: 0;
+    list-style: none;
+  }
+
+  .cost :where(h2, h3) {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: normal;
+    line-height: 1.3;
+  }
+
+  .cost code {
+    font-family: var(--font-mono);
+    font-size: 0.95em;
+    overflow-wrap: anywhere;
+  }
+
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Tabs and controls are radios, so they work without JavaScript. */
+  .top {
+    grid-row: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1.25rem;
+    min-width: 0;
+    border-bottom: 1px solid var(--theme-rule);
+  }
+
+  .tabs {
+    position: relative;
+    display: flex;
+    gap: 1rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tabs label {
+    margin-bottom: -1px;
+    padding: 0.3rem 0.1rem;
+    border-bottom: 2px solid transparent;
+    color: var(--theme-muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .tabs label:hover {
+    color: var(--theme-text);
+  }
+
+  .tabs input:checked + label {
+    border-bottom-color: var(--theme-text);
+    color: var(--theme-text);
+    font-weight: 600;
+  }
+
+  .tabs input:focus-visible + label {
+    outline: 2px solid var(--theme-highlight);
+    outline-offset: -2px;
+  }
+
+  .ctl {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+  }
+
+  .field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .lbl {
+    color: var(--theme-muted);
+  }
+
+  .seg-ctl {
+    position: relative;
+    display: inline-flex;
+    border: 1px solid var(--theme-rule-strong);
+  }
+
+  .seg-ctl label {
+    padding: 0.1rem 0.5rem;
+    color: var(--theme-muted);
+    cursor: pointer;
+  }
+
+  .seg-ctl label + input + label {
+    border-left: 1px solid var(--theme-rule-strong);
+  }
+
+  .seg-ctl input:checked + label {
+    background: var(--theme-highlight);
+    color: var(--theme-highlight-text);
+  }
+
+  .seg-ctl input:focus-visible + label {
+    outline: 2px solid var(--theme-highlight);
+    outline-offset: 2px;
+  }
+
+  .seg-ctl .na {
+    opacity: 0.45;
+    text-decoration: line-through;
+    cursor: not-allowed;
+  }
+
+  .ctx {
+    margin-left: auto;
+    color: var(--theme-muted);
+    font-size: 0.7rem;
+    line-height: 1.4;
+  }
+
+  .cost:has(#tab-cost:checked) [data-for]:not([data-for='cost']),
+  .cost:has(#tab-adoption:checked) [data-for]:not([data-for='adoption']),
+  .cost:has(#tab-tokens:checked) [data-for]:not([data-for='tokens']),
+  .cost:has(#tab-guidance:checked) [data-for]:not([data-for='guidance']),
+  .cost:has(#tab-limits:checked) [data-for]:not([data-for='limits']),
+  .cost:has(#tab-data:checked) [data-for]:not([data-for='data']) {
+    display: none;
+  }
+
+  .cost:has(#grp-model:checked) .g-sku,
+  .cost:has(#grp-sku:checked) .g-model,
+  .cost:has(#view-all:checked) .ranked:not(.v-all),
+  .cost:has(#view-m0:checked) .ranked:not(.v-m0),
+  .cost:has(#view-m1:checked) .ranked:not(.v-m1),
+  .cost:has(#view-m2:checked) .ranked:not(.v-m2) {
+    display: none;
+  }
+
+  .cost:has(#view-m0:checked) .mo:not(.v-m0),
+  .cost:has(#view-m1:checked) .mo:not(.v-m1),
+  .cost:has(#view-m2:checked) .mo:not(.v-m2) {
+    opacity: 0.3;
+  }
+
+  /* Key figures */
+  .kpis {
+    grid-row: 2;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(11rem, 1fr);
+    grid-template-rows: auto auto auto;
+    column-gap: 0.4rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  /* Subgrid keeps labels, values and notes aligned across cards when a long label wraps. */
+  .kpi {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    row-gap: 0.2rem;
+    min-width: 0;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--theme-rule);
+    background: var(--theme-surface);
+  }
+
+  .k-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .k-label {
+    min-width: 0;
+    color: var(--theme-muted);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .k-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.1rem 0.5rem;
+    min-width: 0;
+  }
+
+  .k-value {
+    font-size: clamp(1.1rem, 1.6vw, 1.5rem);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .k-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .k-note {
+    min-width: 0;
+    color: var(--theme-muted);
+    font-size: 0.66rem;
+    line-height: 1.3;
+  }
+
+  .spark {
+    flex: none;
+    width: 3.5rem;
+    height: 1.1rem;
+    margin-left: auto;
+    overflow: visible;
+  }
+
+  .spark polyline {
+    fill: none;
+    stroke: var(--theme-muted);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .tag {
+    flex: none;
+    padding: 0 0.3rem;
+    border: 1px solid var(--theme-rule-strong);
+    color: var(--theme-muted);
+    font-size: 0.58rem;
+    font-style: normal;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .tag.derived {
+    border-style: dashed;
+  }
+
+  .pill {
+    flex: none;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, currentColor 14%, transparent);
+    font-size: 0.66rem;
+    white-space: nowrap;
+  }
+
+  .pill.good {
+    color: var(--theme-green);
+  }
+
+  .pill.bad {
+    color: var(--theme-red);
+  }
+
+  .pill.warn {
+    color: var(--c2);
+  }
+
+  .pill.flat {
+    color: var(--theme-muted);
+  }
+
+  /* Panels */
+  .panel {
+    grid-row: 2 / 4;
+    display: grid;
+    gap: 0.4rem;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .panel.with-kpis {
+    grid-row: 3;
+  }
+
+  .p-cost {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-rows: minmax(min-content, 1fr);
+  }
+
+  .p-adoption {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(min-content, 1fr));
+  }
+
+  .p-tokens {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-rows: minmax(min-content, 1fr);
+  }
+
+  .p-guidance {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto repeat(6, minmax(min-content, 1fr));
+  }
+
+  .p-limits {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: minmax(min-content, 1fr) auto;
+  }
+
+  .p-data {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .stack {
+    display: grid;
+    grid-auto-rows: minmax(min-content, 1fr);
+    gap: 0.4rem;
+    min-height: 0;
+  }
+
+  .stack.tall {
+    grid-auto-rows: max-content;
+    align-content: start;
+    overflow: auto;
+  }
+
+  .stack.side {
+    grid-template-rows: minmax(min-content, 1fr) auto;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+    min-height: 0;
+    padding: 0.55rem 0.7rem;
+    overflow: hidden;
+    border: 1px solid var(--theme-rule);
+    background: var(--theme-surface);
+  }
+
+  .card > header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.2rem 0.75rem;
+  }
+
+  .card h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .sub {
+    color: var(--theme-muted);
+    font-size: 0.66rem;
+  }
+
+  .foot {
+    color: var(--theme-muted);
+    font-size: 0.66rem;
+    line-height: 1.35;
+  }
+
+  .dot {
+    flex: none;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 2px;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.75rem;
+    color: var(--theme-muted);
+    font-size: 0.68rem;
+  }
+
+  .legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  /* Ranked list */
+  .ranked {
+    flex: 1 1 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .scope {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    color: var(--theme-muted);
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .scope b {
+    color: var(--theme-text);
+    font-weight: 600;
+  }
+
+  .rows {
+    display: grid;
+    grid-auto-rows: minmax(2.6rem, 1fr);
+    min-height: 0;
+  }
+
+  .rows li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: center;
+    gap: 0.25rem 0.6rem;
+    border-top: 1px solid var(--theme-rule);
+  }
+
+  .nm {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .val {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meter {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .track {
+    flex: 1;
+    height: 0.45rem;
+    background: var(--theme-rule);
+  }
+
+  .fill {
+    display: block;
+    height: 100%;
+    min-width: 1px;
+  }
+
+  .share {
+    width: 3.2rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meter .pill {
+    width: 4.6rem;
+    padding-inline: 0;
+    text-align: center;
+  }
+
+  [data-k] {
+    transition: opacity 0.12s;
+  }
+
+  .dim {
+    opacity: 0.3;
+  }
+
+  /* Charts */
+  .area {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .plot {
+    position: relative;
+    flex: 1 1 0;
+    min-height: 6rem;
+    margin: 0.5rem 0 0 2.6rem;
+  }
+
+  .x,
+  .months {
+    position: relative;
+    height: 1rem;
+    margin: 0.3rem 0 0 2.6rem;
+    color: var(--theme-muted);
+    font-size: 0.65rem;
+  }
+
+  .x span {
+    position: absolute;
+    top: 0;
+    white-space: nowrap;
+  }
+
+  .y {
+    position: absolute;
+    right: 100%;
+    padding-right: 0.4rem;
+    translate: 0 50%;
+    color: var(--theme-muted);
+    font-size: 0.65rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .gl {
+    position: absolute;
+    right: 0;
+    left: 0;
+    border-top: 1px solid var(--theme-rule);
+  }
+
+  .plot svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .plot svg * {
+    pointer-events: none;
+  }
+
+  .plot svg .hit {
+    fill: transparent;
+    pointer-events: all;
+  }
+
+  .plot svg .hit:hover {
+    fill: var(--theme-rule);
+    fill-opacity: 0.6;
+  }
+
+  .plot line {
+    stroke: var(--theme-rule);
+    vector-effect: non-scaling-stroke;
+  }
+
+  .plot .reset {
+    stroke: var(--theme-rule-strong);
+    stroke-dasharray: 3 3;
+  }
+
+  .plot polyline {
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .end {
+    position: absolute;
+    left: 100%;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    translate: -50% 50%;
+    pointer-events: none;
+  }
+
+  .cols {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .cell {
+    flex: 1 1 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    min-width: 0;
+    height: 100%;
+  }
+
+  .col {
+    position: relative;
+    display: flex;
+    flex-direction: column-reverse;
+    width: min(60%, 11rem);
+  }
+
+  .seg {
+    display: flex;
+    flex-basis: 0;
+    align-items: center;
+    justify-content: center;
+    min-height: 1px;
+    overflow: hidden;
+    box-shadow: 0 -1px 0 var(--theme-surface);
+    color: var(--theme-bg);
+    font-size: 0.65rem;
+  }
+
+  .total {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    left: 0;
+    padding-bottom: 0.15rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .months {
+    display: flex;
+  }
+
+  .months span {
+    flex: 1 1 0;
+    text-align: center;
+  }
+
+  .days {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    gap: 2px;
+  }
+
+  .day {
+    flex: 1 1 0;
+    display: flex;
+    align-items: flex-end;
+    min-width: 0;
+  }
+
+  .day:hover {
+    background: var(--theme-rule);
+  }
+
+  .day i {
+    display: block;
+    width: 100%;
+    min-height: 1px;
+  }
+
+  /* Adoption lists */
+  .bars {
+    flex: 1 1 0;
+    display: grid;
+    grid-auto-rows: minmax(1.4rem, 1fr);
+    min-height: 0;
+  }
+
+  .bars li {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr) 3rem;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .bars code {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bars .fill {
+    background: var(--c0);
+  }
+
+  .bars b {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 400;
+  }
+
+  .phase-bar {
+    display: flex;
+    gap: 1px;
+    height: 1.6rem;
+  }
+
+  .phase-bar i {
+    min-width: 2px;
+  }
+
+  .phase-list {
+    flex: 1 1 0;
+    display: grid;
+    align-content: space-evenly;
+  }
+
+  .phase-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 3.2rem;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .phase-list b {
+    font-variant-numeric: tabular-nums;
+    font-weight: 400;
+  }
+
+  .phase-list .share {
+    color: var(--theme-muted);
+  }
+
+  /* Tokens */
+  .cmp {
+    flex: 1;
+  }
+
+  .cmp th,
+  .cmp td {
+    padding-block: 0.2rem;
+  }
+
+  .cmp thead th {
+    color: var(--theme-text);
+  }
+
+  .cmp .dot {
+    display: inline-block;
+    margin-right: 0.35rem;
+  }
+
+  .cmp tbody th {
+    color: var(--theme-muted);
+  }
+
+  .cmp td {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .share-cell {
+    display: inline-grid;
+    justify-items: end;
+    gap: 0.25rem;
+  }
+
+  .split {
+    display: flex;
+    gap: 1px;
+    width: 3.5rem;
+    height: 0.55rem;
+  }
+
+  .split i {
+    min-width: 2px;
+  }
+
+  .marks {
+    flex: 1;
+    display: grid;
+    grid-auto-rows: minmax(min-content, 1fr);
+    min-height: 0;
+  }
+
+  .marks li {
+    display: grid;
+    grid-template-columns: 1rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.3rem;
+    padding-block: 0.25rem;
+    border-top: 1px solid var(--theme-rule);
+  }
+
+  .marks li::before {
+    font-weight: 700;
+  }
+
+  .marks.ok li::before {
+    content: '✓';
+    color: var(--theme-green);
+  }
+
+  .marks.no li::before {
+    content: '✕';
+    color: var(--theme-red);
+  }
+
+  .marks.care li::before {
+    content: '!';
+    color: var(--c2);
+  }
+
+  .marks .tag {
+    margin-right: 0.3rem;
+  }
+
+  /* Guidance */
+  .key {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    color: var(--theme-muted);
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .guide {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1.75fr);
+    align-items: center;
+    gap: 0.3rem 1rem;
+  }
+
+  .guide h2 {
+    align-items: flex-start;
+  }
+
+  .n {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 1px solid currentColor;
+    color: var(--theme-red);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .guide.partial .n {
+    color: var(--c2);
+  }
+
+  .chip {
+    flex: none;
+    padding: 0 0.35rem;
+    border: 1px solid currentColor;
+    font-size: 0.6rem;
+    font-style: normal;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .chip.partial {
+    color: var(--c2);
+  }
+
+  .chip.gap {
+    color: var(--theme-red);
+  }
+
+  .verdict {
+    display: grid;
+    justify-items: start;
+    gap: 0.25rem;
+  }
+
+  .stat {
+    font-size: clamp(1rem, 1.4vw, 1.35rem);
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  .shows {
+    color: var(--theme-muted);
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .need {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .need-h {
+    flex: none;
+    color: var(--theme-muted);
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .need ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  .need li {
+    padding: 0 0.35rem;
+    border: 1px solid var(--theme-rule-strong);
+    font-size: 0.68rem;
+    line-height: 1.3;
+  }
+
+  .private {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.2rem 1.5rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--theme-rule);
+    background: var(--theme-surface);
+    color: var(--theme-muted);
+  }
+
+  .private b {
+    margin-right: 0.5rem;
+    color: var(--theme-text);
+    font-weight: 600;
+  }
+
+  /* Data */
+  .steps {
+    display: grid;
+    gap: 0.4rem;
+    counter-reset: step;
+  }
+
+  .steps li {
+    display: grid;
+    grid-template-columns: 1rem minmax(0, 1fr);
+    gap: 0.3rem;
+    counter-increment: step;
+  }
+
+  .steps li::before {
+    content: counter(step) '.';
+    color: var(--theme-muted);
+  }
+
+  .scroll {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .scroll.wide {
+    flex: none;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th,
+  td {
+    padding: 0.22rem 0.45rem;
+    border-bottom: 1px solid var(--theme-rule);
+    font-weight: 400;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th:first-child,
+  td:first-child {
+    text-align: left;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    background: var(--theme-surface);
+    color: var(--theme-muted);
+  }
+
+  .tip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    max-width: 22rem;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--theme-rule-strong);
+    background: var(--theme-surface);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
+    font-size: 0.7rem;
+    line-height: 1.4;
+    white-space: pre-line;
+    pointer-events: none;
+  }
+
+  @media (max-height: 740px) {
+    .kpis:not([data-for='limits']) .k-foot {
+      display: none;
+    }
+  }
+
+  @media (max-width: 800px) {
+    .cost .panel {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: none;
+      grid-auto-rows: max-content;
+    }
+
+    .stack,
+    .stack.side {
+      grid-template-rows: none;
+      grid-auto-rows: max-content;
+    }
+
+    .area {
+      flex: none;
+      height: 15rem;
+    }
+
+    .ranked,
+    .bars,
+    .phase-list {
+      flex: none;
+    }
+
+    .rows {
+      grid-auto-rows: 2.8rem;
+    }
+
+    .bars {
+      grid-auto-rows: 1.8rem;
+    }
+
+    .phase-list {
+      gap: 0.6rem;
+    }
+
+    .guide {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ctx,
+    .na {
+      display: none;
+    }
+
+    .p-data .stack.tall {
+      overflow: visible;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .tabs {
+      gap: 0.5rem;
+    }
+
+    .tabs label {
+      padding-block: 0.45rem;
+      font-size: 0.75rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-k] {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  const root = document.querySelector<HTMLElement>('.cost')!
+  const tip = root.querySelector<HTMLElement>('.tip')!
+  const tabs = [...root.querySelectorAll<HTMLInputElement>('input[name="tab"]')]
+
+  const select = () => {
+    const tab = tabs.find((input) => input.value === location.hash.slice(1))
+    if (tab) tab.checked = true
+  }
+  select()
+  addEventListener('hashchange', select)
+  root.addEventListener('change', (event) => {
+    const input = event.target as HTMLInputElement
+    if (input.name === 'tab') history.replaceState(null, '', `#${input.value}`)
+  })
+
+  // Hovering a colored item dims every item with a different color.
+  let marked: string | undefined
+  const mark = (key?: string) => {
+    if (key === marked) return
+    marked = key
+    for (const item of root.querySelectorAll<HTMLElement>('[data-k]')) item.classList.toggle('dim', key !== undefined && item.dataset.k !== key)
+  }
+  const hide = () => {
+    tip.hidden = true
+    mark()
+  }
+  const show = (event: PointerEvent) => {
+    const target = (event.target as Element).closest<HTMLElement>('[data-tip],[data-k]')
+    if (!target) return hide()
+    mark(target.dataset.k)
+    tip.hidden = !target.dataset.tip
+    if (tip.hidden) return
+    tip.textContent = target.dataset.tip!
+    const { width, height } = tip.getBoundingClientRect()
+    const x = Math.min(event.clientX + 14, innerWidth - width - 8)
+    const y = event.clientY + 18 + height > innerHeight ? event.clientY - height - 12 : event.clientY + 18
+    tip.style.transform = `translate(${Math.max(8, x)}px, ${Math.max(8, y)}px)`
+  }
+  root.addEventListener('pointermove', show)
+  root.addEventListener('pointerdown', show)
+  root.addEventListener('pointerleave', hide)
+</script>
