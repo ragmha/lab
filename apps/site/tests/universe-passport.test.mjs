@@ -6,9 +6,9 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { lessons, releases } from '../src/data/universe.mjs'
-import { createStore } from '../.github/extensions/universe-passport/store.mjs'
+import { createStore } from '../../../.github/extensions/universe-passport/store.mjs'
 import { exportProgress } from '../src/data/universe-progress.mjs'
-import { startServer } from '../.github/extensions/universe-passport/server.mjs'
+import { startServer } from '../../../.github/extensions/universe-passport/server.mjs'
 
 let dir
 let server
@@ -44,7 +44,7 @@ function statusWithHost(host) {
 }
 
 test('serves the panel assets under a strict CSP', async () => {
-  for (const [path, type] of [['/', 'text/html'], ['/app.mjs', 'text/javascript'], ['/src/data/universe-progress.mjs', 'text/javascript'], ['/src/data/universe.mjs', 'text/javascript'], ['/styles.css', 'text/css']]) {
+  for (const [path, type] of [['/', 'text/html'], ['/app.mjs', 'text/javascript'], ['/apps/site/src/data/universe-progress.mjs', 'text/javascript'], ['/apps/site/src/data/universe.mjs', 'text/javascript'], ['/styles.css', 'text/css']]) {
     const response = await fetch(`${server.origin}${path}`)
     assert.equal(response.status, 200, path)
     assert.match(response.headers.get('content-type'), new RegExp(type))

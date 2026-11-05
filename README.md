@@ -1,52 +1,77 @@
 # Raghib's Lab
 
-> Small, interactive experiments that run in your browser.
+Small, interactive experiments. Static labs are live at
+**[lab.raghib.io](https://lab.raghib.io/)**; fullstack labs run on your machine.
 
-Visit **[lab.raghib.io](https://lab.raghib.io/)**.
+A [Bun workspaces](https://bun.com/guides/install/workspaces) monorepo.
 
-| Experiment | What it does |
-| --- | --- |
-| [Universe Passport](https://lab.raghib.io/universe/passport/) | Learn the Universe 2026 releases, stamp lessons, and check your understanding |
-| [Universe field guide](https://lab.raghib.io/universe/) | Read the lessons, optional labs, release inventory, and download the slides |
-| [Chess](https://lab.raghib.io/chess/) | Play Stockfish locally |
-| [Context Autopsy](https://lab.raghib.io/context-autopsy/) | Inspect agent-session context and token use |
-| [Session Flame](https://lab.raghib.io/session-flame/) | Replay sessions as a flame chart |
-| [Pixel Platformer](https://lab.raghib.io/platformer/) | Play a 32-stage pixel platformer in the browser |
-| [Token Diet](https://lab.raghib.io/token-diet/) | Compare recorded token-use experiments |
+```text
+apps/site/        Astro site with every static lab → GitHub Pages
+apps/<name>/      Fullstack lab: Bun server + frontend, runs locally
+packages/<name>/  Shared code, once two apps need it
+.github/          CI and the Universe Passport Copilot canvas
+```
 
-## Run locally
+## Setup
 
 Requires Bun 1.3.5 and Node.js 22.12+.
 
 ```sh
-bun install --frozen-lockfile
-bun run dev
+bun install
 ```
 
-## Check
+## Commands
 
-```sh
-bun run test
-bun run build
-bunx playwright install chromium webkit
-bun run test:browser
+Run from the root.
+
+| Command | Does |
+| --- | --- |
+| `bun run dev` | Start the site at <http://localhost:4321> |
+| `bun run test` | Run every workspace's `test` script |
+| `bun run build` | Type-check and build the site to `apps/site/dist` |
+| `bun run test:browser` | Browser tests against the built site |
+| `bun run --filter <name> <script>` | Run any script in one workspace |
+
+Browser tests need `cd apps/site && bunx playwright install chromium webkit` once.
+
+## Add a lab
+
+**Static** (deploys with the site): add `apps/site/src/pages/<slug>.astro`
+and an entry in the `experiments` list in `apps/site/src/pages/index.astro`.
+
+**Fullstack** (runs locally): create `apps/<name>/` with its own
+`package.json`, then `bun install` from the root.
+
+```json
+{
+  "name": "@lab/<name>",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "bun --hot server.ts" }
+}
 ```
 
-Pushes to `main` deploy to GitHub Pages after these checks pass.
+```ts
+// apps/<name>/server.ts: index.html can load .ts/.tsx; Bun bundles it.
+import index from './index.html'
 
-## Progress
+Bun.serve({
+  hostname: '127.0.0.1',
+  port: 3001,
+  routes: {
+    '/': index,
+    '/api/hello': () => Response.json({ hello: 'lab' }),
+  },
+})
+```
 
-Universe progress stays on your device. The public Passport and field guide
-share progress in the same browser. Use **Export progress** and **Import**
-to move it between devices or the [Copilot canvas](.github/extensions/universe-passport/).
-There are no accounts, automatic cross-device sync, or team tracking.
-The canvas saves locally under `~/.copilot/extensions/universe-passport/artifacts/`
-(`COPILOT_HOME` overrides the base directory).
+Run it with `bun run --filter @lab/<name> dev`. Add dependencies with
+`bun add` inside the app folder; share code through `packages/<name>` and
+`"@lab/<name>": "workspace:*"`. Keep one `bun.lock` at the root.
 
-> [!NOTE]
-> Release availability is a sourced snapshot: launch-day coverage checked
-> 1 November 2026, with two release-week additions checked 2 November.
-> Lessons never run agents, change permissions, or spend credits.
+## Deploy
 
-See [sources and licenses](PROVENANCE.md) and the optional
-[reproduction kit](scripts/token-diet/README.md), which can consume paid model credits.
+Pushes to `main` run CI and publish `apps/site/dist` to GitHub Pages.
+Fullstack labs are not deployed.
+
+See [sources and licenses](PROVENANCE.md).

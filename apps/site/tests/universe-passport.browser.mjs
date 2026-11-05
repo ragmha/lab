@@ -5,8 +5,8 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { chromium } from 'playwright'
 import { lessons, releases } from '../src/data/universe.mjs'
-import { createStore } from '../.github/extensions/universe-passport/store.mjs'
-import { startServer } from '../.github/extensions/universe-passport/server.mjs'
+import { createStore } from '../../../.github/extensions/universe-passport/store.mjs'
+import { startServer } from '../../../.github/extensions/universe-passport/server.mjs'
 
 const shots = process.env.LAB_SCREENSHOT_DIR
 

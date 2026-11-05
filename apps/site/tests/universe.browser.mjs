@@ -5,8 +5,8 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { chromium, webkit } from 'playwright'
 import { createHash } from 'node:crypto'
-import { createStore } from '../.github/extensions/universe-passport/store.mjs'
-import { startServer } from '../.github/extensions/universe-passport/server.mjs'
+import { createStore } from '../../../.github/extensions/universe-passport/store.mjs'
+import { startServer } from '../../../.github/extensions/universe-passport/server.mjs'
 import { exportProgress } from '../src/data/universe-progress.mjs'
 
 const base = process.env.LAB_TEST_URL
