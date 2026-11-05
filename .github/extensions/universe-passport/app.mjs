@@ -1,5 +1,5 @@
-import { applyProgress, downloadProgress, emptyProgress, importProgress, progressKey, readStoredProgress, roundSize, transferLimit } from '../../../src/data/universe-progress.mjs'
-import { labs, lessons, releases, scope, sources as sourceData, statusNote } from '../../../src/data/universe.mjs'
+import { applyProgress, downloadProgress, emptyProgress, importProgress, progressKey, readStoredProgress, roundSize, transferLimit } from '../../../apps/site/src/data/universe-progress.mjs'
+import { labs, lessons, releases, scope, sources as sourceData, statusNote } from '../../../apps/site/src/data/universe.mjs'
 
 const browserOnly = document.documentElement.dataset.storage === 'browser'
 const token = new URLSearchParams(location.search).get('token') ?? ''

@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname } from 'node:path'
-import { applyProgress, emptyProgress, readProgress, roundSize } from '../../../src/data/universe-progress.mjs'
+import { applyProgress, emptyProgress, readProgress, roundSize } from '../../../apps/site/src/data/universe-progress.mjs'
 
 export { roundSize }
 

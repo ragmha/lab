@@ -34,7 +34,7 @@ them only when intentionally producing a different dataset.
 
 ## Run
 
-From the repository root:
+From `apps/site`:
 
 ```sh
 export CREDITS=100

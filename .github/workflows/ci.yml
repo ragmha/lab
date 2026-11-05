@@ -28,15 +28,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api graphql -f query='query { repository(owner: "ragmha", name: "lab") { languages(first: 100, orderBy: {field: SIZE, direction: DESC}) { edges { size node { name color } } } } }' --jq '.data.repository.languages.edges' > "$RUNNER_TEMP/languages.json"
-          cp "$RUNNER_TEMP/languages.json" src/data/languages.json
+          cp "$RUNNER_TEMP/languages.json" apps/site/src/data/languages.json
       - run: bun run test
       - run: bun run build
       - run: bunx playwright install --with-deps chromium webkit
+        working-directory: apps/site
       - run: bun run test:browser
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          path: dist
+          path: apps/site/dist
 
   deploy:
     name: Deploy GitHub Pages

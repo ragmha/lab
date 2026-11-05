@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { labs, lessons, releases, scope, sources, statusNote } from '../../../src/data/universe.mjs'
+import { labs, lessons, releases, scope, sources, statusNote } from '../../../apps/site/src/data/universe.mjs'
 import { PassportError, roundSize } from './store.mjs'
 
 const deck = 'universe-2026-starter.pptx'
@@ -9,9 +9,9 @@ const files = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/app.mjs': ['app.mjs', 'text/javascript; charset=utf-8'],
   '/styles.css': ['styles.css', 'text/css; charset=utf-8'],
-  '/src/data/universe-progress.mjs': ['../../../src/data/universe-progress.mjs', 'text/javascript; charset=utf-8'],
-  '/src/data/universe.mjs': ['../../../src/data/universe.mjs', 'text/javascript; charset=utf-8'],
-  [`/downloads/${deck}`]: [`../../../public/downloads/${deck}`, 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+  '/apps/site/src/data/universe-progress.mjs': ['../../../apps/site/src/data/universe-progress.mjs', 'text/javascript; charset=utf-8'],
+  '/apps/site/src/data/universe.mjs': ['../../../apps/site/src/data/universe.mjs', 'text/javascript; charset=utf-8'],
+  [`/downloads/${deck}`]: [`../../../apps/site/public/downloads/${deck}`, 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
 }
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-src 'none'"
 

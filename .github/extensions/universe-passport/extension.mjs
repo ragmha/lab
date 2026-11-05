@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { joinSession, createCanvas } from '@github/copilot-sdk/extension'
-import { lessons } from '../../../src/data/universe.mjs'
+import { lessons } from '../../../apps/site/src/data/universe.mjs'
 import { createStore } from './store.mjs'
 import { startServer } from './server.mjs'
 
