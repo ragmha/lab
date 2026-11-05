@@ -10,6 +10,7 @@ is a page in `src/pages/`.
 | [Chess](https://lab.raghib.io/chess/) | Play Stockfish locally |
 | [Context Autopsy](https://lab.raghib.io/context-autopsy/) | Inspect agent-session context and token use |
 | [Session Flame](https://lab.raghib.io/session-flame/) | Replay sessions as a flame chart |
+| [Pixel Platformer](https://lab.raghib.io/platformer/) | Play a 32-stage pixel platformer in the browser |
 | [Token Diet](https://lab.raghib.io/token-diet/) | Compare recorded token-use experiments |
 
 Scripts (`dev`, `check`, `build`, `preview`, `test`, `test:browser`) run from

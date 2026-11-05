@@ -13,6 +13,45 @@ const size = { width: 1280, height: 800 }
 const button = (page, name) => page.getByRole('button', { name, exact: true })
 const label = (page, name) => page.locator('label', { hasText: name }).first()
 
+// The showcase run follows the opening stage's route with jumps, stars, and enemy stomps.
+const platformerRun = {
+  jumps: [[1.631, 0.05], [2.774, 0.05], [4.815, 0.12], [5.398, 0.3], [6.315, 0.3], [6.748, 0.05], [8.456, 0.45], [9.057, 0.3]],
+  pause: 9.95,
+}
+
+// In the page: start a game holding right, play the jumps on game time so a slow recorded frame shifts nothing,
+// then pause. Resolves with the last lives text the HUD drew.
+function playPlatformer({ jumps, pause }) {
+  const key = (type, code) => dispatchEvent(new KeyboardEvent(type, { code }))
+  const proto = CanvasRenderingContext2D.prototype
+  const { fillText } = proto
+  let hud = ''
+  proto.fillText = function (text, ...rest) {
+    if (text.startsWith('PLAYER 1 x')) hud = text
+    return fillText.call(this, text, ...rest)
+  }
+  const keys = jumps.flatMap(([at, hold]) => [[at, 'keydown'], [at + hold, 'keyup']])
+  key('keydown', 'Enter')
+  key('keyup', 'Enter')
+  key('keydown', 'ArrowRight')
+  let last = 0
+  let t = 0
+  return new Promise((resolve) => requestAnimationFrame(function tick(now) {
+    // This runs after the game's frame, the same dt the game used; a key sent now counts from its next frame.
+    const dt = last ? Math.min(now - last, 50) / 1000 : 0
+    last = now
+    if (hud) t += dt
+    const next = t + Math.min(dt || 1 / 60, 1 / 60)
+    while (hud && keys.length && keys[0][0] <= next) key(keys.shift()[1], 'KeyZ')
+    if (!hud || next < pause) return requestAnimationFrame(tick)
+    key('keyup', 'ArrowRight')
+    key('keydown', 'Enter')
+    key('keyup', 'Enter')
+    proto.fillText = fillText
+    resolve(hud)
+  }))
+}
+
 const tours = {
   'session-flame': [
     (p) => p.locator('#replay-play').click(),
@@ -39,6 +78,12 @@ const tours = {
     ...['e2', 'e4', 'g1', 'f3', 'f1', 'c4'].map((square) => (p) =>
       p.locator(`[data-square="${square}"]:not([disabled])`).click({ timeout: 60000 })),
     (p) => p.waitForTimeout(1500),
+  ],
+  platformer: [
+    async (p) => {
+      const hud = await p.evaluate(playPlatformer, platformerRun)
+      if (hud !== 'PLAYER 1 x3') throw new Error(`The player lost a life on the recorded run (${hud})`)
+    },
   ],
 }
 
