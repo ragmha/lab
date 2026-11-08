@@ -1,5 +1,5 @@
 // Records a short click-through of each experiment and encodes it as a GIF.
-// Usage: bun run build && bun run preview, then `node scripts/record-previews.mjs [baseUrl]`. Needs ffmpeg.
+// Usage: bun run build && bun run preview, then `node scripts/record-previews.mjs [baseUrl] [slug]`. Needs ffmpeg.
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
