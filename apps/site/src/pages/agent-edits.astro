@@ -1,0 +1,353 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import SiteHeader from '../components/SiteHeader.astro'
+import { analyzeEdits, demoEdits, parseEdits, pathParts, summarizeCategories } from '../lib/agent-edits'
+import '../styles/site.css'
+
+const sample = analyzeEdits([parseEdits(demoEdits)])
+const sampleCategories = summarizeCategories(sample.agents)
+const number = (value: number) => new Intl.NumberFormat('en-US').format(value)
+const description = 'See what each coding agent actually changed: file edits grouped by evals, instructions, skills, prompts, tools, tests, dependencies, config, docs, and runtime.'
+const home = new URL('/', Astro.site ?? Astro.url)
+const appJsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'What Did the Agent Actually Write?',
+  url: new URL(Astro.url.pathname, home).href,
+  description,
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Any (runs in a web browser)',
+  browserRequirements: 'Requires JavaScript',
+  isAccessibleForFree: true,
+}).replace(/</g, '\\u003c')
+---
+
+<BaseLayout
+  title="What Did the Agent Actually Write? Agent Edit Breakdown"
+  description={description}
+  bodyClass="site-surface experiment-surface"
+  pageClass="site-page"
+  defaultTheme="dark"
+>
+  <script is:inline type="application/ld+json" set:html={appJsonLd} />
+  <div class="workspace">
+    <SiteHeader />
+    <main class="calculator">
+      <header class="app-head">
+        <div class="app-title">
+          <p class="eyebrow">AGENT EDITS / ARTIFACT BREAKDOWN</p>
+          <h1>What Did the Agent Actually Write?</h1>
+          <p class="intro">See what agents changed by artifact category, with file-level attribution on demand.</p>
+          <p class="distinction">Not tool time, activity, or context: this counts observed file-edit calls.</p>
+        </div>
+      </header>
+      <noscript><p class="noscript-note">The sample is available below. Enable JavaScript to import and analyze your own session logs.</p></noscript>
+
+      <section id="agent-results" class="agent-results panel" aria-label="Artifact changes by agent">
+        <header class="breakdown-head">
+          <div><h2>Artifact breakdown</h2><p id="table-summary">{sample.filesEdited} files · {sample.agents.length} agent groups</p></div>
+          <label for="agent-filter">Agent
+            <select id="agent-filter" disabled>
+              <option value="all">All agents</option>
+              {sample.agents.map((agent) => <option value={agent.key}>{agent.label} · {agent.source}</option>)}
+            </select>
+          </label>
+        </header>
+        <table class="breakdown-table">
+          <thead><tr><th scope="col">Artifact</th><th scope="col" class="added">+ Added</th><th scope="col" class="removed">− Removed</th></tr></thead>
+          <tbody id="category-rows">
+            {sampleCategories.map((category, index) => (
+              <tr class="category-row">
+                <th scope="row">
+                  <details class="category-detail" open={index === 0}>
+                    <summary><span class="category-icon" aria-hidden="true">{category.icon}</span><span>{category.name}</span><small>{category.files} {category.files === 1 ? 'file' : 'files'}</small></summary>
+                    <ul class="file-list">
+                      {category.changes.map((change) => (
+                        <li><code>{pathParts(change.path).map((part) => <span>{part}</span>)}</code><span class="file-agent"><span>{change.label}</span> · <span>{change.source}</span></span><span class="file-counts"><span class="added">+{number(change.added)}</span><span class="removed">−{number(change.removed)}</span></span></li>
+                      ))}
+                    </ul>
+                  </details>
+                </th>
+                <td class="added">+{number(category.added)}</td>
+                <td class="removed">−{number(category.removed)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot><tr><th scope="row">Total</th><td id="total-added" class="added">+{number(sample.added)}</td><td id="total-removed" class="removed">−{number(sample.removed)}</td></tr></tfoot>
+        </table>
+        <p id="empty-report" class="empty-report" hidden>No successful file edits for this agent.</p>
+      </section>
+
+      <section id="import-panel" class="panel import-panel" aria-labelledby="import-heading">
+        <div>
+          <h2 id="import-heading">Inspect a session</h2>
+          <p>Choose or drop a Copilot CLI, Claude Code, or Codex JSON/JSONL session log. Processing stays in this browser.</p>
+        </div>
+        <label class="dropzone" for="session-files">
+          <span><strong>Choose or drop session logs</strong></span>
+          <span>20 files max · 20 MiB each · 50 MiB total</span>
+          <input id="session-files" type="file" accept=".json,.jsonl,application/json" multiple />
+        </label>
+        <div class="actions">
+          <button id="demo-button" type="button">Load sample</button>
+          <button id="clear-button" type="button" class="quiet" hidden>Clear import</button>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite">Illustrative sample loaded. Add a session to replace it.</p>
+        <ul id="warnings" class="warnings" hidden></ul>
+      </section>
+
+      <details class="panel notes">
+        <summary>What these counts mean</summary>
+        <ul>
+          <li>Only file-edit tools are counted: Copilot <code>edit</code>, <code>create</code>, <code>apply_patch</code>; Claude <code>Edit</code>, <code>MultiEdit</code>, <code>Write</code>, <code>NotebookEdit</code>; and Codex <code>apply_patch</code>.</li>
+          <li>Shell edits (for example <code>sed</code>, redirects, or scripts) are not visible here. These are tool-input line changes, not a Git diff or a measure of accepted final code.</li>
+          <li>Failed and unfinished calls are excluded from changes and reported separately. Claude main/sidechain IDs and Copilot sub-agent names are shown when recorded; Codex logs without agent IDs remain <strong>Unknown attribution</strong>.</li>
+          <li>Large replacements use a contiguous-line estimate; notebook cell writes are counted as added source because the old cell text is not in the tool call. File deletions may report zero lines when the log contains no deleted content.</li>
+        </ul>
+      </details>
+      <p class="privacy-note">Logs stay on your device. Nothing is uploaded, and this report does not include time, token use, or context utilization.</p>
+    </main>
+  </div>
+</BaseLayout>
+
+<script>
+  import { analyzeEdits, demoEdits, parseEdits, pathParts, summarizeCategories } from '../lib/agent-edits'
+  import type { EditAnalysis, ImportedEdits } from '../lib/agent-edits'
+
+  const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
+  const worker = new Worker(new URL('../lib/agent-edits.worker.ts', import.meta.url), { type: 'module' })
+  const fileInput = byId<HTMLInputElement>('session-files')
+  const categoryRows = byId<HTMLTableSectionElement>('category-rows')
+  const agentFilter = byId<HTMLSelectElement>('agent-filter')
+  const tableSummary = byId<HTMLElement>('table-summary')
+  const emptyReport = byId<HTMLElement>('empty-report')
+  const status = byId<HTMLElement>('status')
+  const clearButton = byId<HTMLButtonElement>('clear-button')
+  const demoButton = byId<HTMLButtonElement>('demo-button')
+  const warnings = byId<HTMLUListElement>('warnings')
+  const format = (value: number) => new Intl.NumberFormat('en-US').format(value)
+  const empty: EditAnalysis = { agents: [], added: 0, removed: 0, filesEdited: 0, failedCalls: 0, unconfirmedCalls: 0, sources: [], warnings: [] }
+
+  function textNode(tag: keyof HTMLElementTagNameMap, className: string, value: string) {
+    const node = document.createElement(tag)
+    node.className = className
+    node.textContent = value
+    return node
+  }
+
+  function renderTable(analysis: EditAnalysis) {
+    const selected = agentFilter.value === 'all' ? analysis.agents :
+      analysis.agents.filter((agent) => agent.key === agentFilter.value)
+    const categories = summarizeCategories(selected)
+    categoryRows.replaceChildren()
+    for (const [index, category] of categories.entries()) {
+      const row = document.createElement('tr')
+      row.className = 'category-row'
+      const heading = document.createElement('th')
+      heading.scope = 'row'
+      const details = document.createElement('details')
+      details.className = 'category-detail'
+      details.open = index === 0
+      const summary = document.createElement('summary')
+      summary.append(
+        textNode('span', 'category-icon', category.icon),
+        document.createTextNode(category.name),
+        textNode('small', '', `${category.files} ${category.files === 1 ? 'file' : 'files'}`),
+      )
+      const files = document.createElement('ul')
+      files.className = 'file-list'
+      for (const change of category.changes) {
+        const file = document.createElement('li')
+        const path = document.createElement('code')
+        path.append(...pathParts(change.path).map((part) => textNode('span', '', part)))
+        const agent = document.createElement('span')
+        agent.className = 'file-agent'
+        agent.append(textNode('span', '', change.label), ' · ', textNode('span', '', change.source))
+        file.append(path, agent)
+        const counts = document.createElement('span')
+        counts.className = 'file-counts'
+        counts.append(textNode('span', 'added', `+${format(change.added)}`), textNode('span', 'removed', `−${format(change.removed)}`))
+        file.append(counts)
+        files.append(file)
+      }
+      details.append(summary, files)
+      heading.append(details)
+      row.append(heading, textNode('td', 'added', `+${format(category.added)}`), textNode('td', 'removed', `−${format(category.removed)}`))
+      categoryRows.append(row)
+    }
+    const added = selected.reduce((sum, agent) => sum + agent.added, 0)
+    const removed = selected.reduce((sum, agent) => sum + agent.removed, 0)
+    byId('total-added').textContent = `+${format(added)}`
+    byId('total-removed').textContent = `−${format(removed)}`
+    const files = new Set(selected.flatMap((agent) => agent.categories.flatMap((category) => category.changes.map((change) => change.path)))).size
+    tableSummary.textContent = agentFilter.value === 'all'
+      ? `${files} ${files === 1 ? 'file' : 'files'} · ${selected.length} agent ${selected.length === 1 ? 'group' : 'groups'}`
+      : `${files} ${files === 1 ? 'file' : 'files'} · ${selected[0]?.label ?? 'No agent selected'}`
+    emptyReport.hidden = categories.length > 0
+  }
+
+  function render(analysis: EditAnalysis) {
+    currentAnalysis = analysis
+    const previousAgent = agentFilter.value
+    agentFilter.replaceChildren(new Option('All agents', 'all'))
+    for (const agent of analysis.agents) agentFilter.add(new Option(`${agent.label} · ${agent.source}`, agent.key))
+    agentFilter.value = analysis.agents.some((agent) => agent.key === previousAgent) ? previousAgent : 'all'
+    agentFilter.disabled = analysis.agents.length === 0
+    renderTable(analysis)
+    warnings.replaceChildren()
+    const notices = [...analysis.warnings]
+    if (analysis.failedCalls) notices.push(`${analysis.failedCalls} failed edit call(s), excluded from totals.`)
+    if (analysis.unconfirmedCalls) notices.push(`${analysis.unconfirmedCalls} unfinished edit call(s), excluded from totals.`)
+    for (const notice of notices) warnings.append(textNode('li', '', notice))
+    warnings.hidden = notices.length === 0
+  }
+
+  function busy(value: boolean) {
+    fileInput.disabled = value
+    demoButton.disabled = value
+    clearButton.disabled = value
+    if (value) status.textContent = 'Reading logs locally…'
+  }
+
+  worker.onmessage = ({ data }: MessageEvent<
+    | { type: 'progress'; done: number; total: number }
+    | { type: 'result'; analysis: EditAnalysis; demo?: boolean }
+    | { type: 'error'; message: string }
+  >) => {
+    if (data.type === 'progress') status.textContent = `Read ${data.done} of ${data.total} logs…`
+    if (data.type === 'result') {
+      render(data.analysis)
+      const groups = data.analysis.agents.length
+      status.textContent = `${data.demo ? 'Illustrative sample. ' : ''}${data.analysis.filesEdited} ${data.analysis.filesEdited === 1 ? 'file' : 'files'} changed across ${groups} agent ${groups === 1 ? 'group' : 'groups'}.`
+      busy(false)
+      clearButton.hidden = false
+    }
+    if (data.type === 'error') {
+      status.textContent = data.message
+      busy(false)
+    }
+  }
+  worker.onerror = () => {
+    status.textContent = 'The local analysis worker could not start.'
+    busy(false)
+  }
+  const loadDemo = () => { busy(true); worker.postMessage({ demo: true }) }
+  const loadFiles = (files: File[]) => {
+    if (fileInput.disabled || !files.length) return
+    busy(true)
+    worker.postMessage({ files })
+  }
+  demoButton.addEventListener('click', loadDemo)
+  let currentAnalysis = empty
+  agentFilter.addEventListener('change', () => renderTable(currentAnalysis))
+  clearButton.addEventListener('click', () => {
+    render(empty)
+    status.textContent = 'Import cleared. Load the sample or choose another session.'
+    fileInput.value = ''
+    clearButton.hidden = true
+  })
+  fileInput.addEventListener('change', () => loadFiles([...fileInput.files ?? []]))
+  const dropzone = document.querySelector<HTMLElement>('.dropzone')!
+  for (const eventName of ['dragenter', 'dragover']) dropzone.addEventListener(eventName, (event) => {
+    event.preventDefault()
+    dropzone.classList.add('dragging')
+  })
+  for (const eventName of ['dragleave', 'drop']) dropzone.addEventListener(eventName, () => dropzone.classList.remove('dragging'))
+  dropzone.addEventListener('drop', (event) => {
+    event.preventDefault()
+    loadFiles([...(event as DragEvent).dataTransfer?.files ?? []])
+  })
+
+  const sample: ImportedEdits[] = [parseEdits(demoEdits)]
+  currentAnalysis = analyzeEdits(sample)
+  render(currentAnalysis)
+</script>
+
+<style>
+  :global(body.experiment-surface) { --text: var(--theme-text); --body: var(--theme-text); --accent: var(--theme-blue); }
+  .workspace { width: min(100% - 2rem, 72rem); margin: 0 auto; }
+  .calculator { padding: 2rem 0 5rem; }
+  .app-head { display: flex; justify-content: space-between; align-items: end; gap: 2rem; padding: 2.5rem 0 1.75rem; border-bottom: 1px solid var(--theme-rule-strong); }
+  .app-title { max-width: 48rem; }
+  .eyebrow { margin: 0 0 0.75rem; color: var(--theme-blue); font-size: 0.7rem; letter-spacing: 0.14em; }
+  h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 3.25rem); line-height: 1.1; letter-spacing: -0.06em; }
+  .intro { max-width: 44rem; margin: 1rem 0 0; color: var(--theme-text); font-size: 1rem; }
+  .distinction, .privacy-note { color: var(--theme-muted); font-size: 0.75rem; }
+  .distinction { margin: 0.5rem 0 0; }
+  .noscript-note { padding: 0.75rem 1rem; border: 1px solid var(--theme-rule); color: var(--theme-muted); font-size: 0.75rem; }
+  .agent-results { margin: 1.25rem 0 2.5rem; padding: 0.9rem 1rem; }
+  .panel { min-width: 0; border: 1px solid var(--theme-rule-strong); background: var(--theme-surface); }
+  .breakdown-head { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: 0.75rem; }
+  .breakdown-head h2, .import-panel h2 { margin: 0; font-size: 0.95rem; }
+  .breakdown-head p { margin: 0.25rem 0 0; color: var(--theme-muted); font-size: 0.68rem; }
+  .breakdown-head label { display: flex; align-items: center; gap: 0.5rem; color: var(--theme-muted); font-size: 0.7rem; }
+  .breakdown-head select { max-width: min(18rem, 55vw); min-height: 2rem; padding: 0.25rem 1.75rem 0.25rem 0.5rem; border: 1px solid var(--theme-rule-strong); background: var(--theme-bg); color: var(--theme-text); font: inherit; font-size: 0.7rem; }
+  .import-panel { display: grid; grid-template-columns: 1fr minmax(16rem, 0.9fr); gap: 1rem 2rem; padding: 1.25rem; }
+  .import-panel > div:first-child p { max-width: 36rem; margin: 0.5rem 0 0; color: var(--theme-muted); font-size: 0.75rem; }
+  .dropzone { display: flex; flex-direction: column; justify-content: center; gap: 0.3rem; min-height: 6rem; padding: 1rem; border: 1px dashed var(--theme-rule-strong); cursor: pointer; text-align: center; }
+  .dropzone.dragging, .dropzone:focus-within { border-color: var(--theme-blue); background: color-mix(in srgb, var(--theme-blue) 8%, var(--theme-surface)); }
+  .dropzone span:first-child { font-size: 0.8rem; }
+  .dropzone span + span { color: var(--theme-muted); font-size: 0.65rem; }
+  .dropzone input { width: 100%; color: var(--theme-muted); font: inherit; font-size: 0.68rem; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  button { min-height: 2.5rem; padding: 0.45rem 0.8rem; border: 1px solid var(--theme-rule-strong); background: var(--theme-bg); color: var(--theme-text); font: inherit; font-size: 0.7rem; cursor: pointer; }
+  button:hover { border-color: var(--theme-blue); }
+  button:disabled { opacity: 0.55; cursor: progress; }
+  .quiet { color: var(--theme-muted); }
+  .status { align-self: center; margin: 0; color: var(--theme-muted); font-size: 0.68rem; }
+  .warnings { grid-column: 1 / -1; margin: 0; padding: 0 0 0 1.25rem; color: var(--theme-red); font-size: 0.7rem; }
+  .notes { margin-top: 1rem; padding: 1rem 1.25rem; }
+  .notes summary { cursor: pointer; color: var(--theme-muted); font-size: 0.75rem; }
+  .notes ul { margin-bottom: 0; padding-left: 1.2rem; color: var(--theme-muted); font-size: 0.72rem; }
+  .notes li + li { margin-top: 0.5rem; }
+  .privacy-note { margin: 1rem 0; }
+  @media (max-width: 44rem) {
+    .app-head { align-items: stretch; flex-direction: column; gap: 1rem; }
+    .breakdown-head { align-items: stretch; flex-direction: column; }
+    .import-panel { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+
+<!-- Result rows are rebuilt by the client script, so they cannot carry Astro's scoped attribute. -->
+<style is:global>
+  #agent-results .breakdown-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.8rem; }
+  #agent-results .breakdown-table th:first-child { width: 62%; text-align: left; }
+  #agent-results .breakdown-table th, #agent-results .breakdown-table td { padding: 0.55rem 0.45rem; }
+  #agent-results .breakdown-table thead th { border-bottom: 1px solid var(--theme-rule-strong); color: var(--theme-muted); font-size: 0.65rem; font-weight: 400; }
+  #agent-results .breakdown-table thead th:not(:first-child), #agent-results .breakdown-table td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #agent-results .breakdown-table tbody tr + tr { border-top: 1px solid var(--theme-rule); }
+  #agent-results .added { color: var(--theme-green); }
+  #agent-results .removed { color: var(--theme-red); }
+  #agent-results .category-detail summary { display: flex; align-items: center; gap: 0.55rem; min-height: 2.25rem; cursor: pointer; list-style: none; }
+  #agent-results .category-detail summary::-webkit-details-marker { display: none; }
+  #agent-results .category-detail summary::before { content: '+'; width: 0.7rem; flex: none; color: var(--theme-faint); }
+  #agent-results .category-detail[open] summary::before { content: '−'; }
+  #agent-results .category-detail summary small { color: var(--theme-muted); font-size: 0.65rem; white-space: nowrap; }
+  #agent-results .category-icon { display: grid; width: 1.5rem; height: 1.5rem; flex: none; place-items: center; border: 1px solid var(--theme-rule-strong); color: var(--theme-blue); font-size: 0.55rem; }
+  #agent-results .breakdown-table tfoot { border-top: 1px solid var(--theme-rule-strong); font-weight: 700; }
+  #agent-results .file-list { margin: 0 0 0.55rem 1.25rem; padding: 0; list-style: none; container: file-list / inline-size; }
+  #agent-results .file-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 0.65rem; padding: 0.4rem 0; border-top: 1px dashed var(--theme-rule); }
+  /* The list's container type stops the last item's margin collapsing into the list's own. */
+  #agent-results .file-list li:last-child { margin-bottom: 0; }
+  #agent-results .file-list code { min-width: 0; overflow-wrap: anywhere; color: var(--theme-muted); font-size: 0.68rem; }
+  #agent-results .file-agent { color: var(--theme-muted); font-size: 0.62rem; }
+  /* Atomic pieces wrap as units: paths between folders, attribution between agent and source. */
+  #agent-results .file-list code > span, #agent-results .file-agent > span { display: inline-block; }
+  #agent-results .file-counts { display: flex; gap: 0.55rem; font-size: 0.65rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #agent-results .empty-report { margin: 0; padding: 1.5rem 0; color: var(--theme-muted); text-align: center; font-size: 0.75rem; }
+  @container file-list (max-width: 40rem) {
+    #agent-results .file-list li { grid-template-columns: minmax(0, 1fr) auto; gap: 0.35rem 0.5rem; }
+    #agent-results .file-agent { grid-column: 1; }
+    #agent-results .file-counts { grid-column: 2; grid-row: 1 / span 2; }
+  }
+  @media (max-width: 44rem) {
+    #agent-results { padding: 0.75rem; container-type: inline-size; }
+    #agent-results .breakdown-table th:first-child { width: 56%; }
+    /* An open file list spans all columns below its category; 0.9rem removes both cell paddings. */
+    #agent-results .category-row td { vertical-align: top; line-height: 2.25rem; }
+    #agent-results .file-list { width: calc(100cqi - 0.9rem); margin-left: 0; }
+  }
+</style>

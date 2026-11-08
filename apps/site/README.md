@@ -8,6 +8,7 @@ is a page in `src/pages/`.
 | [Universe Passport](https://lab.raghib.io/universe/passport/) | Learn the Universe 2026 releases, stamp lessons, and check your understanding |
 | [Universe field guide](https://lab.raghib.io/universe/) | Read the lessons, optional labs, release inventory, and download the slides |
 | [AI Cost](https://lab.raghib.io/ai-cost/) | Explore one organization’s AI-credit billing and Copilot usage |
+| [Agent Edits](https://lab.raghib.io/agent-edits/) | Inspect local agent edit calls by agent, artifact category, and file |
 | [Chess](https://lab.raghib.io/chess/) | Play Stockfish locally |
 | [Context Autopsy](https://lab.raghib.io/context-autopsy/) | Inspect agent-session context and token use |
 | [Session Flame](https://lab.raghib.io/session-flame/) | Replay sessions as a flame chart |

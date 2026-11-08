@@ -7,6 +7,7 @@ import languageData from '../data/languages.json'
 import sessionFlame from '../assets/lab/session-flame.png'
 import contextAutopsy from '../assets/lab/context-autopsy.png'
 import tokenDiet from '../assets/lab/token-diet.png'
+import agentEdits from '../assets/lab/agent-edits.png'
 import chess from '../assets/lab/chess.png'
 import platformerPreview from '../assets/lab/platformer.png'
 import '../styles/fonts.css'
@@ -37,6 +38,13 @@ const experiments = [
     description: 'Compare a coding agent’s token use across two rounds of recorded runs, with the reproduction kit and measurements.',
     image: tokenDiet,
     alt: 'Side-by-side token waterfalls comparing a baseline agent with a modified setup.',
+  },
+  {
+    slug: 'agent-edits',
+    title: 'What Did the Agent Actually Write?',
+    description: 'Break down each agent’s file edits by evals, instructions, skills, prompts, tools, tests, config, docs, and runtime.',
+    image: agentEdits,
+    alt: 'Agent edit report grouped by agent identity and artifact category with added and removed line counts.',
   },
   {
     slug: 'chess',
