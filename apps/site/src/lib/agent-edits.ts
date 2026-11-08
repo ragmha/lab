@@ -304,11 +304,23 @@ export function parseEdits(input: string, fileIndex = 0): ImportedEdits {
       const operation = pending.get(callId)
       if (operation) {
         const output = text(payload.output)
-        const exitCode = /exit[ _]code"?\s*:\s*(-?\d+)/i.exec(output)?.[1]
+        const serialized = output.trimStart().startsWith('{')
+        let outcome: Data = {}
+        if (serialized) {
+          try { outcome = object(JSON.parse(output)) } catch (error) {
+            if (!(error instanceof SyntaxError)) throw error
+            warn('Codex edit result contained invalid JSON.')
+          }
+        }
+        const body = serialized ? text(outcome.output) : output
+        const exitCode = object(outcome.metadata).exit_code
+        const textExitCode = /^\s*(?:Wall time:[^\n]*\n\s*)?Exit code:[ \t]*(-?\d+)[ \t]*(?:\r?\n|$)/i.exec(body)?.[1]
         const success = typeof payload.success === 'boolean' ? payload.success :
-          exitCode !== undefined ? exitCode === '0' :
-          /^\s*Success\b/.test(output) ? true :
-          /\b(?:error:|failed\b|invalid patch\b)/i.test(output) ? false : null
+          typeof outcome.success === 'boolean' ? outcome.success :
+          typeof exitCode === 'number' && Number.isInteger(exitCode) ? exitCode === 0 :
+          !serialized && textExitCode !== undefined ? textExitCode === '0' :
+          /^\s*Success\b/.test(body) ? true :
+          /\b(?:error:|failed\b|invalid patch\b)/i.test(body) ? false : null
         commit(operation, success)
         pending.delete(callId)
       }

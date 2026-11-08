@@ -3,14 +3,14 @@ import { analyzeEdits, demoEdits, parseEdits, type ImportedEdits } from './agent
 type Request = { files?: File[]; demo?: boolean }
 type Response =
   | { type: 'progress'; done: number; total: number }
-  | { type: 'result'; analysis: ReturnType<typeof analyzeEdits> }
+  | { type: 'result'; analysis: ReturnType<typeof analyzeEdits>; demo?: boolean }
   | { type: 'error'; message: string }
 
 const send = (message: Response) => postMessage(message)
 self.onmessage = async ({ data }: MessageEvent<Request>) => {
   try {
     if (data.demo) {
-      send({ type: 'result', analysis: analyzeEdits([parseEdits(demoEdits)]) })
+      send({ type: 'result', analysis: analyzeEdits([parseEdits(demoEdits)]), demo: true })
       return
     }
     const files = data.files ?? []

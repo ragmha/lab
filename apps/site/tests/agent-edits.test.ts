@@ -150,6 +150,16 @@ describe('agent edit breakdown', () => {
         { output: 'Success', success: false, failed: 1, unfinished: 0, added: 0 },
         { output: 'Exit code: 1\nerror: text', success: true, failed: 0, unfinished: 0, added: 1 },
         { output: 'Exit code: 0\nSuccess', success: false, failed: 1, unfinished: 0, added: 0 },
+        { output: '{"output":"apply_patch verification failed: missing expected line exit_code: 0","metadata":{"exit_code":1}}', failed: 1, unfinished: 0, added: 0 },
+        { output: '{"output":"error: copied exit_code: 1","metadata":{"exit_code":0}}', failed: 0, unfinished: 0, added: 1 },
+        { output: '{"output":"Updated src/a.ts\\nExit code: 0"}', failed: 0, unfinished: 1, added: 0 },
+        { output: 'Updated src/a.ts with exit_code: 0', failed: 0, unfinished: 1, added: 0 },
+        { output: 'apply_patch verification failed: missing context\nExit code: 0', failed: 1, unfinished: 0, added: 0 },
+        { output: 'Wall time: 0 seconds\nExit code: 0\nOutput:\nerror: retained in file content', failed: 0, unfinished: 0, added: 1 },
+        { output: '{"output":"error: rejected","metadata":{"exit_code":1}}', success: true, failed: 0, unfinished: 0, added: 1 },
+        { output: '{"output":"Success","metadata":{"exit_code":0}}', success: false, failed: 1, unfinished: 0, added: 0 },
+        { output: '{"success":false,"output":"Success","metadata":{"exit_code":0}}', failed: 1, unfinished: 0, added: 0 },
+        { output: '{"output":"Success. Updated src/failed.ts"}', failed: 0, unfinished: 0, added: 1 },
       ]
       for (const { output, success, failed, unfinished, added } of outcomes) {
         const patch = '*** Begin Patch\n*** Add File: src/a.ts\n+line' +

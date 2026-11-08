@@ -211,14 +211,14 @@ const appJsonLd = JSON.stringify({
 
   worker.onmessage = ({ data }: MessageEvent<
     | { type: 'progress'; done: number; total: number }
-    | { type: 'result'; analysis: EditAnalysis }
+    | { type: 'result'; analysis: EditAnalysis; demo?: boolean }
     | { type: 'error'; message: string }
   >) => {
     if (data.type === 'progress') status.textContent = `Read ${data.done} of ${data.total} logs…`
     if (data.type === 'result') {
       render(data.analysis)
       const groups = data.analysis.agents.length
-      status.textContent = `${data.analysis.filesEdited} ${data.analysis.filesEdited === 1 ? 'file' : 'files'} changed across ${groups} agent ${groups === 1 ? 'group' : 'groups'}.`
+      status.textContent = `${data.demo ? 'Illustrative sample. ' : ''}${data.analysis.filesEdited} ${data.analysis.filesEdited === 1 ? 'file' : 'files'} changed across ${groups} agent ${groups === 1 ? 'group' : 'groups'}.`
       busy(false)
       clearButton.hidden = false
     }
