@@ -1,0 +1,12 @@
+{
+  "labs": [
+    { "slug": "ai-cost" },
+    { "slug": "session-flame" },
+    { "slug": "context-autopsy" },
+    { "slug": "token-diet" },
+    { "slug": "chess" },
+    { "slug": "platformer" },
+    { "slug": "universe" },
+    { "slug": "universe/passport" }
+  ]
+}

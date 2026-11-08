@@ -50,6 +50,11 @@ try {
     controller.abort()
   })
   for await (const output of tests.compose(spec)) process.stdout.write(output)
+  if (!process.exitCode) {
+    const measurement = spawn(process.execPath, ['scripts/measure-performance.mjs'], { env, stdio: 'inherit' })
+    const [code] = await once(measurement, 'exit')
+    if (code !== 0) throw new Error(`Performance measurement exited ${code}`)
+  }
 } finally {
   if (server && server.exitCode === null) {
     server.kill('SIGTERM')

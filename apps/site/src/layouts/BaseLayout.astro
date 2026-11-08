@@ -2,6 +2,7 @@
 import '../styles/global.css'
 import SeoHead from '../components/SeoHead.astro'
 import ThemeInit from '../components/ThemeInit.astro'
+import inventory from '../data/content-links.json'
 
 interface Props {
   title?: string
@@ -18,6 +19,8 @@ const {
   pageClass,
   defaultTheme,
 } = Astro.props
+const slug = Astro.url.pathname.replace(/^\/|\/$/g, '')
+const entry: { slug: string; writing?: string } | undefined = inventory.labs.find((lab) => lab.slug === slug)
 
 ---
 
@@ -30,6 +33,18 @@ const {
   <body class={bodyClass}>
     <div class:list={['page', pageClass]}>
       <slot />
+      {entry?.writing && (
+        <aside class="related-writing" aria-label="Related writing">
+          <a href={`https://raghib.io/writing/${entry.writing}/`}>Read the related writing</a>
+        </aside>
+      )}
     </div>
+    <script>
+      import '../scripts/copy-code'
+    </script>
   </body>
 </html>
+
+<style>
+  .related-writing { margin-top: 2rem; padding-block: 1rem; font-size: 0.9rem; }
+</style>
