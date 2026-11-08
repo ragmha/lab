@@ -7,7 +7,6 @@ is a page in `src/pages/`.
 | --- | --- |
 | [Universe Passport](https://lab.raghib.io/universe/passport/) | Learn the Universe 2026 releases, stamp lessons, and check your understanding |
 | [Universe field guide](https://lab.raghib.io/universe/) | Read the lessons, optional labs, release inventory, and download the slides |
-| [AI Cost](https://lab.raghib.io/ai-cost/) | Explore one organization’s AI-credit billing and Copilot usage |
 | [Agent Edits](https://lab.raghib.io/agent-edits/) | Inspect local agent edit calls by agent, artifact category, and file |
 | [Chess](https://lab.raghib.io/chess/) | Play Stockfish locally |
 | [Context Autopsy](https://lab.raghib.io/context-autopsy/) | Inspect agent-session context and token use |
@@ -29,25 +28,6 @@ the base). No accounts, sync, or team tracking.
 
 Release availability is a sourced snapshot checked 1–2 November 2026. Lessons
 never run agents, change permissions, or spend credits.
-
-## AI cost data
-
-`/ai-cost/` reads only `src/data/ai-cost.json`: daily organization totals,
-monthly credit totals, and public product and model names derived from one
-unnamed organization's private GitHub exports (AI-credit billing usage and the
-Copilot `organization-28-day` and `users-28-day` metrics reports). Raw exports,
-logins, and user, organization, and enterprise IDs are never committed. To
-regenerate, keep the exports outside the repository and run
-`bun scripts/ai-cost/aggregate.ts <folder>` from here; the header comment lists
-the expected file names. Models missing from the script's `PUBLIC_MODELS`
-allowlist are published only as "Other". It refuses to write if an identifier, or a monthly
-credit total from fewer than five users, would be published.
-
-The page fits one screen (`SiteLayout`'s opt-in `fit` mode, used only here)
-with six tabs. Tabs and the group and month controls are plain CSS, so they
-work without JavaScript; a small same-origin inline script only adds `#tab`
-deep links, tooltips, and hover highlighting, and makes no requests. On small
-phones a tab's panel scrolls inside the fixed frame instead of the page.
 
 The [token-diet reproduction kit](scripts/token-diet/README.md) can consume paid
 model credits.
