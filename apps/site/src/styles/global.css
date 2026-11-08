@@ -45,6 +45,25 @@ a:hover {
   color: var(--accent);
 }
 
+.code-copy {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+
+.code-copy button {
+  min-height: 44px;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;

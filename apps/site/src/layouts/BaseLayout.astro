@@ -2,6 +2,7 @@
 import '../styles/global.css'
 import SeoHead from '../components/SeoHead.astro'
 import ThemeInit from '../components/ThemeInit.astro'
+import RelatedWriting from '../components/RelatedWriting.astro'
 
 interface Props {
   title?: string
@@ -18,7 +19,6 @@ const {
   pageClass,
   defaultTheme,
 } = Astro.props
-
 ---
 
 <!doctype html>
@@ -30,6 +30,11 @@ const {
   <body class={bodyClass}>
     <div class:list={['page', pageClass]}>
       <slot />
+      <RelatedWriting />
     </div>
+    <script>
+      import '../scripts/copy-code'
+    </script>
   </body>
 </html>
+

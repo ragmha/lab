@@ -28,6 +28,62 @@ const renderedLines = (page, selector) => page.locator(selector).evaluateAll((el
 }))
 const breaksOnlyAfterSlash = (lines) => lines.slice(0, -1).every((line) => line.endsWith('/'))
 
+test('published writing pairs render accessible exact links, including nested lab routes', { skip: !base }, async () => {
+  const response = await fetch(new URL('/content-links.json', base))
+  assert.equal(response.status, 200)
+  const { labs } = await response.json()
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage()
+    for (const { slug, writing } of labs) {
+      const response = await page.goto(new URL(`/${slug}/`, base).href, { waitUntil: 'domcontentloaded' })
+      assert.equal(response.status(), 200)
+      const related = page.getByRole('complementary', { name: 'Related writing' }).getByRole('link')
+      assert.equal(await related.count(), writing ? 1 : 0)
+      if (writing) {
+        assert.equal(await related.getAttribute('href'), `https://raghib.io/writing/${writing}/`)
+        assert.equal(await related.isVisible(), true)
+      }
+    }
+    await page.close()
+  } finally {
+    await browser.close()
+  }
+})
+
+test('code examples copy exact text, report clipboard denial, and stay readable without JavaScript', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    for (const path of ['/context-autopsy/', '/session-flame/']) {
+      const page = await browser.newPage({ permissions: ['clipboard-read', 'clipboard-write'] })
+      await page.goto(new URL(path, base).href, { waitUntil: 'networkidle' })
+      if (path === '/context-autopsy/') await page.getByRole('tab', { name: 'Your session' }).click()
+      else await page.getByRole('button', { name: 'Help', exact: true }).click()
+      await page.locator('.export-help > summary').click()
+      const button = page.locator('.code-copy button').first()
+      const code = page.locator('pre > code').first()
+      await button.focus()
+      await page.keyboard.press('Enter')
+      await page.waitForFunction(() => document.querySelector('.code-copy [role=status]').textContent === 'Copied.')
+      assert.equal(await page.evaluate(() => navigator.clipboard.readText()), await code.textContent())
+      assert.equal(await button.evaluate((node) => node.getBoundingClientRect().height >= 44), true)
+      await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error('Denied') } })
+      await button.click()
+      await page.waitForFunction(() => document.querySelector('.code-copy [role=status]').textContent.includes('Clipboard unavailable'))
+      assert.equal(await button.isEnabled(), true)
+      assert.equal(await page.evaluate(() => getSelection().toString()), await code.textContent())
+      await page.close()
+      const noScript = await browser.newPage({ javaScriptEnabled: false })
+      await noScript.goto(new URL(path, base).href)
+      assert.equal(await noScript.locator('.code-copy button').count(), 0)
+      assert.ok(await noScript.locator('pre > code').count() > 0)
+      await noScript.close()
+    }
+  } finally {
+    await browser.close()
+  }
+})
+
 test('homepage terminal grid keeps native keyboard links and works without JavaScript', { skip: !base }, async () => {
   const browser = await chromium.launch()
   try {

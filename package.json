@@ -5,6 +5,8 @@
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "bun run --filter @lab/site dev",
+    "check:links": "node apps/site/scripts/check-content-links.mjs",
+    "measure:performance": "node apps/site/scripts/measure-performance.mjs",
     "build": "bun run --filter @lab/site build",
     "test": "bun run --filter '*' test",
     "test:browser": "bun run --filter @lab/site test:browser"
