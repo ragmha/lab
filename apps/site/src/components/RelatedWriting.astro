@@ -1,0 +1,16 @@
+---
+import inventory from '../data/content-links.json'
+
+const slug = Astro.url.pathname.replace(/^\/|\/$/g, '')
+const entry: { slug: string; writing?: string } | undefined = inventory.labs.find((lab) => lab.slug === slug)
+---
+
+{entry?.writing && (
+  <aside class="related-writing" aria-label="Related writing">
+    <a href={`https://raghib.io/writing/${entry.writing}/`}>Read the related writing</a>
+  </aside>
+)}
+
+<style>
+  .related-writing { margin-top: 2rem; padding-block: 1rem; font-size: 0.9rem; }
+</style>

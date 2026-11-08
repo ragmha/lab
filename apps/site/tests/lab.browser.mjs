@@ -8,6 +8,29 @@ const paths = ['/', '/ai-cost/', '/chess/', '/context-autopsy/', '/session-flame
 const recorded = JSON.parse(await readFile(new URL('../src/lib/session-flame-runs.json', import.meta.url), 'utf8'))
 const languages = JSON.parse(await readFile(new URL('../src/data/languages.json', import.meta.url), 'utf8'))
 
+test('published writing pairs render accessible exact links, including nested lab routes', { skip: !base }, async () => {
+  const response = await fetch(new URL('/content-links.json', base))
+  assert.equal(response.status, 200)
+  const { labs } = await response.json()
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage()
+    for (const { slug, writing } of labs) {
+      const response = await page.goto(new URL(`/${slug}/`, base).href, { waitUntil: 'domcontentloaded' })
+      assert.equal(response.status(), 200)
+      const related = page.getByRole('complementary', { name: 'Related writing' }).getByRole('link')
+      assert.equal(await related.count(), writing ? 1 : 0)
+      if (writing) {
+        assert.equal(await related.getAttribute('href'), `https://raghib.io/writing/${writing}/`)
+        assert.equal(await related.isVisible(), true)
+      }
+    }
+    await page.close()
+  } finally {
+    await browser.close()
+  }
+})
+
 test('code examples copy exact text, report clipboard denial, and stay readable without JavaScript', { skip: !base }, async () => {
   const browser = await chromium.launch()
   try {

@@ -34,10 +34,16 @@ Run from the root.
 
 Browser tests need `cd apps/site && bunx playwright install chromium webkit` once.
 
+Code examples offer keyboard-accessible **Copy code** controls with announced
+success or failure. If clipboard access fails, the code is selected for manual
+copying; it remains available without JavaScript. Universe prompts keep their
+existing copy controls and permission reminders.
+
 ## Add a lab
 
 **Static** (deploys with the site): add `apps/site/src/pages/<slug>.astro`
 and an entry in the `experiments` list in `apps/site/src/pages/index.astro`.
+Include the route in the inventory described under [Writing links](#writing-links).
 
 **Fullstack** (runs locally): create `apps/<name>/` with its own
 `package.json`, then `bun install` from the root.
@@ -78,10 +84,13 @@ must carry `lab: lab-slug` linking back to `https://lab.raghib.io/lab-slug/`.
 Slugs are lowercase and hyphenated; nested lab routes such as `universe/passport`
 are supported. Do not copy articles or synchronize Git histories between sites.
 
-Both sites publish `/content-links.json`: this site exposes
-`{"labs":[{"slug":"token-diet","writing":"writing-slug"}]}` and raghib.io
-exposes `{"writings":[{"slug":"writing-slug","lab":"token-diet"}]}`.
+This site publishes `/content-links.json` with the shape
+`{"labs":[{"slug":"token-diet","writing":"writing-slug"}]}`. The reciprocal
+contract for raghib.io's `/content-links.json` is
+`{"writings":[{"slug":"writing-slug","lab":"token-diet"}]}`.
 Inventories must include unpaired published entries, not just linked ones.
+Wait for raghib.io to publish its manifest before running production reciprocal
+validation.
 
 ```sh
 bun run check:links
@@ -105,8 +114,8 @@ LAB_TEST_URL=http://127.0.0.1:4321 bun run measure:performance
 ```
 
 The installed Playwright records a cold mobile-sized, throttled Chromium visit
-to every lab route in `.checks/performance.json`: TTFB, load time, LCP, CLS and
-observed transfer bytes. CI measures its checked preview after browser tests
+to the homepage and every lab route in `.checks/performance.json`: TTFB, load
+time, LCP, CLS and observed transfer bytes. CI measures its checked preview after browser tests
 and saves the `lab-performance` artifact for each run, including pull requests.
 Compare the same route and conditions before/after a change. Local-preview
 results exclude production hosting and DNS; run against production for those.

@@ -1,6 +1,7 @@
 ---
 import shell from '../../../../../.github/extensions/universe-passport/index.html?raw'
 import '../../../../../.github/extensions/universe-passport/styles.css'
+import RelatedWriting from '../../components/RelatedWriting.astro'
 const base = import.meta.env.BASE_URL.replace(/\/$/, '')
 // Reuse the canvas's body so public and in-app controls cannot drift.
 const body = shell.split('<body>')[1].split('</body>')[0]
@@ -22,6 +23,7 @@ const body = shell.split('<body>')[1].split('</body>')[0]
       <a href={`${base}/universe/`}>Read the full field guide</a>
     </nav>
     <Fragment set:html={body} />
+    <RelatedWriting />
     <noscript><p>This interactive Passport needs JavaScript. <a href={`${base}/universe/`}>Read all lessons and labs in the field guide without JavaScript.</a></p></noscript>
     <script>
       import '../../../../../.github/extensions/universe-passport/app.mjs'
