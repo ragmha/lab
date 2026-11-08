@@ -180,6 +180,58 @@ test('agent edits show one filterable category table and import locally offline'
   }
 })
 
+test('agent edits reject overlapping selections and drops while importing', { skip: !base }, async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      const NativeWorker = window.Worker
+      window.importRequests = 0
+      window.Worker = class extends NativeWorker {
+        postMessage(...args) {
+          window.importRequests++
+          window.releaseImport = () => super.postMessage(...args)
+        }
+      }
+    })
+    await page.goto(new URL('/agent-edits/', base).href, { waitUntil: 'networkidle' })
+    const records = (path) => JSON.stringify([
+      { type: 'tool.execution_start', data: { toolCallId: 'a', toolName: 'create', arguments: { path, file_text: 'line' } } },
+      { type: 'tool.execution_complete', data: { toolCallId: 'a', success: true } },
+    ])
+    await page.locator('#session-files').setInputFiles({
+      name: 'first.json', mimeType: 'application/json', buffer: Buffer.from(records('src/first.ts')),
+    })
+    assert.equal(await page.locator('#session-files').isDisabled(), true)
+    assert.equal(await page.locator('#clear-button').isDisabled(), true)
+    await page.locator('#session-files').dispatchEvent('change')
+    const drop = async () => {
+      const dataTransfer = await page.evaluateHandle((content) => {
+        const transfer = new DataTransfer()
+        transfer.items.add(new File([content], 'second.json', { type: 'application/json' }))
+        return transfer
+      }, records('src/second.ts'))
+      await page.locator('.dropzone').dispatchEvent('drop', { dataTransfer })
+      await dataTransfer.dispose()
+    }
+    await drop()
+    assert.equal(await page.evaluate(() => window.importRequests), 1)
+    await page.evaluate(() => window.releaseImport())
+    await page.waitForFunction(() => !document.querySelector('#session-files').disabled)
+    assert.deepEqual(await page.locator('#category-rows code').allTextContents(), ['src/first.ts'])
+    await page.locator('#clear-button').click()
+    assert.equal(await page.locator('#table-summary').textContent(), '0 files · 0 agent groups')
+    await drop()
+    assert.equal(await page.evaluate(() => window.importRequests), 2)
+    await page.evaluate(() => window.releaseImport())
+    await page.waitForFunction(() => !document.querySelector('#session-files').disabled)
+    assert.deepEqual(await page.locator('#category-rows code').allTextContents(), ['src/second.ts'])
+    await page.close()
+  } finally {
+    await browser.close()
+  }
+})
+
 test('pixel platformer presentation is generic and keeps its controls discoverable', { skip: !base }, async () => {
   const browser = await chromium.launch()
   try {

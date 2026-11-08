@@ -75,7 +75,9 @@ export function classifyPath(input: string): CategoryId {
   const path = input.replace(/\\/g, '/').replace(/^\.\/+/, '').toLowerCase()
   const name = basename(path)
   if (/(?:^|\/)(?:evals?|evaluations?)\//.test(path) ||
-      /(?:\.eval\.|_eval\.)/.test(name) || /(?:grader|rubric|golden|expected|eval[-_ ]?dataset|promptfoo)/.test(path)) return 'evals'
+      /(?:\.eval\.|_eval\.)/.test(name) ||
+      /(?:^|[/._ -])(?:graders?|rubrics?|golden|expected[-_ ]outputs?|eval[-_ ]?datasets?|promptfoo)(?=$|[/._ -])/.test(path) ||
+      /(?:^|[/._ -])expected(?=$|[/.])/.test(path)) return 'evals'
   if (/^(?:agents|claude|gemini)\.md$/.test(name) || /(?:^|\/)\.github\/copilot-instructions\.md$/.test(path) ||
       /\.instructions\.md$/.test(name) || /(?:^|\/)\.cursor\/rules(?:\/|$)/.test(path) ||
       /^(?:\.cursorrules|\.windsurfrules)$/.test(name)) return 'instructions'
@@ -302,11 +304,12 @@ export function parseEdits(input: string, fileIndex = 0): ImportedEdits {
       const operation = pending.get(callId)
       if (operation) {
         const output = text(payload.output)
-        const exitCode = /exit[ _]code"?\s*:\s*(\d+)/i.exec(output)?.[1]
-        const failed = typeof payload.success === 'boolean' ? !payload.success :
-          exitCode ? exitCode !== '0' :
-          !/^\s*Success\b/.test(output) && /\b(?:error:|failed)\b/i.test(output)
-        commit(operation, failed ? false : true)
+        const exitCode = /exit[ _]code"?\s*:\s*(-?\d+)/i.exec(output)?.[1]
+        const success = typeof payload.success === 'boolean' ? payload.success :
+          exitCode !== undefined ? exitCode === '0' :
+          /^\s*Success\b/.test(output) ? true :
+          /\b(?:error:|failed\b|invalid patch\b)/i.test(output) ? false : null
+        commit(operation, success)
         pending.delete(callId)
       }
     }

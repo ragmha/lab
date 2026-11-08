@@ -233,7 +233,7 @@ const appJsonLd = JSON.stringify({
   }
   const loadDemo = () => { busy(true); worker.postMessage({ demo: true }) }
   const loadFiles = (files: File[]) => {
-    if (!files.length) return
+    if (fileInput.disabled || !files.length) return
     busy(true)
     worker.postMessage({ files })
   }

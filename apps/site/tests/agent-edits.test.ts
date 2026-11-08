@@ -37,6 +37,35 @@ describe('agent edit breakdown', () => {
     assert.ok(analysis.agents.some((agent) => agent.label === 'Main agent'))
   })
 
+  test('classifies eval artifact tokens without matching ordinary filename substrings', () => {
+    for (const path of [
+      'eval/answer.json', 'evaluations/answer.ts', 'src/answer.eval.ts', 'src/answer_eval.py',
+      'graders/answer.py', 'src/answer-grader.ts', 'rubrics/answer.json', 'answer.rubric.json',
+      'golden/answer.json', 'tests/golden-answers.json', 'expected/answer.json', 'answer.expected.json',
+      'expected-output.json', 'expected_outputs/answer.json', 'eval-dataset.json',
+      'eval_datasets/answer.json', 'promptfoo.yaml', 'config/promptfoo.config.ts',
+    ]) assert.equal(classifyPath(path), 'evals', path)
+    for (const path of [
+      'src/schema-upgrader.ts', 'src/rubrication.ts', 'src/goldenrod.ts',
+      'src/promptfood.ts', 'src/myeval-dataset.ts',
+    ]) assert.equal(classifyPath(path), 'runtime', path)
+    assert.equal(classifyPath('docs/expected-behavior.md'), 'docs')
+    for (const source of ['Copilot CLI', 'Claude Code', 'Codex CLI']) {
+      const path = 'docs/expected-behavior.md'
+      const records = source === 'Copilot CLI' ? [
+        { type: 'tool.execution_start', data: { toolCallId: 'a', toolName: 'create', arguments: { path, file_text: 'line' } } },
+        { type: 'tool.execution_complete', data: { toolCallId: 'a', success: true } },
+      ] : source === 'Claude Code' ? [
+        { type: 'assistant', sessionId: 'a', message: { content: [{ type: 'tool_use', id: 'a', name: 'Write', input: { file_path: path, content: 'line' } }] } },
+        { type: 'user', sessionId: 'a', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: false }] } },
+      ] : [
+        { type: 'response_item', payload: { type: 'custom_tool_call', call_id: 'a', name: 'apply_patch', input: `*** Begin Patch\n*** Add File: ${path}\n+line\n*** End Patch` } },
+        { type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: 'a', output: 'Success' } },
+      ]
+      assert.deepEqual(parseEdits(JSON.stringify(records)).changes.map((change) => change.category), ['docs'], source)
+    }
+  })
+
   test('groups Claude edits by main or sidechain and counts MultiEdit and notebook writes', () => {
     const records = [
       { type: 'assistant', sessionId: 'claude-1', isSidechain: false, message: { content: [
@@ -105,6 +134,38 @@ describe('agent edit breakdown', () => {
     ]
     const labels = analyzeEdits([parseEdits(records.map((record) => JSON.stringify(record)).join('\n'))]).agents.map((agent) => agent.label)
     assert.deepEqual(labels.sort(), ['explore · _plain', 'General Purpose Agent · abc123', 'Subagent · call_orphan'].sort())
+  })
+
+  test('Codex rejected and ambiguous outcomes never enter successful totals in either call format', () => {
+    for (const type of ['function', 'custom_tool']) {
+      const outcomes = [
+        { output: 'Invalid patch: The last line of the patch must be End Patch', failed: 1, unfinished: 0, added: 0 },
+        { output: 'error: patch did not apply', failed: 1, unfinished: 0, added: 0 },
+        { output: 'apply_patch verification failed: missing context', failed: 1, unfinished: 0, added: 0 },
+        { output: 'Updated src/a.ts', failed: 0, unfinished: 1, added: 0 },
+        { output: '', failed: 0, unfinished: 1, added: 0 },
+        { output: 'Success. Updated src/failed.ts', failed: 0, unfinished: 0, added: 1 },
+        { output: 'Exit code: 0\nerror: retained in file content', failed: 0, unfinished: 0, added: 1 },
+        { output: 'Exit code: -1\nSuccess', failed: 1, unfinished: 0, added: 0 },
+        { output: 'Success', success: false, failed: 1, unfinished: 0, added: 0 },
+        { output: 'Exit code: 1\nerror: text', success: true, failed: 0, unfinished: 0, added: 1 },
+        { output: 'Exit code: 0\nSuccess', success: false, failed: 1, unfinished: 0, added: 0 },
+      ]
+      for (const { output, success, failed, unfinished, added } of outcomes) {
+        const patch = '*** Begin Patch\n*** Add File: src/a.ts\n+line' +
+          (output.startsWith('Invalid patch:') ? '' : '\n*** End Patch')
+        const analysis = analyzeEdits([parseEdits(JSON.stringify([
+          { type: 'session_meta', payload: { id: 'codex-outcomes' } },
+          { type: 'response_item', payload: { type: `${type}_call`, call_id: 'a', name: 'apply_patch',
+            ...(type === 'function' ? { arguments: patch } : { input: patch }) } },
+          { type: 'response_item', payload: { type: `${type}_call_output`, call_id: 'a', output, success } },
+        ]))])
+        assert.deepEqual(
+          { added: analysis.added, failed: analysis.failedCalls, unfinished: analysis.unconfirmedCalls },
+          { added, failed, unfinished }, `${type}: ${output}`,
+        )
+      }
+    }
   })
 
   test('sample demonstrates all included sources and pending calls are not counted as edits', () => {
