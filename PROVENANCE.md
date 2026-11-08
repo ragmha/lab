@@ -8,6 +8,9 @@ not changed by this extraction.
 
 ## Migration map
 
+Standalone paths below are relative to `apps/site/`, where the site moved
+when the repository became a Bun workspace.
+
 | Original path | Standalone path |
 | --- | --- |
 | `src/pages/experiments/{index,chess,context-autopsy,session-flame,token-diet}.astro` | `src/pages/` with the same filenames |
@@ -48,15 +51,24 @@ see [LICENSE](LICENSE). Third-party assets keep their own licenses:
 - **Stockfish.js 19.0.1**, lite single-threaded worker and WebAssembly:
   **GPLv3**, not MIT. Copyright includes the Stockfish developers and Nathan
   Rugg. Both distribution files are unmodified. Full license:
-  [`public/chess/COPYING.txt`](public/chess/COPYING.txt).
+  [`public/chess/COPYING.txt`](apps/site/public/chess/COPYING.txt).
   Matching release, corresponding source archive, build instructions,
   Emscripten version, and SHA-256 hashes:
-  [`public/chess/SOURCE.txt`](public/chess/SOURCE.txt).
+  [`public/chess/SOURCE.txt`](apps/site/public/chess/SOURCE.txt).
   Keep these notices and access to corresponding source when distributing
   the engine; the MIT license does not relicense it.
 - **JetBrains Mono**: **SIL Open Font License 1.1**, retained in
-  [`public/fonts/jetbrains-mono/OFL.txt`](public/fonts/jetbrains-mono/OFL.txt).
-  Pinned upstream source is recorded in `src/styles/fonts.css`.
+  [`public/fonts/jetbrains-mono/OFL.txt`](apps/site/public/fonts/jetbrains-mono/OFL.txt).
+  Pinned upstream source is recorded in `apps/site/src/styles/fonts.css`.
+- **Pixel platformer**: game logic and 32 stages in `apps/site/src/lib/platformer.ts` are
+  a TypeScript port of `martinwoodward/super-mona` at commit `6d3100e` (MIT).
+  `tiles.png` and `mobs.png` in
+  `apps/site/public/platformer/` are copied unmodified; `players.png` is original
+  geometric explorer artwork replacing the upstream branded characters.
+  The homepage still and GIF are captures of this modified game.
+  **MIT**: the copyright and
+  permission notices for the game and its sprites are kept in
+  [`public/platformer/LICENSE.txt`](apps/site/public/platformer/LICENSE.txt).
 - **chess.js 1.4.0**: BSD-2-Clause, distributed through Bun with its package
   license. Remaining npm dependencies retain their package licenses.
 - The reproduction kit refers to separately installed caveman, rtk, and
