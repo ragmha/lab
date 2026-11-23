@@ -26,8 +26,9 @@ same browser. **Export progress** and **Import** move it between devices or the
 `~/.copilot/extensions/universe-passport/artifacts/` (`COPILOT_HOME` overrides
 the base). No accounts, sync, or team tracking.
 
-Release availability is a sourced snapshot checked 1–2 November 2026. Lessons
-never run agents, change permissions, or spend credits.
+Release availability starts from a sourced snapshot checked 1–2 November 2026;
+later changes are dated on each item. Lessons never run agents, change
+permissions, or spend credits.
 
 The [token-diet reproduction kit](scripts/token-diet/README.md) can consume paid
 model credits.

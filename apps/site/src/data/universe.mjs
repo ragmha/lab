@@ -1,7 +1,7 @@
 // @ts-check
 // Shared by the /universe/ page and the Universe Passport canvas (.github/extensions/universe-passport).
 export const statusNote = '“Announced” means the recap names it, but this baseline does not verify GA or your access. “Available” is a documented capability without an established GA/preview label. Mixed status is called out explicitly.'
-export const scope = 'Scope: overview, official recap, and 31 launch-day changelog posts checked 1 Nov 2026, plus two separately labelled release-week additions checked 2 Nov 2026. Not an exhaustive changelog or every conference session. Availability is a dated snapshot, not a live account check.'
+export const scope = 'Scope: overview, official recap, and 31 launch-day changelog posts checked 1 Nov 2026, plus two separately labelled release-week additions checked 2 Nov 2026. Not an exhaustive changelog or every conference session. Availability is a dated snapshot, not a live account check. Later changes are dated on each item.'
 
 export const sources = {
   overview: { label: 'Universe overview · 28 Oct', url: 'https://github.blog/news-insights/company-news/github-universe-2026-evolving-every-layer-of-the-stack/' },
@@ -45,6 +45,7 @@ export const sources = {
   securityCanvas: { label: 'Security extension preview', url: 'https://github.blog/changelog/2026-10-28-security-extension-for-the-github-copilot-app' },
   billing: { label: 'Enterprise access release', url: 'https://github.blog/changelog/2026-10-28-github-enterprise-now-includes-access-to-github-copilot' },
   fusionLaunch: { label: 'Fusion GA release', url: 'https://github.blog/changelog/2026-10-28-route-and-orchestrate-models-with-github-copilot-fusion' },
+  fusionNovember: { label: 'Fusion availability update · 17 Nov', url: 'https://github.blog/changelog/2026-11-17-github-copilot-fusion-updates-more-availability-benchmarks-and-models' },
   connectorLaunch: { label: 'Connectors preview release', url: 'https://github.blog/changelog/2026-10-28-connect-your-tools-to-copilot-without-all-the-setup' },
   assisted: { label: 'Assisted permissions GA · 26 Oct', url: 'https://github.blog/changelog/2026-10-26-github-copilot-assisted-permissions-generally-available/' },
   serviceAuth: { label: 'Server-to-server authentication preview · 27 Oct', url: 'https://github.blog/changelog/2026-10-27-github-copilot-supports-server-to-server-authentication/' },
@@ -83,7 +84,7 @@ export const lessons = [
     day: 'Day 1 · Orient',
     what: 'The Copilot app brings agent work and context together. Fusion chooses one or more models and a Single, Cascade, or Critique pattern for the task.',
     why: 'Your first win is understanding a repository, not generating a large change. Effort becomes a choice you can make deliberately.',
-    prerequisites: 'Step 0 complete; access to the app or a supported Fusion client (VS Code, CLI, app, or JetBrains). Check the current plan table for effort-level access.',
+    prerequisites: 'Step 0 complete; access to the app or a supported Fusion client. Since 17 Nov 2026, Fusion also supports github.com, Visual Studio, and GitHub Mobile beta. Check the current plan table for effort-level access.',
     steps: [
       'Open your repository in an available supported client. In the app, keep the task within one repository and inspect the attached context.',
       'Select Fusion and Standard effort where offered. High and Max may be plan-gated; do not change a subscription to finish this lesson.',
@@ -94,7 +95,7 @@ export const lessons = [
     warning: 'One AI request may spend credits. Higher effort or optional repeated comparisons can consume more; start with Standard.',
     done: 'You can explain the repository in three sentences and name one improvement you verified yourself.',
     fallback: 'No app? Use an available supported Fusion client. No Fusion access? Read the README and make the same three-sentence summary manually; that is practice, not a Fusion run.',
-    reading: ['app', 'fusion'],
+    reading: ['app', 'fusion', 'fusionNovember'],
   },
   {
     title: 'Turn a goal into a small project',
@@ -313,7 +314,7 @@ export const labs = [
 }>} */
 export const releases = [
   { name: 'GitHub Copilot app', group: 'Agents', status: 'Available', detail: 'Agent-first workspace for projects, tools, context, and code. Do not infer one GA label for all app capabilities: projects and computer use have their own preview status.', gate: 'Check client availability, plan, and organization policy.', lesson: 1, reading: ['app', 'appLaunch', 'overview'] },
-  { name: 'Copilot Fusion', group: 'Agents', status: 'GA', detail: 'One or multiple models; Single, Cascade, or Critique patterns. Standard, High, and Max effort. No prompt guarantees a particular pattern.', gate: 'GA in VS Code, CLI, app, and JetBrains. Effort access varies by plan; use the current docs table.', lesson: 1, reading: ['fusion', 'fusionLaunch'] },
+  { name: 'Copilot Fusion', group: 'Agents', status: 'GA', detail: 'One or multiple models; Single, Cascade, or Critique patterns. Standard, High, and Max effort. No prompt guarantees a particular pattern.', gate: 'GA in VS Code, CLI, app, and JetBrains. Since 17 Nov 2026, also available on github.com, Visual Studio, and GitHub Mobile beta; production mobile support was still coming. Effort access varies by plan; use the current docs table.', lesson: 1, reading: ['fusion', 'fusionLaunch', 'fusionNovember'] },
   { name: 'Copilot projects', group: 'Agents', status: 'Public preview', detail: 'Goals, library context, coordinated sessions, and results across one or more repositories.', gate: 'Projects preview in the Copilot app; you remain the decision maker.', lesson: 2, reading: ['projects'] },
   { name: 'Cloud session continuity & sandboxes', group: 'Agents', status: 'GA', detail: 'Connected cloud experience and secure cloud sandboxes: start and resume the same session across app, VS Code, CLI, web, mobile, and documented Slack/Teams entry points.', gate: 'Paid Copilot plans; rollout began 28 Oct. Cloud sessions only: local worktrees do not automatically sync. Review sandbox compute/billing terms.', lesson: 3, reading: ['continuity', 'cloudLaunch'] },
   { name: 'Copilot automations & shared workflows', group: 'Agents', status: 'Restricted access', detail: 'Reusable hosted cloud tasks and shared team automations are rolling out. This is distinct from GitHub Agentic Workflows compiled into Actions.', gate: 'Pro/Pro+/Max/Business/Enterprise. Source ambiguity: launch copy says any repo with write access; concept docs specify private/internal. Use the narrower docs gate and verify before enabling.', lesson: 5, reading: ['automations', 'automationShared'] },
